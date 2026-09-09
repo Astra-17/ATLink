@@ -15,29 +15,81 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel model=new();
     private readonly Views.WorkspaceController workspace;
+    private readonly StudioData studioData=new(Path.Combine(AppContext.BaseDirectory,"Data"));
     public MainWindow()
     {
         InitializeComponent();DataContext=model;Closing+=OnClosing;model.PropertyChanged+=ModelChanged;
         workspace=new Views.WorkspaceController(model,this);model.ResetWorkspace=workspace.Clear;
+        Loaded+=FirstLaunch;
+    }
+    private void FirstLaunch(object sender,RoutedEventArgs e)
+    {
+        Loaded-=FirstLaunch;
+        try
+        {
+            if(studioData.NeedsLanguageChoice)
+            {
+                // An installer choice is an explicit default; portable launches use the welcome page.
+                string installed=Path.Combine(studioData.Root,"default-language.txt");
+                if(File.Exists(installed)&&studioData.Languages.Any(l=>l.Code==File.ReadAllText(installed).Trim()))studioData.SaveLanguage(File.ReadAllText(installed).Trim());
+                else OpenSettings(true);
+            }
+        }
+        catch(Exception ex){Error(ex);}
+    }
+    private void EditingClick(object sender,RoutedEventArgs e)
+    {
+        if(model.Busy)return;
+        workspace.Clear();model.Screen="Editing";
+    }
+    private void HomeClick(object sender,RoutedEventArgs e)
+    {
+        if(model.Busy)return;
+        workspace.Clear();model.Screen="Home";
+    }
+    private void SettingsClick(object sender,RoutedEventArgs e)
+    {
+        if(model.Busy)return;
+        try{OpenSettings(false);}catch(Exception ex){Error(ex);}
+    }
+    private void OpenSettings(bool initial)
+    {
+        OpenPage(new Views.SettingsPage(studioData,initial,async code=>
+        {
+            if(model.Localization?.HasChanges==true&&MessageBox.Show(this,"Abandonner les modifications de la langue actuelle ? Les modifications de la DB seront conservées.","Changer de langue",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)throw new OperationCanceledException("La langue actuelle a été conservée.");
+            model.Busy=true;
+            try
+            {
+                var localization=await Task.Run(()=>studioData.OpenLocalization(code));
+                studioData.SaveLanguage(code);
+                if(model.Document is not null)model.SetLocalization(localization);
+                model.Status="Database language: "+studioData.Languages.Single(l=>l.Code==code).Name;
+            }
+            finally{model.Busy=false;}
+        }));
+    }
+    private async void BaseDbClick(object sender,RoutedEventArgs e)
+    {
+        if(model.Busy||!MayDiscard())return;
+        try
+        {
+            if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}
+            model.Busy=true;model.Status="Opening the included database…";
+            string code=studioData.SuggestedLanguage().Code;
+            var result=await Task.Run(()=>studioData.OpenBase(code));
+            model.Load(result.Main,result.Loc);
+        }
+        catch(Exception ex){Error(ex);}
+        finally{model.Busy=false;}
     }
     private void OpenPage(UserControl page)=>workspace.Push(page);
     private void HashClick(object sender,RoutedEventArgs e)=>OpenPage(new Views.LanguageHashWindow());
     private bool MayDiscard()=>model.Document?.HasChanges!=true && model.Localization?.HasChanges!=true || MessageBox.Show(this,"Abandonner les modifications en mémoire ?","Modifications non enregistrées",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;
-    private async void OpenClick(object sender,RoutedEventArgs e)
-    {
-        if(model.Busy || !MayDiscard())return;
-        var db=new OpenFileDialog{Title="Ouvrir une base brute ou un Squad",Filter="Base, LOC ou Squad (*.db;*.*)|*.db;*.*|Tous les fichiers|*.*"};if(db.ShowDialog(this)!=true)return;
-        string meta=Path.Combine(Path.GetDirectoryName(db.FileName)!,Path.GetFileNameWithoutExtension(db.FileName)+"-meta.xml");
-        if(!File.Exists(meta))meta=SquadFile.AdjacentMetadata(db.FileName)??"";
-        if(!File.Exists(meta)){var xml=new OpenFileDialog{Title="Sélectionner le metadata correspondant",Filter="Metadata XML (*.xml)|*.xml"};if(xml.ShowDialog(this)!=true)return;meta=xml.FileName;}
-        model.Busy=true;model.Status="Lecture de la base et décodage des tables…";
-        try{var doc=await Task.Run(()=>DatabaseDocument.Open(db.FileName,meta));model.Load(doc);}catch(Exception ex){Error(ex);}finally{model.Busy=false;}
-    }
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy || model.Document is null)return;
         if(!TableGrid.CommitEdit(DataGridEditingUnit.Cell,true)||!TableGrid.CommitEdit(DataGridEditingUnit.Row,true))return;
-        if(model.Localization is not null){try{SaveFullProject();}catch(Exception ex){Error(ex);}return;}
+        if(model.Localization?.HasChanges==true){try{SaveFullProject();}catch(Exception ex){Error(ex);}return;}
         var save=new SaveFileDialog{Title="Enregistrer dans un nouveau fichier",Filter="Base de données (*.db)|*.db",FileName=Path.GetFileNameWithoutExtension(model.Document.SourcePath)+"-edited.db"};
         if(save.ShowDialog(this)!=true)return;
         try{model.Document.SaveAs(save.FileName);model.Status=$"Copie enregistrée : {save.FileName}. L'original reste inchangé.";}catch(Exception ex){Error(ex);}
@@ -192,31 +244,22 @@ public partial class MainWindow : Window
         var file=new OpenFileDialog{Filter="BIG archive (*.big)|*.big"};if(file.ShowDialog(this)!=true)return;
         var folder=new OpenFolderDialog{Title="Parent folder for extraction"};if(folder.ShowDialog(this)!=true)return;
         try{string target=Path.Combine(folder.FolderName,"BIG-"+Guid.NewGuid().ToString("N")[..8]);var entries=BigArchive.Extract(file.FileName,target);model.Status=$"{entries.Count} files extracted to {target}; {entries.Count(e=>e.Compressed)} compressed payloads remain compressed.";MessageBox.Show(this,model.Status,"BIG extraction");}catch(Exception ex){Error(ex);}
-    }    private async void FullOpenClick(object sender,RoutedEventArgs e)
-    {
-        if(model.Busy||!MayDiscard())return;
-        var db=new OpenFileDialog{Title="Main DB",Filter="Database (*.db)|*.db"};if(db.ShowDialog(this)!=true)return;
-        var xml=new OpenFileDialog{Title="Main metadata",Filter="XML (*.xml)|*.xml",FileName=Path.Combine(Path.GetDirectoryName(db.FileName)!,Path.GetFileNameWithoutExtension(db.FileName)+"-meta.xml")};if(xml.ShowDialog(this)!=true)return;
-        var loc=new OpenFileDialog{Title="Localization DB/LOC",Filter="Localization (*.db;*.loc)|*.db;*.loc"};if(loc.ShowDialog(this)!=true)return;
-        var locXml=new OpenFileDialog{Title="Localization metadata",Filter="XML (*.xml)|*.xml",FileName=Path.Combine(Path.GetDirectoryName(loc.FileName)!,Path.GetFileNameWithoutExtension(loc.FileName)+"-meta.xml")};if(locXml.ShowDialog(this)!=true)return;
-        model.Busy=true;
-        try
-        {
-            var main=await Task.Run(()=>DatabaseDocument.Open(db.FileName,xml.FileName));
-            var locDoc=await Task.Run(()=>DatabaseDocument.Open(loc.FileName,locXml.FileName));
-            model.Load(main,locDoc);
-        }
-        catch(Exception ex){Error(ex);}finally{model.Busy=false;}
     }
     private void LocalizationClick(object sender,RoutedEventArgs e)=>OpenPage(new Views.LocalizationWindow());
     private async void SquadClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy||!MayDiscard())return;
+        try{if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}}catch(Exception ex){Error(ex);return;}
         var file=new OpenFileDialog{Title="Ouvrir un Squad FBCHUNKS",Filter="Squad|*|Tous|*.*"};if(file.ShowDialog(this)!=true)return;
-        string? meta=SquadFile.AdjacentMetadata(file.FileName);
-        if(meta is null){var xml=new OpenFileDialog{Title="Metadata XML (fifa_ng_db-meta.xml)",Filter="XML (*.xml)|*.xml"};if(xml.ShowDialog(this)!=true)return;meta=xml.FileName;}
-        model.Busy=true;model.Status="Lecture du conteneur Squad…";
-        try{var doc=await Task.Run(()=>SquadFile.Open(file.FileName,meta).Database);model.Load(doc);}catch(Exception ex){Error(ex);}finally{model.Busy=false;}
+        try
+        {
+            if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}
+            model.Busy=true;model.Status="Lecture du conteneur Squad…";
+            string code=studioData.SuggestedLanguage().Code;
+            var result=await Task.Run(()=>studioData.OpenSquad(file.FileName,code));
+            model.Load(result.Main,result.Loc);
+        }
+        catch(Exception ex){Error(ex);}finally{model.Busy=false;}
     }
     private void SaveFullProject()
     {

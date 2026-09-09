@@ -30,6 +30,12 @@ internal static class Program
             Console.WriteLine($"Rendered {name}");
         }
         Render("home");
+        var editingButton=(System.Windows.Controls.Button)window.FindName("EditingButton");
+        editingButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        if(model.Screen!="Editing")throw new Exception("Editing navigation failed");
+        Render("editing");
+        if(((System.Windows.Controls.Button)window.FindName("BaseDbButton")).Visibility!=Visibility.Visible||((System.Windows.Controls.Button)window.FindName("SelectedDbButton")).Visibility!=Visibility.Visible)throw new Exception("Database choice cards missing");
+        model.Screen="Home";
         var doc=DatabaseDocument.Open(Path.Combine(root,"files/fifa_ng_db.db"),Path.Combine(root,"files/fifa_ng_db-meta.xml"));
         model.Load(doc);Render("launcher");
         model.ShowTablesCommand.Execute(null);Render("tables");
@@ -91,6 +97,18 @@ internal static class Program
         RenderControl(new ATLink.Views.PlayerImportWindow(),"player-import",900,800);
         RenderControl(new ATLink.Views.LocalizationWindow(),"localization",1100,720);
         Console.WriteLine("PASS tournament wizard, competition manager, profile importer, localization and cancel isolation");
+        var studio=new StudioData(Path.Combine(AppContext.BaseDirectory,"Data"),Path.Combine(output,"unused-settings-"+Guid.NewGuid().ToString("N")+".json"));
+        RenderControl(new ATLink.Views.SettingsPage(studio,false,_=>Task.CompletedTask),"settings",1100,720);
+        RenderControl(new ATLink.Views.SettingsPage(studio,true,_=>Task.CompletedTask),"welcome",1100,720);
+        var selectedTable=model.SelectedTable;
+        var rowToKeep=doc.Tables.Single(t=>t.Name=="teams").Data.Rows[0];string originalName=(string)rowToKeep["teamname"];rowToKeep["teamname"]="Pending edit";
+        model.SetLocalization(studio.OpenLocalization("eng_us"));
+        if(model.SelectedTable!=selectedTable||(string)rowToKeep["teamname"]!="Pending edit")throw new Exception("Language switch lost DB edits/selection");
+        model.SelectedTable=model.Localization!.Tables[0];
+        model.SetLocalization(studio.OpenLocalization("fre_fr"));
+        if(!model.Localization!.Tables.Contains(model.SelectedTable!)||model.Tables.Count!=doc.Tables.Count+model.Localization.Tables.Count)throw new Exception("Stale/duplicate LOC tables after language switch");
+        rowToKeep["teamname"]=originalName;rowToKeep.AcceptChanges();
+        Console.WriteLine("PASS Editing cards, settings/welcome, language replacement and preserved main DB edits");
         window.Close();app.Shutdown();
     }
 }

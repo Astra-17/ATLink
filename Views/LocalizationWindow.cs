@@ -16,7 +16,7 @@ public sealed class LocalizationWindow:UserControl,IWorkspacePage
         var status=new TextBlock{TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,0)};DockPanel.SetDock(status,Dock.Bottom);dock.Children.Add(status);
         var table=new DataTable();table.Columns.Add("hashid");table.Columns.Add("stringid");table.Columns.Add("sourcetext");
         var grid=new DataGrid{ItemsSource=IdSortedView.Bind(table.DefaultView),AutoGenerateColumns=true,CanUserAddRows=true,CanUserDeleteRows=true};dock.Children.Add(grid);
-        void Load(IReadOnlyList<string[]> rows){table.Clear();foreach(var row in rows.ById(r=>r[0]))table.Rows.Add(row[0],row[1],row[2]);status.Text=$"{table.Rows.Count} chaînes. Pour éditer le .db du jeu, ouvrir le LOC via DB ou Full DB Editor.";}
+        void Load(IReadOnlyList<string[]> rows){table.Clear();foreach(var row in rows.ById(r=>r[0]))table.Rows.Add(row[0],row[1],row[2]);status.Text=$"{table.Rows.Count} chaînes. La langue intégrée se choisit dans System ; ses tables sont disponibles dans Table Editor.";}
         var open=new Button{Content="Importer CSV/TSV FIFA Editor Tool",Margin=new Thickness(0,0,8,0),Padding=new Thickness(12,6,12,6)};bar.Children.Add(open);
         open.Click+=(_,_)=>{var dialog=new OpenFileDialog{Filter="Chaînes (*.csv;*.tsv;*.txt)|*.csv;*.tsv;*.txt"};if(!ShellDialogs.Open(dialog,this))return;try{Load(LocalizationFormat.ParseStrings(File.ReadAllText(dialog.FileName)));}catch(Exception ex){status.Text=ex.Message;}};
         var hash=new Button{Content="Recalculer les hash",Margin=new Thickness(0,0,8,0)};bar.Children.Add(hash);
@@ -29,6 +29,6 @@ public sealed class LocalizationWindow:UserControl,IWorkspacePage
             var rows=table.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted).Select(r=>new[]{r["hashid"]?.ToString()??"",r["stringid"]?.ToString()??"",r["sourcetext"]?.ToString()??""});
             File.WriteAllText(dialog.FileName,LocalizationFormat.Export(rows));status.Text="Exporté : "+dialog.FileName;
         };
-        status.Text="CSV/TSV de LanguageStrings. Le .db loc FC25+ (eng_us, fre_fr, …) s'ouvre et se réenregistre chiffré via DB ou Full DB Editor.";
+        status.Text="CSV/TSV de LanguageStrings. La langue de la DB est chargée automatiquement et se choisit dans System.";
     }
 }

@@ -18,6 +18,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     {
         InitializeComponent();this.document=document;catalog=new(document);Subtitle.Text=document.DisplayName;
         string national=Path.Combine(Path.GetDirectoryName(document.SourcePath)!,"FC26_NATIONAL_TEAM_IDS.csv");
+        if(!File.Exists(national))national=Path.Combine(AppContext.BaseDirectory,"Data","FC26_NATIONAL_TEAM_IDS.csv");
         if(File.Exists(national)){try{catalog.LoadNationalTeams(national);}catch(Exception ex){Status.Text=ex.Message;}}
         Switch(initial);
     }

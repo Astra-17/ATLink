@@ -183,6 +183,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Status = $"{Tables.Count} tables loaded · {DocumentTitle}. Changes are saved to a new file.";
         Screen = "Launcher";
     }
+    public void SetLocalization(DatabaseDocument localization)
+    {
+        var previous=SelectedTable;
+        if(Localization is not null)foreach(var table in Localization.Tables)Tables.Remove(table);
+        Localization=localization;
+        foreach(var table in localization.Tables)Tables.Add(table);
+        if(previous is not null&&!Tables.Contains(previous))SelectedTable=localization.Tables.FirstOrDefault(t=>t.Name==previous.Name)??Tables.FirstOrDefault();
+        Notify(nameof(Localization));Notify(nameof(TableCount));Notify(nameof(FilteredTables));RefreshPage();
+    }
     public void Close()
     {
         ResetWorkspace?.Invoke();

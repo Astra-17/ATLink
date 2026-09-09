@@ -7,4 +7,7 @@
   <Content Include="docs/PORTAGE.md" Link="PORTAGE.md" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="files/temp.png" CopyToOutputDirectory="PreserveNewest" />
 </ItemGroup>
+<ItemGroup>
+  <Content Include="files/fifa_ng_db.db;files/fifa_ng_db-meta.xml;files/eng_us.db;files/eng_us-meta.xml;files/fre_fr.db;files/fre_fr-meta.xml;files/FC26_NATIONAL_TEAM_IDS.csv" Link="Data/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+</ItemGroup>
 </Project>
