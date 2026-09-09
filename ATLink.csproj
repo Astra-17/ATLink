@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><UseWPF>true</UseWPF></PropertyGroup>
+  <ItemGroup><Compile Remove="Core/**/*.cs;Checks/**/*.cs"/><ProjectReference Include="Core/ATLink.Core.csproj"/></ItemGroup>
+<ItemGroup>
+  <Content Include="docs/fifarating-LICENSE.txt" Link="fifarating-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  <Content Include="docs/UTILISATION.md" Link="UTILISATION.md" CopyToOutputDirectory="PreserveNewest" />
+  <Content Include="docs/PORTAGE.md" Link="PORTAGE.md" CopyToOutputDirectory="PreserveNewest" />
+  <Content Include="files/temp.png" CopyToOutputDirectory="PreserveNewest" />
+</ItemGroup>
+</Project>

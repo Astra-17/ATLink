@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="ATLink.csproj" />
+  <Project Path="Core/ATLink.Core.csproj" />
+  <Folder Name="/Checks/">
+    <Project Path="Checks/ATLink.Checks.csproj" />
+    <Project Path="Checks/UI/ATLink.UIChecks.csproj" />
+  </Folder>
+</Solution>
