@@ -19,9 +19,9 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     readonly string teamId;
     readonly List<(Field Field,DataRow Row,Func<string> Get)> binds=[];
     readonly Dictionary<string,UIElement> pages=new(StringComparer.Ordinal);
-    readonly Brush line=new SolidColorBrush(Color.FromRgb(207,216,210));
-    readonly Brush muted=new SolidColorBrush(Color.FromRgb(96,112,105));
-    readonly Brush accent=new SolidColorBrush(Color.FromRgb(31,122,90));
+    readonly Brush line=StudioPalette.Get("LineBrush");
+    readonly Brush muted=StudioPalette.Get("MutedBrush");
+    readonly Brush accent=StudioPalette.Get("AccentBrush");
 
     FormationEditor? formation;
     FormationSlot? selectedSlot;
@@ -67,7 +67,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         foreach(Button button in TabBar.Children)
         {
             bool on=(string)button.Tag==name;
-            button.BorderBrush=on?accent:line;button.Foreground=on?accent:Brushes.Black;
+            button.BorderBrush=on?accent:line;button.Foreground=StudioPalette.Get("TextBrush");button.Background=StudioPalette.Get(on?"AccentBrush":"PanelBrush");
         }
         if(name=="Formations")DrawPitch();
     }
@@ -114,10 +114,10 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     Border FieldCard(DataRow target,Field field,string label,double width=210,bool? readOnly=null,Action<TextBox>? ready=null)
     {
         bool locked=readOnly??field.IsKey;
-        var box=new TextBox{Text=FootballCatalog.Value(target,field.Name),IsReadOnly=locked,Background=locked?new SolidColorBrush(Color.FromRgb(238,243,239)):Brushes.White};
+        var box=new TextBox{Text=FootballCatalog.Value(target,field.Name),IsReadOnly=locked,Background=locked?StudioPalette.Get("RailBrush"):StudioPalette.Get("PanelBrush")};
         binds.Add((field,target,()=>box.Text));
         ready?.Invoke(box);
-        var card=new Border{Width=width,Margin=new Thickness(0,0,10,10),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=Brushes.White};
+        var card=new Border{Width=width,Margin=new Thickness(0,0,10,10),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=StudioPalette.Get("PanelBrush")};
         var stack=new StackPanel();stack.Children.Add(new TextBlock{Text=label,Foreground=muted,FontSize=11,Margin=new Thickness(0,0,0,6)});stack.Children.Add(box);card.Child=stack;return card;
     }
     UIElement VisualsPage()
@@ -144,7 +144,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         var rgb=new WrapPanel();
         foreach(var (box,name) in new[]{(rBox,"R"),(gBox,"G"),(bBox,"B")}){var col=new StackPanel{Margin=new Thickness(0,0,4,0)};col.Children.Add(new TextBlock{Text=name,Foreground=muted,FontSize=11,Margin=new Thickness(0,0,0,4)});col.Children.Add(box);rgb.Children.Add(col);}
         var dock=new DockPanel();dock.Children.Add(preview);dock.Children.Add(rgb);
-        var card=new Border{Margin=new Thickness(0,0,10,10),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=Brushes.White};
+        var card=new Border{Margin=new Thickness(0,0,10,10),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=StudioPalette.Get("PanelBrush")};
         var stack=new StackPanel();stack.Children.Add(new TextBlock{Text=label,Foreground=muted,FontSize=11,Margin=new Thickness(0,0,0,6)});stack.Children.Add(dock);card.Child=stack;return card;
     }
     static void UpdateColor(Border preview,TextBox r,TextBox g,TextBox b)
@@ -219,18 +219,18 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         Grid.SetColumnSpan(header,2);root.Children.Add(header);
         var hint=new TextBlock{Text="Click one player and then another to swap them. Formation positions remain fixed.",Foreground=muted,TextAlignment=TextAlignment.Center,Margin=new Thickness(0,0,0,8),TextWrapping=TextWrapping.Wrap};
         Grid.SetRow(hint,1);Grid.SetColumnSpan(hint,2);root.Children.Add(hint);
-        pitch=new Canvas{Background=new SolidColorBrush(Color.FromRgb(40,122,77)),ClipToBounds=true};
+        pitch=new Canvas{Background=StudioPalette.Get("PitchBrush"),ClipToBounds=true};
         pitch.SizeChanged+=(_,_)=>DrawPitch();
         Grid.SetRow(pitch,2);Grid.SetColumn(pitch,0);root.Children.Add(pitch);
         var right=new DockPanel{Margin=new Thickness(16,0,0,0)};
         benchSearch=new TextBox{Margin=new Thickness(0,0,0,8),Foreground=muted,Text="Search player or position"};
-        benchSearch.GotFocus+=(_,_)=>{if(benchSearch.Text=="Search player or position"){benchSearch.Text="";benchSearch.Foreground=Brushes.Black;}};
+        benchSearch.GotFocus+=(_,_)=>{if(benchSearch.Text=="Search player or position"){benchSearch.Text="";benchSearch.Foreground=StudioPalette.Get("TextBrush");}};
         benchSearch.LostFocus+=(_,_)=>{if(string.IsNullOrWhiteSpace(benchSearch.Text)){benchSearch.Text="Search player or position";benchSearch.Foreground=muted;}};
         DockPanel.SetDock(benchSearch,Dock.Top);right.Children.Add(benchSearch);benchSearch.TextChanged+=(_,_)=>RefreshBench();
         var benchLabel=new TextBlock{Text="Bench",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)};DockPanel.SetDock(benchLabel,Dock.Top);right.Children.Add(benchLabel);
         benchList=ListHost();
         var scroller=new ScrollViewer{Content=benchList,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Padding=new Thickness(0,0,10,0)};
-        right.Children.Add(new Border{BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(8),Background=Brushes.White,Padding=new Thickness(10,10,16,10),Child=scroller});
+        right.Children.Add(new Border{BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("PanelBrush"),Padding=new Thickness(10,10,16,10),Child=scroller});
         Grid.SetRow(right,2);Grid.SetColumn(right,1);root.Children.Add(right);
         formationPick.SelectionChanged+=(_,_)=>
         {
@@ -361,7 +361,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         {
             string type=FootballCatalog.Value(kit,"teamkittypetechid");
             string title=KitLabel(type)+" kit "+FootballCatalog.Value(kit,"teamkitid");
-            var card=new Border{Margin=new Thickness(0,0,0,12),Padding=new Thickness(12),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=Brushes.White};
+            var card=new Border{Margin=new Thickness(0,0,0,12),Padding=new Thickness(12),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=StudioPalette.Get("PanelBrush")};
             var stack=new StackPanel();stack.Children.Add(new TextBlock{Text=title,FontWeight=FontWeights.Bold,FontSize=16,Margin=new Thickness(0,0,0,10)});
             var wrap=new WrapPanel();
             foreach(var (field,label) in new[]{("teamkitid","Kit ID"),("teamkittypetechid","Kit type"),("teamtechid","Team tech ID"),("powid","POW ID"),("year","Year"),("chestbadge","Chest badge"),("jerseyleftsleevebadge","Left sleeve badge"),("jerseyrightsleevebadge","Right sleeve badge"),("numberfonttype","Number font"),("jerseynamefonttype","Name font"),("shortsnumberfonttype","Shorts number font"),("captainarmband","Captain armband"),("armbandtype","Armband type"),("shortstyle","Shorts style"),("jerseyfit","Jersey fit"),("jerseyrestriction","Jersey restriction"),("islocked","Locked"),("isembargoed","Embargoed"),("hasadvertisingkit","Advertising kit"),("isinheritbasedetailmap","Inherit detail map"),("dlc","DLC")})
@@ -394,10 +394,10 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             double w=pitch.ActualWidth,h=pitch.ActualHeight;
             if(w<40||h<40)return;
             const double cardW=175,cardH=68;
-            var outline=new Rectangle{Width=Math.Max(0,w-20),Height=Math.Max(0,h-20),Stroke=Brushes.White,StrokeThickness=1};Canvas.SetLeft(outline,10);Canvas.SetTop(outline,10);pitch.Children.Add(outline);
-            pitch.Children.Add(new Line{X1=10,X2=w-10,Y1=h/2,Y2=h/2,Stroke=Brushes.White});
+            var outline=new Rectangle{Width=Math.Max(0,w-20),Height=Math.Max(0,h-20),Stroke=StudioPalette.Get("PitchLineBrush"),StrokeThickness=1};Canvas.SetLeft(outline,10);Canvas.SetTop(outline,10);pitch.Children.Add(outline);
+            pitch.Children.Add(new Line{X1=10,X2=w-10,Y1=h/2,Y2=h/2,Stroke=StudioPalette.Get("PitchLineBrush")});
             double circle=Math.Min(90,Math.Min(w,h)*0.14);
-            var ring=new Ellipse{Width=circle,Height=circle,Stroke=Brushes.White};Canvas.SetLeft(ring,w/2-circle/2);Canvas.SetTop(ring,h/2-circle/2);pitch.Children.Add(ring);
+            var ring=new Ellipse{Width=circle,Height=circle,Stroke=StudioPalette.Get("PitchLineBrush")};Canvas.SetLeft(ring,w/2-circle/2);Canvas.SetTop(ring,h/2-circle/2);pitch.Children.Add(ring);
             foreach(var slot in formation.Slots.Take(11))
             {
                 var player=formation.FindPlayer(slot.PlayerId);
@@ -421,7 +421,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         text.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold,FontSize=12,TextTrimming=TextTrimming.CharacterEllipsis});
         text.Children.Add(new TextBlock{Text=detail,Foreground=muted,FontSize=11,TextTrimming=TextTrimming.CharacterEllipsis});
         body.Children.Add(text);
-        var card=new Border{Width=175,Height=68,CornerRadius=new CornerRadius(8),Background=Brushes.White,BorderBrush=selectedSlot==slot?accent:line,BorderThickness=new Thickness(selectedSlot==slot?2:1),Padding=new Thickness(4),Cursor=Cursors.Hand,Tag=slot,Child=body};
+        var card=new Border{Width=175,Height=68,CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("PanelBrush"),BorderBrush=selectedSlot==slot?accent:line,BorderThickness=new Thickness(selectedSlot==slot?2:1),Padding=new Thickness(4),Cursor=Cursors.Hand,Tag=slot,Child=body};
         card.MouseLeftButtonDown+=(_,e)=>{e.Handled=true;Swap(slot);};
         return card;
     }
@@ -463,8 +463,8 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         binds.Add((field,target,()=>box.Text));
         var stack=new StackPanel{Margin=new Thickness(0,0,10,0)};stack.Children.Add(new TextBlock{Text=label,Foreground=muted,FontSize=11,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,0,0,4)});stack.Children.Add(box);return new Border{Child=stack};
     }
-    Border RowCard()=>new(){Margin=new Thickness(0,0,0,8),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=Brushes.White};
-    Border Portrait(string playerId,double size=65)=>new(){Width=size,Height=size,CornerRadius=new CornerRadius(8),Background=new SolidColorBrush(Color.FromRgb(238,243,239)),Margin=new Thickness(0,0,10,0),Child=new Image{Source=EntityImages.Player(playerId),Stretch=Stretch.Uniform,Margin=new Thickness(3)}};
+    Border RowCard()=>new(){Margin=new Thickness(0,0,0,8),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=StudioPalette.Get("PanelBrush")};
+    Border Portrait(string playerId,double size=65)=>new(){Width=size,Height=size,CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("RailBrush"),Margin=new Thickness(0,0,10,0),Child=new Image{Source=EntityImages.Player(playerId),Stretch=Stretch.Uniform,Margin=new Thickness(3)}};
     void AddPlayer()
     {
         string text=(playerSearch?.Text??"").Trim();if(text.Length==0||text=="Search player to add"){ErrorText.Text="Search a player by name or ID.";return;}

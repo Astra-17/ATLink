@@ -10,6 +10,11 @@ namespace ATLink.Views;
 public partial class ModulesWindow : UserControl, IWorkspacePage
 {
     public event Action<bool>? Closed;
+    public event Action? DatabaseRequested;
+    public event Action? TablesRequested;
+    public event Action? SettingsRequested;
+    void TablesClick(object sender,RoutedEventArgs e)=>TablesRequested?.Invoke();
+    void SettingsClick(object sender,RoutedEventArgs e)=>SettingsRequested?.Invoke();
     private readonly DatabaseDocument document;
     private readonly FootballCatalog catalog;
     private string kind="players";
@@ -25,6 +30,13 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private void Switch(string module)
     {
         kind=module=="stadiums"&&document.Tables.All(t=>t.Name!="stadiums")?"ssfstadiums":module;
+        foreach(Button button in ModuleNavigation.Children)
+        {
+            bool active=(string)button.Tag==module;
+            button.Background=StudioPalette.Get(active?"AccentBrush":"RailBrush");
+            button.BorderBrush=StudioPalette.Get(active?"AccentBrush":"LineBrush");
+            button.FontWeight=active?FontWeights.SemiBold:FontWeights.Normal;
+        }
         ModuleTitle.Text=char.ToUpper(kind[0])+kind[1..];
         items=catalog.Entities(kind=="transfers"?"players":kind=="ssfstadiums"?"ssfstadiums":kind);Search.Text="";Refresh();
         TransferTools.Visibility=kind=="transfers"?Visibility.Visible:Visibility.Collapsed;
@@ -32,12 +44,24 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         FormationButton.Visibility=kind=="teams"?Visibility.Visible:Visibility.Collapsed;
         RelatedButton.Visibility=kind is "teams" or "leagues"?Visibility.Visible:Visibility.Collapsed;
         if(kind=="transfers")Destination.ItemsSource=catalog.Entities("teams").Where(t=>!catalog.NationalTeamIds.Contains(t.Id)).ToArray();
+        bool isPlayers=kind=="players";
+        ModuleHeader.Visibility=isPlayers?Visibility.Collapsed:Visibility.Visible;
+        Results.Visibility=isPlayers?Visibility.Collapsed:Visibility.Visible;
+        PlayerContent.Visibility=isPlayers?Visibility.Visible:Visibility.Collapsed;
+        if(isPlayers)
+        {
+            var browser=new PlayerBrowser(catalog);
+            browser.EditRequested+=item=>{Results.SelectedItem=item;EditClick(this,new RoutedEventArgs());};
+            browser.CreateRequested+=item=>{Results.SelectedItem=item;CreateClick(this,new RoutedEventArgs());};
+            PlayerContent.Content=browser;
+        }
+        else PlayerContent.Content=null;
         Status.Text=$"{items.Count:N0} {kind}. Select an entry to edit.";
     }
     private void Refresh()=>Results.ItemsSource=items.Where(i=>i.Name.Contains(Search.Text,StringComparison.CurrentCultureIgnoreCase)||i.Id.Contains(Search.Text)).ToArray();
     private void ModuleClick(object sender,RoutedEventArgs e){try{Switch((string)((Button)sender).Tag);}catch(Exception ex){Error(ex);}}
     private void SearchChanged(object sender,TextChangedEventArgs e){if(Results is not null)Refresh();}
-    private void HomeClick(object sender,RoutedEventArgs e)=>Closed?.Invoke(false);
+    private void HomeClick(object sender,RoutedEventArgs e){if(DatabaseRequested is not null)DatabaseRequested();else Closed?.Invoke(false);}
     private void EditDoubleClick(object sender,MouseButtonEventArgs e)=>EditClick(sender,e);
     private UserControl EditorFor(EntityItem item,string title)
     {

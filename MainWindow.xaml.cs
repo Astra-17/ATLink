@@ -45,7 +45,7 @@ public partial class MainWindow : Window
     private void HomeClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy)return;
-        workspace.Clear();model.Screen="Home";
+        workspace.Clear();model.Screen="Editing";
     }
     private void SettingsClick(object sender,RoutedEventArgs e)
     {
@@ -77,10 +77,21 @@ public partial class MainWindow : Window
             model.Busy=true;model.Status="Opening the included database…";
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenBase(code));
-            model.Load(result.Main,result.Loc);
+            model.Load(result.Main,result.Loc);OpenPlayers();
         }
         catch(Exception ex){Error(ex);}
         finally{model.Busy=false;}
+    }
+    private void PlayersHomeClick(object sender,RoutedEventArgs e)=>OpenPlayers();
+    private void OpenPlayers()
+    {
+        if(model.Document is null)return;
+        workspace.Clear();model.Screen="Editing";
+        var page=new Views.ModulesWindow(model.Document,"players");
+        page.DatabaseRequested+=()=>{workspace.Clear();model.Screen="Editing";};
+        page.TablesRequested+=()=>{workspace.Clear();model.ShowTablesCommand.Execute(null);};
+        page.SettingsRequested+=()=>OpenSettings(false);
+        OpenPage(page);
     }
     private void OpenPage(UserControl page)=>workspace.Push(page);
     private void HashClick(object sender,RoutedEventArgs e)=>OpenPage(new Views.LanguageHashWindow());
@@ -175,7 +186,10 @@ public partial class MainWindow : Window
         try
         {
             var modules=new ATLink.Views.ModulesWindow(model.Document,((sender as Button)?.Tag as string)??"players");
-            modules.Closed+=_=>model.RefreshPage();
+            modules.Closed+=_=>{model.RefreshPage();model.Screen="Editing";};
+            modules.DatabaseRequested+=()=>{workspace.Clear();model.Screen="Editing";};
+            modules.TablesRequested+=()=>{workspace.Clear();model.ShowTablesCommand.Execute(null);};
+            modules.SettingsRequested+=()=>OpenSettings(false);
             OpenPage(modules);
         }catch(Exception ex){Error(ex);}
     }
@@ -257,7 +271,7 @@ public partial class MainWindow : Window
             model.Busy=true;model.Status="Lecture du conteneur Squad…";
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenSquad(file.FileName,code));
-            model.Load(result.Main,result.Loc);
+            model.Load(result.Main,result.Loc);OpenPlayers();
         }
         catch(Exception ex){Error(ex);}finally{model.Busy=false;}
     }

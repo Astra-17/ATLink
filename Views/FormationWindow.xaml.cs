@@ -21,13 +21,13 @@ public partial class FormationWindow:UserControl,IWorkspacePage
     }
     private void Draw()
     {
-        Pitch.Children.Clear();var outline=new Rectangle{Width=428,Height=578,Stroke=Brushes.White,StrokeThickness=1};Canvas.SetLeft(outline,11);Canvas.SetTop(outline,11);Pitch.Children.Add(outline);
-        var halfway=new Line{X1=11,X2=439,Y1=300,Y2=300,Stroke=Brushes.White};Pitch.Children.Add(halfway);
-        var circle=new Ellipse{Width=90,Height=90,Stroke=Brushes.White};Canvas.SetLeft(circle,180);Canvas.SetTop(circle,255);Pitch.Children.Add(circle);
+        Pitch.Children.Clear();var outline=new Rectangle{Width=428,Height=578,Stroke=StudioPalette.Get("PitchLineBrush"),StrokeThickness=1};Canvas.SetLeft(outline,11);Canvas.SetTop(outline,11);Pitch.Children.Add(outline);
+        var halfway=new Line{X1=11,X2=439,Y1=300,Y2=300,Stroke=StudioPalette.Get("PitchLineBrush")};Pitch.Children.Add(halfway);
+        var circle=new Ellipse{Width=90,Height=90,Stroke=StudioPalette.Get("PitchLineBrush")};Canvas.SetLeft(circle,180);Canvas.SetTop(circle,255);Pitch.Children.Add(circle);
         foreach(var slot in editor.Slots.Take(11))
         {
             string name=editor.FindPlayer(slot.PlayerId)?.Name??slot.PlayerId;
-            var marker=new Border{Width=100,Height=42,CornerRadius=new CornerRadius(8),Background=Brushes.White,Cursor=Cursors.SizeAll,Child=new TextBlock{Text=$"{slot.Index+1} · {name}",TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=11}};
+            var marker=new Border{Width=100,Height=42,CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("PanelBrush"),Cursor=Cursors.SizeAll,Child=new TextBlock{Text=$"{slot.Index+1} · {name}",TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=11}};
             Canvas.SetLeft(marker,Math.Clamp(slot.X,0,1)*350);Canvas.SetTop(marker,(1-Math.Clamp(slot.Y,0,1))*550);Pitch.Children.Add(marker);
             marker.MouseLeftButtonDown+=(_,e)=>{marker.CaptureMouse();e.Handled=true;};
             marker.MouseMove+=(_,e)=>{if(!marker.IsMouseCaptured)return;var point=e.GetPosition(Pitch);slot.X=Math.Clamp((point.X-50)/350,0,1);slot.Y=1-Math.Clamp((point.Y-21)/550,0,1);Canvas.SetLeft(marker,slot.X*350);Canvas.SetTop(marker,(1-slot.Y)*550);};

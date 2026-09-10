@@ -22,7 +22,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
         StackPanel Block(WrapPanel panel,string label,FrameworkElement control,string hint)
         {
             var block=new StackPanel{Width=280,Margin=new Thickness(8)};block.Children.Add(new TextBlock{Text=label,Margin=new Thickness(0,0,0,5)});block.Children.Add(control);
-            block.Children.Add(new TextBlock{Text=hint,FontSize=11,Foreground=System.Windows.Media.Brushes.Gray,Margin=new Thickness(0,4,0,0)});panel.Children.Add(block);return block;
+            block.Children.Add(new TextBlock{Text=hint,FontSize=11,Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,4,0,0)});panel.Children.Add(block);return block;
         }
         TextBox Input(WrapPanel panel,string label,string value,string hint,bool readOnly=false)
         {

@@ -17,7 +17,7 @@ public sealed class WorkspaceController
 {
     readonly MainViewModel model;
     readonly Stack<UserControl> stack=[];
-    string returnScreen="Home";
+    string returnScreen="Editing";
     public static WorkspaceController? Current { get; set; }
     public Window Shell {get;}
     public WorkspaceController(MainViewModel model,Window shell){this.model=model;Shell=shell;Current=this;}
@@ -45,12 +45,12 @@ public sealed class WorkspaceController
     {
         stack.Clear();
         model.Page=null;
-        if(model.Screen=="Page")model.Screen=model.HasDocument?"Launcher":"Home";
+        if(model.Screen=="Page")model.Screen=model.HasDocument?"Launcher":"Editing";
     }
     void Show()
     {
         model.Page=stack.Count==0?null:stack.Peek();
-        model.Screen=stack.Count==0?(string.IsNullOrEmpty(returnScreen)?"Home":returnScreen):"Page";
+        model.Screen=stack.Count==0?(string.IsNullOrEmpty(returnScreen)?"Editing":returnScreen):"Page";
     }
 }
 
@@ -90,7 +90,7 @@ public sealed class ActionPage : UserControl, IWorkspacePage
             go.Click+=(_,_)=>apply?.Invoke(this);
             buttons.Children.Add(go);
         }
-        var header=new Border{Background=Brushes.White,Padding=new Thickness(16),BorderBrush=new SolidColorBrush(Color.FromRgb(207,216,210)),BorderThickness=new Thickness(0,0,0,1)};
+        var header=new Border{Background=StudioPalette.Get("PanelBrush"),Padding=new Thickness(16),BorderBrush=StudioPalette.Get("LineBrush"),BorderThickness=new Thickness(0,0,0,1)};
         var bar=new DockPanel();
         DockPanel.SetDock(buttons,Dock.Right);
         bar.Children.Add(buttons);

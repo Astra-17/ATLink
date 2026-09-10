@@ -42,12 +42,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
     private int Count(string name) => Tables.FirstOrDefault(t => t.Name == name)?.RowCount ?? 0;
 
-    private string screen = "Home";
+    private string screen = "Editing";
     public string Screen { get => screen; set { screen = value; Notify(); } }
     private object? workspacePage;
     public object? Page { get => workspacePage; set { workspacePage = value; Notify(); } }
     public Action? ResetWorkspace { get; set; }
-    public ICommand ShowLauncherCommand => new RelayCommand(() => { ResetWorkspace?.Invoke(); Screen = HasDocument ? "Launcher" : "Home"; }, () => !Busy);
+    public ICommand ShowLauncherCommand => new RelayCommand(() => { ResetWorkspace?.Invoke(); Screen = HasDocument ? "Launcher" : "Editing"; }, () => !Busy);
     public ICommand ShowTablesCommand => new RelayCommand(() => { ResetWorkspace?.Invoke(); Screen = "Tables"; }, () => HasDocument && !Busy);
     public ICommand PreviousCommand => new RelayCommand(() => { page--; RefreshPage(); }, () => page > 0 && !Busy);
     public ICommand NextCommand => new RelayCommand(() => { page++; RefreshPage(); }, () => (page + 1) * PageSize < (Rows?.Count ?? 0) && !Busy);
@@ -197,7 +197,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ResetWorkspace?.Invoke();
         Document = null; Localization = null; SelectedTable = null; Tables.Clear(); TableFilter = "";
         DocumentTitle = "EA SPORTS FC Database Editor";
-        Notify(nameof(HasDocument)); Notify(nameof(WindowTitle)); Notify(nameof(Page)); Screen = "Home";
+        Notify(nameof(HasDocument)); Notify(nameof(WindowTitle)); Notify(nameof(Page)); Screen = "Editing";
     }
     public void Revert()
     {
