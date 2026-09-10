@@ -20,24 +20,27 @@ public sealed class FormationEditor
     private readonly string teamId;
     public DataRow Sheet {get;}
     public DataRow Formation {get;}
-    public DataRow TeamData {get;}
+    public DataRow? TeamData {get;}
     public DataRow Mentality {get;set;}
     public IReadOnlyList<DataRow> Mentalities {get;}
     public IReadOnlyList<DataRow> Templates {get;}
     public List<FormationSlot> Slots {get;}=[];
     public Dictionary<string,string> Takers {get;}=[];
     public DataRow? Template {get;set;}
+    private readonly Dictionary<string,EntityItem> playersById;
+    public EntityItem? FindPlayer(string id)=>playersById.GetValueOrDefault(id);
     public IReadOnlyList<EntityItem> Players {get;}
     public FormationEditor(FootballCatalog catalog,string teamId)
     {
         this.catalog=catalog;this.teamId=teamId;
-        DataRow Required(string table)=>catalog.Rows(table).Single(r=>FootballCatalog.Value(r,"teamid")==teamId);
-        Sheet=Required("default_teamsheets");Formation=Required("formations");TeamData=Required("defaultteamdata");
+        DataRow Required(string table)=>catalog.Rows(table).SingleOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId)??throw new InvalidDataException($"Données de formation absentes pour cette équipe ({teamId}) : {table}.");
+        Sheet=Required("default_teamsheets");Formation=Required("formations");TeamData=catalog.Rows("defaultteamdata").SingleOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId);
         Mentalities=catalog.Rows("default_mentalities").Where(r=>FootballCatalog.Value(r,"teamid")==teamId).ById(r=>FootballCatalog.Value(r,"mentalityid")).ToArray();
         if(Mentalities.Count==0)throw new InvalidDataException("Aucune tactique trouvée pour cette équipe.");Mentality=Mentalities[0];
         Templates=catalog.Rows("formations").Where(r=>FootballCatalog.Value(r,"teamid")=="-1").ById(r=>FootballCatalog.Value(r,"formationid")).ToArray();
         var ids=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"teamid")==teamId).Select(r=>FootballCatalog.Value(r,"playerid")).ToHashSet();
-        Players=catalog.Entities("players").Where(p=>ids.Contains(p.Id)).ToArray();
+        playersById=catalog.Entities("players").ToDictionary(p=>p.Id);
+        Players=playersById.Values.Where(p=>ids.Contains(p.Id)).ToArray();
         for(int i=0;i<52;i++)if(Sheet.Table.Columns.Contains($"playerid{i}"))Slots.Add(new(){Index=i,PlayerId=FootballCatalog.Value(Sheet,$"playerid{i}"),Position=FootballCatalog.Value(Formation,$"position{i}"),Role=FootballCatalog.Value(Formation,$"pos{i}role"),X=Number(Formation,$"offset{i}x"),Y=Number(Formation,$"offset{i}y")});
         foreach(DataColumn c in Sheet.Table.Columns)if(c.ColumnName=="captainid"||c.ColumnName.EndsWith("takerid"))Takers[c.ColumnName]=FootballCatalog.Value(Sheet,c.ColumnName);
     }
@@ -61,7 +64,7 @@ public sealed class FormationEditor
             int i=slot.Index;Set(Sheet,$"playerid{i}",slot.PlayerId);if(i>=11)continue;
             Set(Mentality,$"playerid{i}",slot.PlayerId);
             if(!double.IsFinite(slot.X)||!double.IsFinite(slot.Y)||slot.X<0||slot.X>1||slot.Y<0||slot.Y>1)throw new InvalidDataException("Les positions doivent rester entre 0 et 1.");
-            foreach(var row in new[]{Formation,Mentality,TeamData}){Set(row,$"position{i}",slot.Position);Set(row,$"offset{i}x",slot.X.ToString("R",CultureInfo.InvariantCulture));Set(row,$"offset{i}y",slot.Y.ToString("R",CultureInfo.InvariantCulture));if(row!=TeamData)Set(row,$"pos{i}role",slot.Role);}
+            foreach(var row in new[]{Formation,Mentality,TeamData}.OfType<DataRow>()){Set(row,$"position{i}",slot.Position);Set(row,$"offset{i}x",slot.X.ToString("R",CultureInfo.InvariantCulture));Set(row,$"offset{i}y",slot.Y.ToString("R",CultureInfo.InvariantCulture));if(row!=TeamData)Set(row,$"pos{i}role",slot.Role);}
         }
         foreach(var pair in Takers)Set(Sheet,pair.Key,pair.Value);
         if(Template is not null)

@@ -26,7 +26,7 @@ public partial class FormationWindow:UserControl,IWorkspacePage
         var circle=new Ellipse{Width=90,Height=90,Stroke=Brushes.White};Canvas.SetLeft(circle,180);Canvas.SetTop(circle,255);Pitch.Children.Add(circle);
         foreach(var slot in editor.Slots.Take(11))
         {
-            string name=editor.Players.FirstOrDefault(p=>p.Id==slot.PlayerId)?.Name??slot.PlayerId;
+            string name=editor.FindPlayer(slot.PlayerId)?.Name??slot.PlayerId;
             var marker=new Border{Width=100,Height=42,CornerRadius=new CornerRadius(8),Background=Brushes.White,Cursor=Cursors.SizeAll,Child=new TextBlock{Text=$"{slot.Index+1} · {name}",TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=VerticalAlignment.Center,FontSize=11}};
             Canvas.SetLeft(marker,Math.Clamp(slot.X,0,1)*350);Canvas.SetTop(marker,(1-Math.Clamp(slot.Y,0,1))*550);Pitch.Children.Add(marker);
             marker.MouseLeftButtonDown+=(_,e)=>{marker.CaptureMouse();e.Handled=true;};

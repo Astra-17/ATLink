@@ -25,6 +25,7 @@ public sealed partial class DatabaseDocument
     private readonly byte[] original;
     internal byte[]? PackagedOriginal;
     internal Func<byte[], byte[]>? Package;
+    internal IReadOnlyDictionary<string,string> ReferencePlayerNames { get; set; } = new Dictionary<string,string>();
     public string SourcePath { get; }
     public string DisplayName { get; internal set; }
     public IReadOnlyList<DatabaseTable> Tables { get; }

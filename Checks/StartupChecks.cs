@@ -24,7 +24,36 @@ internal static class StartupChecks
         string squad=Path.Combine(temp,"SelectedSquad");File.Copy(Path.Combine(root,"files","Squads20260905195257141"),squad);
         var selected=studio.OpenSquad(squad,"fre_fr");Check(selected.Main.SourcePath==squad&&selected.Main.Tables.Any(t=>t.Name=="players"),"Squad without adjacent metadata");
         Check(!selected.Main.HasChanges,"Squad opened unchanged");
-        File.Delete(squad);File.Delete(settings);Directory.Delete(temp);
+        var catalog=new FootballCatalog(selected.Main);
+        var names=catalog.Names();
+        foreach(string id in new[]{"81927","81928"})
+        {
+            var player=catalog.Rows("players").Single(r=>FootballCatalog.Value(r,"playerid")==id);
+            string name=catalog.PlayerName(player,names);
+            Check(!name.StartsWith("Player "),"Missing Squad name "+id);
+            Console.WriteLine($"PASS Squad player {id}: {name}");
+        }
+        foreach(var name in catalog.Rows("dcplayernames"))
+            Check(names[FootballCatalog.Value(name,"nameid")]==FootballCatalog.Value(name,"name"),"Squad name overrides base dictionary");
+        Check(!selected.Main.Tables.Any(t=>t.Name=="playernames"),"Reference names must not become Squad tables");
+        var formation=new FormationEditor(catalog,"1");
+        Check(formation.FindPlayer("207421") is { Name: not "Player 207421" },"Resolve names in stale formation slots");
+        Check(formation.TeamData is null&&formation.Slots.Count>=11,"Squad formation without defaultteamdata");
+        Check(formation.Slots.Take(11).All(s=>double.IsFinite(s.X)&&double.IsFinite(s.Y)),"Squad pitch positions");
+        Check(!selected.Main.HasChanges&&selected.Main.Serialize().AsSpan().SequenceEqual(File.ReadAllBytes(squad)),"Opening names and formations preserves Squad bytes");
+        // The supplied Squad has stale team-sheet references after transfers.
+        // Build a valid lineup in this disposable copy before testing persistence.
+        Check(formation.Players.Count>=11,"Enough players for formation fixture");
+        for(int i=0;i<formation.Slots.Count;i++)formation.Slots[i].PlayerId=i<formation.Players.Count?formation.Players[i].Id:"-1";
+        foreach(string key in formation.Takers.Keys.ToArray())formation.Takers[key]=formation.Players[0].Id;
+        string first=formation.Slots[0].PlayerId,second=formation.Slots[1].PlayerId;
+        formation.Slots[0].PlayerId=second;formation.Slots[1].PlayerId=first;formation.Apply();
+        string saved=Path.Combine(temp,"EditedSquad");
+        selected.Main.SaveAs(saved);
+        var reopened=new FormationEditor(new FootballCatalog(SquadFile.Open(saved,studio.Metadata).Database),"1");
+        Check(reopened.Slots[0].PlayerId==second&&reopened.Slots[1].PlayerId==first,"Squad formation edit survives save/reopen");
+        Console.WriteLine("PASS Squad formation display data, edit and save/reopen without defaultteamdata");
+        File.Delete(saved);File.Delete(squad);File.Delete(settings);Directory.Delete(temp);
         Console.WriteLine("PASS packaged data, language persistence and automatic Base DB / selected Squad");
     }
 }

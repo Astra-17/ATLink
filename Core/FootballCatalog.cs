@@ -14,7 +14,7 @@ public sealed class FootballCatalog(DatabaseDocument document)
     public static string Value(DataRow row,string column)=>row.Table.Columns.Contains(column)?row[column].ToString()??"":"";
     public Dictionary<string,string> Names()
     {
-        var result=new Dictionary<string,string>();
+        var result=new Dictionary<string,string>(document.ReferencePlayerNames);
         foreach(string table in new[]{"playernames","dcplayernames"})foreach(var row in Rows(table))result[Value(row,"nameid")]=Value(row,"name");
         return result;
     }

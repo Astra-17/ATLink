@@ -22,7 +22,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     readonly Brush line=new SolidColorBrush(Color.FromRgb(207,216,210));
     readonly Brush muted=new SolidColorBrush(Color.FromRgb(96,112,105));
     readonly Brush accent=new SolidColorBrush(Color.FromRgb(31,122,90));
-    readonly ImageSource portrait;
+
     FormationEditor? formation;
     FormationSlot? selectedSlot;
     string tab="Identity";
@@ -37,8 +37,8 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     public TeamWorkspace(FootballCatalog catalog,EntityItem team)
     {
         InitializeComponent();
-        this.catalog=catalog;this.team=team;row=team.Row;teamId=team.Id;portrait=TemplateImage.Current;
-        Crest.Source=portrait;TeamKicker.Text="Team "+teamId;TeamTitle.Text=team.Name;
+        this.catalog=catalog;this.team=team;row=team.Row;teamId=team.Id;
+        Crest.Source=EntityImages.Crest(teamId);TeamKicker.Text="Team "+teamId;TeamTitle.Text=team.Name;
         foreach(var (label,field) in new[]{("OVR","overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
             Badges.Children.Add(Badge(label+" "+FootballCatalog.Value(row,field)));
         foreach(string name in new[]{"Identity","Ratings","Club","Tactics","Set Pieces","Visuals","Players","Formations","Countries","Rivals","Stadiums","Kits"})
@@ -281,7 +281,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             var captured=player;remove.Click+=(_,_)=>{captured.Link.Delete();RefreshPlayers();};
             dock.Children.Add(remove);
             var identity=new StackPanel{Orientation=Orientation.Horizontal};
-            identity.Children.Add(Portrait());
+            identity.Children.Add(Portrait(player.Id));
             var names=new StackPanel{VerticalAlignment=VerticalAlignment.Center,Width=180};
             names.Children.Add(new TextBlock{Text=player.Name,FontWeight=FontWeights.SemiBold});
             names.Children.Add(new TextBlock{Text="ID "+player.Id,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
@@ -393,14 +393,14 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             pitch.Children.Clear();
             double w=pitch.ActualWidth,h=pitch.ActualHeight;
             if(w<40||h<40)return;
-            const double cardW=160,cardH=48;
+            const double cardW=175,cardH=68;
             var outline=new Rectangle{Width=Math.Max(0,w-20),Height=Math.Max(0,h-20),Stroke=Brushes.White,StrokeThickness=1};Canvas.SetLeft(outline,10);Canvas.SetTop(outline,10);pitch.Children.Add(outline);
             pitch.Children.Add(new Line{X1=10,X2=w-10,Y1=h/2,Y2=h/2,Stroke=Brushes.White});
             double circle=Math.Min(90,Math.Min(w,h)*0.14);
             var ring=new Ellipse{Width=circle,Height=circle,Stroke=Brushes.White};Canvas.SetLeft(ring,w/2-circle/2);Canvas.SetTop(ring,h/2-circle/2);pitch.Children.Add(ring);
             foreach(var slot in formation.Slots.Take(11))
             {
-                var player=formation.Players.FirstOrDefault(p=>p.Id==slot.PlayerId);
+                var player=formation.FindPlayer(slot.PlayerId);
                 string name=player?.Name??slot.PlayerId;
                 string pos=int.TryParse(slot.Position,out int index)&&index>=0&&index<PlayerProfileImport.PositionCodes.Length?PlayerProfileImport.PositionCodes[index]:slot.Position;
                 string ovr=player is null?"":FootballCatalog.Value(player.Row,"overallrating");
@@ -416,12 +416,12 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     Border PlayerChip(string name,string detail,FormationSlot slot)
     {
         var body=new StackPanel{Orientation=Orientation.Horizontal};
-        body.Children.Add(Portrait(40));
+        body.Children.Add(Portrait(slot.PlayerId,55));
         var text=new StackPanel{VerticalAlignment=VerticalAlignment.Center};
         text.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold,FontSize=12,TextTrimming=TextTrimming.CharacterEllipsis});
         text.Children.Add(new TextBlock{Text=detail,Foreground=muted,FontSize=11,TextTrimming=TextTrimming.CharacterEllipsis});
         body.Children.Add(text);
-        var card=new Border{Width=160,Height=48,CornerRadius=new CornerRadius(8),Background=Brushes.White,BorderBrush=selectedSlot==slot?accent:line,BorderThickness=new Thickness(selectedSlot==slot?2:1),Padding=new Thickness(4),Cursor=Cursors.Hand,Tag=slot,Child=body};
+        var card=new Border{Width=175,Height=68,CornerRadius=new CornerRadius(8),Background=Brushes.White,BorderBrush=selectedSlot==slot?accent:line,BorderThickness=new Thickness(selectedSlot==slot?2:1),Padding=new Thickness(4),Cursor=Cursors.Hand,Tag=slot,Child=body};
         card.MouseLeftButtonDown+=(_,e)=>{e.Handled=true;Swap(slot);};
         return card;
     }
@@ -439,7 +439,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         foreach(var slot in formation.Slots.Skip(11))
         {
             if(slot.PlayerId is "-1" or "0" or "")continue;
-            var player=formation.Players.FirstOrDefault(p=>p.Id==slot.PlayerId);
+            var player=formation.FindPlayer(slot.PlayerId);
             if(player is null)continue;
             string name=player.Name;
             if(filter.Length>0&&!name.Contains(filter,StringComparison.CurrentCultureIgnoreCase)&&!slot.PlayerId.Contains(filter))continue;
@@ -449,7 +449,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             dock.Children.Add(new TextBlock{Text=ovr,FontWeight=FontWeights.Bold,FontSize=18,VerticalAlignment=VerticalAlignment.Center,Width=36,TextAlignment=TextAlignment.Right});
             DockPanel.SetDock(dock.Children[0],Dock.Right);
             var left=new StackPanel{Orientation=Orientation.Horizontal};
-            left.Children.Add(Portrait(40));
+            left.Children.Add(Portrait(slot.PlayerId,55));
             var names=new StackPanel{VerticalAlignment=VerticalAlignment.Center};
             names.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold});
             names.Children.Add(new TextBlock{Text=pos+" · Slot "+slot.Index,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
@@ -464,7 +464,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         var stack=new StackPanel{Margin=new Thickness(0,0,10,0)};stack.Children.Add(new TextBlock{Text=label,Foreground=muted,FontSize=11,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,0,0,4)});stack.Children.Add(box);return new Border{Child=stack};
     }
     Border RowCard()=>new(){Margin=new Thickness(0,0,0,8),Padding=new Thickness(10),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=Brushes.White};
-    Border Portrait(double size=48)=>new(){Width=size,Height=size,CornerRadius=new CornerRadius(8),Background=new SolidColorBrush(Color.FromRgb(238,243,239)),Margin=new Thickness(0,0,10,0),Child=new Image{Source=portrait,Stretch=Stretch.Uniform,Margin=new Thickness(3)}};
+    Border Portrait(string playerId,double size=65)=>new(){Width=size,Height=size,CornerRadius=new CornerRadius(8),Background=new SolidColorBrush(Color.FromRgb(238,243,239)),Margin=new Thickness(0,0,10,0),Child=new Image{Source=EntityImages.Player(playerId),Stretch=Stretch.Uniform,Margin=new Thickness(3)}};
     void AddPlayer()
     {
         string text=(playerSearch?.Text??"").Trim();if(text.Length==0||text=="Search player to add"){ErrorText.Text="Search a player by name or ID.";return;}

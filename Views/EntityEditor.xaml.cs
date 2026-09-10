@@ -16,6 +16,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
     public EntityEditor(FootballCatalog catalog,DatabaseTable table,DataRow row,string title)
     {
         InitializeComponent();this.catalog=catalog;this.table=table;this.row=row;EntityTitle.Text=title;Kicker.Text=table.Name;
+        if(table.Name is "players" or "teams"){EntityPortrait.Source=table.Name=="players"?EntityImages.Player(FootballCatalog.Value(row,"playerid")):EntityImages.Crest(FootballCatalog.Value(row,"teamid"));EntityPortrait.Visibility=Visibility.Visible;}
         var groups=new Dictionary<string,WrapPanel>();
         WrapPanel Group(string name){if(groups.TryGetValue(name,out var existing))return existing;var panel=new WrapPanel{Margin=new Thickness(12)};groups[name]=panel;Tabs.Items.Add(new TabItem{Header=name,Content=new ScrollViewer{Content=panel,VerticalScrollBarVisibility=ScrollBarVisibility.Auto}});return panel;}
         StackPanel Block(WrapPanel panel,string label,FrameworkElement control,string hint)

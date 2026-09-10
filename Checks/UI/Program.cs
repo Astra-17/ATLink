@@ -29,6 +29,14 @@ internal static class Program
             using var file=File.Create(Path.Combine(output,name+".png"));encoder.Save(file);
             Console.WriteLine($"Rendered {name}");
         }
+        var head=ATLink.Views.EntityImages.Player("1025") as BitmapImage;
+        var crest=ATLink.Views.EntityImages.Crest("1") as BitmapImage;
+        if(head is null||!head.UriSource.LocalPath.EndsWith(Path.Combine("head","1025.png"))||crest is null||!crest.UriSource.LocalPath.EndsWith(Path.Combine("crest","1.png")))throw new Exception("Bundled image ID resolution failed");
+        if(!ReferenceEquals(head,ATLink.Views.EntityImages.Player("1025")))throw new Exception("Portrait cache failed");
+        if((ATLink.Views.EntityImages.Player("../invalid") as BitmapImage)?.UriSource.LocalPath!=Path.Combine(AppContext.BaseDirectory,"Data","head","notfound.png")||(ATLink.Views.EntityImages.Crest("999999999") as BitmapImage)?.UriSource.LocalPath!=Path.Combine(AppContext.BaseDirectory,"Data","crest","notfound.png"))throw new Exception("Missing/invalid image fallback failed");
+        var imageTable=new System.Data.DataTable();imageTable.Columns.Add("playerid");var imageRow=imageTable.Rows.Add("1025");
+        if(!ReferenceEquals(head,ATLink.Views.EntityImages.For(new EntityItem("1025","Player","",imageRow))))throw new Exception("Player list image binding failed");
+        Console.WriteLine("PASS portrait/crest ID mapping, packaged images, cache and missing-image fallback");
         Render("home");
         var editingButton=(System.Windows.Controls.Button)window.FindName("EditingButton");
         editingButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
@@ -109,6 +117,15 @@ internal static class Program
         if(!model.Localization!.Tables.Contains(model.SelectedTable!)||model.Tables.Count!=doc.Tables.Count+model.Localization.Tables.Count)throw new Exception("Stale/duplicate LOC tables after language switch");
         rowToKeep["teamname"]=originalName;rowToKeep.AcceptChanges();
         Console.WriteLine("PASS Editing cards, settings/welcome, language replacement and preserved main DB edits");
+        var squadDocument=studio.OpenSquad(Path.Combine(root,"files","Squads20260905195257141"),"eng_us").Main;
+        var squadCatalog=new FootballCatalog(squadDocument);
+        var squadTeam=new ATLink.Views.TeamWorkspace(squadCatalog,squadCatalog.Entities("teams").First(t=>t.Id=="1"));
+        typeof(ATLink.Views.TeamWorkspace).GetMethod("Show",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(squadTeam,new object[]{"Formations"});
+        RenderControl(squadTeam,"squad-team-formations",1200,900);
+        var squadPitch=(System.Windows.Controls.Canvas?)typeof(ATLink.Views.TeamWorkspace).GetField("pitch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(squadTeam);
+        if(squadPitch is null||squadPitch.Children.OfType<System.Windows.Controls.Border>().Count()!=11)throw new Exception("Squad formation pitch must display eleven players");
+        if(squadDocument.HasChanges)throw new Exception("Viewing Squad formation mutated data");
+        Console.WriteLine("PASS selected Squad formations render eleven players without changing the document");
         window.Close();app.Shutdown();
     }
 }

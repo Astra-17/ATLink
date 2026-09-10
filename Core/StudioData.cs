@@ -9,6 +9,7 @@ public sealed record DatabaseLanguage(string Code,string Name,string DatabasePat
 public sealed record StudioPreferences(string DatabaseLanguage);
 public sealed class StudioData
 {
+    private IReadOnlyDictionary<string,string>? referencePlayerNames;
     public string Root {get;}
     public string PreferencesPath {get;}
     public StudioData(string root,string? preferencesPath=null)
@@ -45,7 +46,15 @@ public sealed class StudioData
         return DatabaseDocument.Open(language.DatabasePath,language.MetadataPath);
     }
     public (DatabaseDocument Main,DatabaseDocument Loc) OpenBase(string code)=>(DatabaseDocument.Open(BaseDatabase,Metadata),OpenLocalization(code));
-    public (DatabaseDocument Main,DatabaseDocument Loc) OpenSquad(string path,string code)=>(SquadFile.Open(path,Metadata).Database,OpenLocalization(code));
+    public (DatabaseDocument Main,DatabaseDocument Loc) OpenSquad(string path,string code)
+    {
+        var main=SquadFile.Open(path,Metadata).Database;
+        // Squad files carry only additional names; the base dictionary stays read-only
+        // and is never inserted into the Squad's serialized tables.
+        referencePlayerNames??=new FootballCatalog(DatabaseDocument.Open(BaseDatabase,Metadata)).Names();
+        main.ReferencePlayerNames=referencePlayerNames;
+        return (main,OpenLocalization(code));
+    }
     public void SaveLanguage(string code)
     {
         if(!Languages.Any(l=>l.Code==code))throw new InvalidDataException("Cette langue n'est pas installée.");
