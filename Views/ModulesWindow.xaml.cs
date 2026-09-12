@@ -38,25 +38,28 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
             button.FontWeight=active?FontWeights.SemiBold:FontWeights.Normal;
         }
         ModuleTitle.Text=char.ToUpper(kind[0])+kind[1..];
-        items=catalog.Entities(kind=="transfers"?"players":kind=="ssfstadiums"?"ssfstadiums":kind);Search.Text="";Refresh();
-        TransferTools.Visibility=kind=="transfers"?Visibility.Visible:Visibility.Collapsed;
+        items=kind=="transfers"?[]:catalog.Entities(kind=="ssfstadiums"?"ssfstadiums":kind);Search.Text="";Refresh();
         CreateButton.Visibility=kind=="transfers"?Visibility.Collapsed:Visibility.Visible;
         FormationButton.Visibility=kind=="teams"?Visibility.Visible:Visibility.Collapsed;
         RelatedButton.Visibility=kind is "teams" or "leagues"?Visibility.Visible:Visibility.Collapsed;
-        if(kind=="transfers")Destination.ItemsSource=catalog.Entities("teams").Where(t=>!catalog.NationalTeamIds.Contains(t.Id)).ToArray();
-        bool isPlayers=kind=="players";
-        ModuleHeader.Visibility=isPlayers?Visibility.Collapsed:Visibility.Visible;
-        Results.Visibility=isPlayers?Visibility.Collapsed:Visibility.Visible;
-        PlayerContent.Visibility=isPlayers?Visibility.Visible:Visibility.Collapsed;
-        if(isPlayers)
+        bool hosted=kind is "players" or "transfers";
+        ModuleHeader.Visibility=hosted?Visibility.Collapsed:Visibility.Visible;
+        Results.Visibility=hosted?Visibility.Collapsed:Visibility.Visible;
+        PlayerContent.Visibility=hosted?Visibility.Visible:Visibility.Collapsed;
+        if(kind=="players")
         {
             var browser=new PlayerBrowser(catalog);
             browser.EditRequested+=item=>{Results.SelectedItem=item;EditClick(this,new RoutedEventArgs());};
             browser.CreateRequested+=item=>{Results.SelectedItem=item;CreateClick(this,new RoutedEventArgs());};
             PlayerContent.Content=browser;
+            Status.Text=$"{catalog.Entities("players").Count:N0} players.";
         }
-        else PlayerContent.Content=null;
-        Status.Text=$"{items.Count:N0} {kind}. Select an entry to edit.";
+        else if(kind=="transfers")
+        {
+            PlayerContent.Content=new TransfersPage(catalog);
+            Status.Text="Verify leagues or add a player manually.";
+        }
+        else {PlayerContent.Content=null;Status.Text=$"{items.Count:N0} {kind}. Select an entry to edit.";}
     }
     private void Refresh()=>Results.ItemsSource=items.Where(i=>i.Name.Contains(Search.Text,StringComparison.CurrentCultureIgnoreCase)||i.Id.Contains(Search.Text)).ToArray();
     private void ModuleClick(object sender,RoutedEventArgs e){try{Switch((string)((Button)sender).Tag);}catch(Exception ex){Error(ex);}}
@@ -66,7 +69,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private UserControl EditorFor(EntityItem item,string title)
     {
         if(kind=="teams")return new TeamWorkspace(catalog,item);
-        return new EntityEditor(catalog,catalog.Table(kind=="transfers"?"players":kind),item.Row,title);
+        return new EntityEditor(catalog,catalog.Table(kind),item.Row,title);
     }
     private void EditClick(object sender,RoutedEventArgs e)
     {
@@ -93,40 +96,12 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         }
         catch(Exception ex){if(row?.RowState==DataRowState.Added)row.Delete();Error(ex);}
     }
-    private void NationalClick(object sender,RoutedEventArgs e)
-    {
-        var dialog=new OpenFileDialog{Filter="National team IDs (*.csv)|*.csv"};if(!ShellDialogs.Open(dialog,this))return;
-        try{catalog.LoadNationalTeams(dialog.FileName);Destination.ItemsSource=catalog.Entities("teams").Where(t=>!catalog.NationalTeamIds.Contains(t.Id)).ToArray();Status.Text=$"{catalog.NationalTeamIds.Count} national teams protected.";}catch(Exception ex){Error(ex);}
-    }
-    private void TransferClick(object sender,RoutedEventArgs e)
-    {
-        if(Results.SelectedItem is not EntityItem player||Destination.SelectedItem is not EntityItem team){Status.Text="Select a player and destination club.";return;}
-        try
-        {
-            var preview=catalog.PreviewTransfer(player.Id,team.Id);
-            if(ShellDialogs.Message(this,$"{preview.PlayerName}\n{preview.SourceTeamName} → {preview.DestinationTeamName}\n\nApply this club transfer?","Transfer preview",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
-            catalog.ApplyTransfer(preview);Status.Text=$"{preview.PlayerName}: {preview.SourceTeamName} → {preview.DestinationTeamName}. Pending save.";
-        }catch(Exception ex){Error(ex);}
-    }
     private void RelatedClick(object sender,RoutedEventArgs e)
     {
         if(Results.SelectedItem is not EntityItem item)return;
         WorkspaceController.Open(kind=="teams"?RelatedRecordsPage.ForTeam(catalog,item.Id,item.Name):RelatedRecordsPage.ForLeague(catalog,item.Id,item.Name));
     }
     private void FormationClick(object sender,RoutedEventArgs e){if(Results.SelectedItem is not EntityItem team)return;try{WorkspaceController.Open(new FormationWindow(catalog,team.Id));}catch(Exception ex){Error(ex);}}
-    private void TransferBatchClick(object sender,RoutedEventArgs e)
-    {
-        var file=new OpenFileDialog{Title="Resolved Transfermarkt transfers",Filter="CSV (*.csv)|*.csv"};if(!ShellDialogs.Open(file,this))return;
-        try
-        {
-            var batch=TransferBatch.Preview(catalog,File.ReadAllText(file.FileName));
-            var grid=new DataGrid{ItemsSource=batch.Steps,AutoGenerateColumns=true,IsReadOnly=true,CanUserAddRows=false};
-            var page=new ActionPage($"Transfer preview · {batch.Steps.Count} operations",grid,"Apply all in sequence",p=>{try{batch.Apply(catalog);p.Finish(true);}catch(Exception ex){ShellDialogs.Message(p,ex.Message,"ATLink");}});
-            page.Closed+=ok=>{if(ok)Status.Text=$"{batch.Steps.Count} transfer steps applied. Repeated players preserved; pending save.";};
-            WorkspaceController.Open(page);
-        }catch(Exception ex){Error(ex);}
-    }
-    private void TransfermarktClick(object sender,RoutedEventArgs e){try{WorkspaceController.Open(new TransfermarktWindow(catalog));}catch(Exception ex){Error(ex);}}
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         var dialog=new SaveFileDialog{Filter="Database (*.db)|*.db",FileName=Path.GetFileNameWithoutExtension(document.SourcePath)+"-edited.db"};if(!ShellDialogs.Open(dialog,this))return;

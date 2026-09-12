@@ -33,9 +33,9 @@
     </ToggleButton>
     <ContentPresenter x:Name="Selection" Margin="9,4,30,4" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"/>
     <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Margin="3,2,28,2" Background="Transparent" Foreground="{TemplateBinding Foreground}" IsReadOnly="{TemplateBinding IsReadOnly}" VerticalContentAlignment="Center"><TextBox.Template><ControlTemplate TargetType="TextBox"><ScrollViewer x:Name="PART_ContentHost"/></ControlTemplate></TextBox.Template></TextBox>
-    <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+    <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" AllowsTransparency="True" Focusable="False" PopupAnimation="None">
      <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}" Padding="4">
-      <ScrollViewer CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
+      <ScrollViewer CanContentScroll="True" Focusable="False"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
      </Border>
     </Popup>
    </Grid>
@@ -50,8 +50,45 @@
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Choice" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Choice" Property="Background" Value="{StaticResource HoverBrush}"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Choice" Property="Background" Value="{StaticResource SelectionBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="MinHeight" Value="32"/><Setter Property="Padding" Value="8,5"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="ItemBorder" CornerRadius="6" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/><Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource SelectionBrush}"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemBorder" Property="Background" Value="#2C2043"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
- <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#231B35"/><Setter Property="Foreground" Value="#D7C8F4"/><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="8,0"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Setter Property="Height" Value="30"/></Style>
- <Style TargetType="DataGridCell"><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="7,0"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridCell"><Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#482177"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#C189FF"/><Setter Property="BorderThickness" Value="1"/></Trigger></Style.Triggers></Style>
+ <Style x:Key="ColumnHeaderGripper" TargetType="Thumb">
+  <Setter Property="Width" Value="8"/><Setter Property="Cursor" Value="SizeWE"/>
+  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Thumb">
+   <Border Background="Transparent">
+    <Border x:Name="Grip" Width="2" HorizontalAlignment="Right" Background="{StaticResource LineBrush}"/>
+   </Border>
+   <ControlTemplate.Triggers>
+    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="{StaticResource AccentBrush}"/><Setter TargetName="Grip" Property="Width" Value="3"/></Trigger>
+    <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="{StaticResource AccentTextBrush}"/><Setter TargetName="Grip" Property="Width" Value="3"/></Trigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate></Setter.Value></Setter>
+ </Style>
+ <Style x:Key="ColumnHeaderGripperHidden" TargetType="Thumb">
+  <Setter Property="Width" Value="8"/><Setter Property="Cursor" Value="SizeWE"/>
+  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Thumb"><Border Background="Transparent"/></ControlTemplate></Setter.Value></Setter>
+ </Style>
+ <Style TargetType="DataGridColumnHeader">
+  <Setter Property="Background" Value="#231B35"/><Setter Property="Foreground" Value="#D7C8F4"/><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="SemiBold"/>
+  <Setter Property="Padding" Value="8,0"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="BorderThickness" Value="0,0,0,1"/><Setter Property="Height" Value="30"/>
+  <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridColumnHeader">
+   <Grid>
+    <Border x:Name="HeaderBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+     <Grid>
+      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True"/>
+      <Path x:Name="SortArrow" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" Width="86" Height="5" Fill="{StaticResource AccentTextBrush}" Visibility="Collapsed" Data="M 0 5 L 4 0 L 8 5 Z"/>
+     </Grid>
+    </Border>
+    <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Style="{StaticResource ColumnHeaderGripperHidden}"/>
+    <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderGripper}"/>
+   </Grid>
+   <ControlTemplate.Triggers>
+    <Trigger Property="SortDirection" Value="Ascending"><Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/></Trigger>
+    <Trigger Property="SortDirection" Value="Descending"><Setter TargetName="SortArrow" Property="Visibility" Value="Visible"/><Setter TargetName="SortArrow" Property="Data" Value="M 0 0 L 4 5 L 8 0 Z"/></Trigger>
+    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderBorder" Property="Background" Value="{StaticResource HoverBrush}"/></Trigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate></Setter.Value></Setter>
+ </Style>
+ <Style TargetType="DataGridCell"><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="7,0"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridCell"><Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True"><Setter Property="Background" Value="{StaticResource HoverBrush}"/></DataTrigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#482177"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#C189FF"/><Setter Property="BorderThickness" Value="1"/></Trigger></Style.Triggers></Style>
  <Style TargetType="UserControl"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/></Style>
  <Style TargetType="ListBox"><Setter Property="Background" Value="{StaticResource PanelBrush}"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/></Style>
  <Style TargetType="DataGrid">
@@ -59,7 +96,7 @@
   <Setter Property="RowBackground" Value="{StaticResource PanelBrush}"/><Setter Property="AlternatingRowBackground" Value="#211A32"/>
   <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="HorizontalGridLinesBrush" Value="{StaticResource LineBrush}"/><Setter Property="VerticalGridLinesBrush" Value="{StaticResource LineBrush}"/>
  </Style>
- <Style TargetType="DataGridRow"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{StaticResource SelectionBrush}"/></Trigger></Style.Triggers></Style>
+ <Style TargetType="DataGridRow"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource HoverBrush}"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{StaticResource SelectionBrush}"/></Trigger></Style.Triggers></Style>
  <Style TargetType="CheckBox"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/></Style>
  <Style TargetType="Label"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/></Style>
  <Style TargetType="ToolTip"><Setter Property="Background" Value="{StaticResource PanelBrush}"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/></Style>

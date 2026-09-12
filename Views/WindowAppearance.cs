@@ -49,9 +49,61 @@ public static class WindowAppearance
     }
     private static SafeCursorHandle CreatePointer()
     {
+        const byte accentB=0x92,accentG=0x3E,accentR=0x8E;
+        IntPtr system=LoadCursor(IntPtr.Zero,new IntPtr(32512));
+        if(system!=IntPtr.Zero)
+        {
+            IntPtr copy=CopyIcon(system);
+            if(copy!=IntPtr.Zero && GetIconInfo(copy,out var source))
+            {
+                try
+                {
+                    if(source.Color!=IntPtr.Zero && GetObject(source.Color,Marshal.SizeOf<NativeBitmap>(),out NativeBitmap bitmap)==Marshal.SizeOf<NativeBitmap>() && bitmap.BitsPixel==32 && bitmap.Width>0 && bitmap.Height!=0)
+                    {
+                        int height=Math.Abs(bitmap.Height),stride=bitmap.WidthBytes,bytes=checked(stride*height);
+                        var pixels=new byte[bytes];
+                        if(GetBitmapBits(source.Color,bytes,pixels)==bytes)
+                        {
+                            Recolor(pixels,stride,bitmap.Width,height,accentB,accentG,accentR);
+                            IntPtr color=CreateBitmap(bitmap.Width,height,1,32,pixels);
+                            IntPtr mask=source.Mask;
+                            try
+                            {
+                                var info=new IconInfo{IsIcon=false,XHotspot=source.XHotspot,YHotspot=source.YHotspot,Color=color,Mask=mask};
+                                var cursor=CreateIconIndirect(ref info);
+                                if(cursor==IntPtr.Zero)throw new System.ComponentModel.Win32Exception();
+                                return new SafeCursorHandle(cursor);
+                            }
+                            finally{if(color!=IntPtr.Zero)DeleteObject(color);}
+                        }
+                    }
+                }
+                finally
+                {
+                    if(source.Color!=IntPtr.Zero)DeleteObject(source.Color);
+                    if(source.Mask!=IntPtr.Zero)DeleteObject(source.Mask);
+                    DestroyIcon(copy);
+                }
+            }
+            else if(copy!=IntPtr.Zero)DestroyIcon(copy);
+        }
+        return DrawNativeArrow(accentB,accentG,accentR);
+    }
+    private static void Recolor(byte[] pixels,int stride,int width,int height,byte accentB,byte accentG,byte accentR)
+    {
+        for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+        {
+            int offset=y*stride+x*4;byte a=pixels[offset+3];if(a==0)continue;
+            int lum=(pixels[offset+2]*30+pixels[offset+1]*59+pixels[offset]*11)/100;
+            if(lum<48)continue;
+            pixels[offset]=accentB;pixels[offset+1]=accentG;pixels[offset+2]=accentR;
+        }
+    }
+    private static SafeCursorHandle DrawNativeArrow(byte accentB,byte accentG,byte accentR)
+    {
         const int size=32;
         var pixels=new byte[size*size*4];
-        (double X,double Y)[] points=[(3,2),(3,25),(9,19),(14,30),(19,28),(14,18),(25,18)];
+        (double X,double Y)[] points=[(1,1),(1,21),(6,16),(9,26),(13,24),(9,15),(18,15)];
         for(int y=0;y<size;y++)for(int x=0;x<size;x++)
         {
             bool inside=false;
@@ -61,12 +113,12 @@ public static class WindowAppearance
                     inside=!inside;
             if(!inside)continue;
             int offset=(y*size+x)*4;
-            pixels[offset]=0x92;pixels[offset+1]=0x3E;pixels[offset+2]=0x8E;pixels[offset+3]=255;
+            pixels[offset]=accentB;pixels[offset+1]=accentG;pixels[offset+2]=accentR;pixels[offset+3]=255;
         }
         IntPtr color=CreateBitmap(size,size,1,32,pixels),mask=CreateBitmap(size,size,1,1,new byte[size*size/8]);
         try
         {
-            var info=new IconInfo{IsIcon=false,XHotspot=3,YHotspot=2,Color=color,Mask=mask};
+            var info=new IconInfo{IsIcon=false,XHotspot=1,YHotspot=1,Color=color,Mask=mask};
             var cursor=CreateIconIndirect(ref info);
             if(cursor==IntPtr.Zero)throw new System.ComponentModel.Win32Exception();
             return new SafeCursorHandle(cursor);
@@ -85,9 +137,21 @@ public static class WindowAppearance
         public uint XHotspot,YHotspot;
         public IntPtr Mask,Color;
     }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeBitmap
+    {
+        public int Type,Width,Height,WidthBytes;
+        public ushort Planes,BitsPixel;
+        public IntPtr Bits;
+    }
     [DllImport("gdi32.dll")]private static extern IntPtr CreateBitmap(int width,int height,uint planes,uint bits,byte[] data);
     [DllImport("gdi32.dll")]private static extern bool DeleteObject(IntPtr value);
+    [DllImport("gdi32.dll",EntryPoint="GetObjectW")]private static extern int GetObject(IntPtr value,int size,out NativeBitmap bitmap);
+    [DllImport("gdi32.dll")]private static extern int GetBitmapBits(IntPtr bitmap,int count,byte[] bits);
     [DllImport("user32.dll",SetLastError=true)]private static extern IntPtr CreateIconIndirect(ref IconInfo info);
     [DllImport("user32.dll")]private static extern bool DestroyIcon(IntPtr icon);
     [DllImport("user32.dll")]private static extern IntPtr SetCursor(IntPtr cursor);
+    [DllImport("user32.dll")]private static extern IntPtr LoadCursor(IntPtr instance,IntPtr name);
+    [DllImport("user32.dll")]private static extern IntPtr CopyIcon(IntPtr icon);
+    [DllImport("user32.dll")]private static extern bool GetIconInfo(IntPtr icon,out IconInfo info);
 }

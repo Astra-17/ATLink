@@ -59,7 +59,7 @@ public sealed class PlayerBrowser : UserControl
         var filterScroll=new ScrollViewer{Content=filters,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Disabled,Margin=new Thickness(0,0,0,12)};
         DockPanel.SetDock(filterScroll,Dock.Top);left.Children.Add(filterScroll);
         count.Foreground=B("MutedBrush");count.Margin=new Thickness(0,10,0,0);DockPanel.SetDock(count,Dock.Bottom);left.Children.Add(count);
-        grid.AutoGenerateColumns=false;grid.IsReadOnly=true;grid.CanUserAddRows=false;grid.CanUserDeleteRows=false;grid.SelectionMode=DataGridSelectionMode.Single;grid.HeadersVisibility=DataGridHeadersVisibility.Column;grid.RowHeight=44;grid.ColumnHeaderHeight=38;grid.EnableRowVirtualization=true;grid.EnableColumnVirtualization=true;grid.GridLinesVisibility=DataGridGridLinesVisibility.Horizontal;
+        grid.AutoGenerateColumns=false;grid.IsReadOnly=true;grid.CanUserAddRows=false;grid.CanUserDeleteRows=false;grid.CanUserResizeColumns=true;grid.SelectionMode=DataGridSelectionMode.Single;grid.HeadersVisibility=DataGridHeadersVisibility.Column;grid.RowHeight=44;grid.ColumnHeaderHeight=38;grid.EnableRowVirtualization=true;grid.EnableColumnVirtualization=true;grid.GridLinesVisibility=DataGridGridLinesVisibility.Horizontal;
         grid.LoadingRow+=(_,e)=>
         {
             var row=e.Row;

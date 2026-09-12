@@ -1,0 +1,434 @@
+{
+  "clubs": {
+    "Sans club": {
+      "teamId": 111592
+    },
+    "Sans équipe": {
+      "teamId": 111592
+    },
+    "Libre": {
+      "teamId": 111592
+    },
+    "Agents libres": {
+      "teamId": 111592
+    },
+    "Agent libre": {
+      "teamId": 111592
+    },
+    "Free Agent": {
+      "teamId": 111592
+    },
+    "Free Agents": {
+      "teamId": 111592
+    },
+    "Juventus Turin": {
+      "names": [
+        "Juventus"
+      ]
+    },
+    "Espanyol Barcelona": {
+      "names": [
+        "RCD Espanyol de Barcelona"
+      ]
+    },
+    "Palerme FC": {
+      "names": [
+        "Palermo"
+      ]
+    },
+    "Union Saint-Gilloise": {
+      "names": [
+        "Royale Union Saint-Gilloise"
+      ]
+    },
+    "Jagiellonia Bialystok": {
+      "names": [
+        "Jagiellonia Białystok"
+      ]
+    },
+    "Le Havre AC": {
+      "names": [
+        "Havre AC"
+      ]
+    },
+    "Samsunspor": {
+      "names": [
+        "Samsunspor A.Ş"
+      ]
+    },
+    "UD Levante": {
+      "names": [
+        "Levante UD"
+      ]
+    },
+    "Séville FC": {
+      "names": [
+        "Sevilla FC"
+      ]
+    },
+    "Seville FC": {
+      "names": [
+        "Sevilla FC"
+      ]
+    },
+    "US Sassuolo": {
+      "names": [
+        "Sassuolo"
+      ]
+    },
+    "AC Sparta Prague": {
+      "names": [
+        "AC Sparta Praha"
+      ]
+    },
+    "Olympiakós Le Pirée": {
+      "names": [
+        "Olympiacos FC"
+      ]
+    },
+    "Olympiakos Le Piree": {
+      "names": [
+        "Olympiacos FC"
+      ]
+    },
+    "Fenerbahce": {
+      "names": [
+        "Fenerbahçe SK"
+      ]
+    },
+    "Fenerbahçe": {
+      "names": [
+        "Fenerbahçe SK"
+      ]
+    },
+    "Genoa CFC": {
+      "names": [
+        "Genoa"
+      ]
+    },
+    "Deportivo La Corogne": {
+      "names": [
+        "RC Deportivo"
+      ]
+    },
+    "Deportivo La Coruña": {
+      "names": [
+        "RC Deportivo"
+      ]
+    },
+    "Eintracht Francfort": {
+      "names": [
+        "Eintracht Frankfurt"
+      ]
+    },
+    "Racing Santander": {
+      "names": [
+        "Real Racing Club"
+      ]
+    },
+    "Ajax Amsterdam": {
+      "names": [
+        "Ajax"
+      ]
+    },
+    "Cercle Bruges": {
+      "names": [
+        "Cercle Brugge KSV"
+      ]
+    },
+    "Go Ahead Eagles Deventer": {
+      "names": [
+        "Go Ahead Eagles"
+      ]
+    },
+    "Rodez AF": {
+      "names": [
+        "Rodez Aveyron Football"
+      ]
+    },
+    "US Lecce": {
+      "names": [
+        "Lecce"
+      ]
+    },
+    "EA Guingamp": {
+      "names": [
+        "En Avant Guingamp"
+      ]
+    },
+    "Vitória Guimarães SC": {
+      "names": [
+        "Vitória SC"
+      ]
+    },
+    "Vitoria Guimaraes SC": {
+      "names": [
+        "Vitória SC"
+      ]
+    },
+    "GD Estoril Praia": {
+      "names": [
+        "Estoril Praia"
+      ]
+    },
+    "SV Werder Brême": {
+      "names": [
+        "SV Werder Bremen"
+      ]
+    },
+    "SV Werder Breme": {
+      "names": [
+        "SV Werder Bremen"
+      ]
+    },
+    "Red Bull Salzbourg": {
+      "names": [
+        "FC Red Bull Salzburg"
+      ]
+    },
+    "Feyenoord Rotterdam": {
+      "names": [
+        "Feyenoord"
+      ]
+    },
+    "FC Saint-Gall 1879": {
+      "names": [
+        "FC St. Gallen 1879"
+      ]
+    },
+    "PAOK Thessaloniki": {
+      "names": [
+        "PAOK FC"
+      ]
+    },
+    "UC Sampdoria": {
+      "names": [
+        "Sampdoria"
+      ]
+    },
+    "Mantova 1911": {
+      "names": [
+        "Mantova"
+      ]
+    },
+    "Cagliari Calcio": {
+      "names": [
+        "Cagliari"
+      ]
+    },
+    "Genclerbirligi Ankara": {
+      "names": [
+        "Gençlerbirliği SK"
+      ]
+    },
+    "Gençlerbirliği Ankara": {
+      "names": [
+        "Gençlerbirliği SK"
+      ]
+    },
+    "KAA La Gantoise": {
+      "names": [
+        "KAA Gent"
+      ]
+    },
+    "ACSC FC Arges": {
+      "names": [
+        "FC Argeş"
+      ]
+    },
+    "ACSC FC Argeș": {
+      "names": [
+        "FC Argeş"
+      ]
+    },
+    "AC Milan": {
+      "names": [
+        "Milano FC",
+        "AC Milan",
+        "Milan"
+      ]
+    },
+    "Milan AC": {
+      "names": [
+        "Milano FC",
+        "AC Milan",
+        "Milan"
+      ]
+    },
+    "Milan": {
+      "names": [
+        "Milano FC",
+        "AC Milan",
+        "Milan"
+      ]
+    },
+    "Inter Milan": {
+      "names": [
+        "Lombardia FC",
+        "Inter Milan",
+        "Inter",
+        "Internazionale"
+      ]
+    },
+    "Inter Milano": {
+      "names": [
+        "Lombardia FC",
+        "Inter Milan",
+        "Inter",
+        "Internazionale"
+      ]
+    },
+    "Internazionale": {
+      "names": [
+        "Lombardia FC",
+        "Inter Milan",
+        "Inter",
+        "Internazionale"
+      ]
+    },
+    "Internazionale Milano": {
+      "names": [
+        "Lombardia FC",
+        "Inter Milan",
+        "Inter",
+        "Internazionale"
+      ]
+    },
+    "Inter": {
+      "names": [
+        "Lombardia FC",
+        "Inter Milan",
+        "Inter",
+        "Internazionale"
+      ]
+    },
+    "Lazio Rome": {
+      "names": [
+        "Latium",
+        "Lazio",
+        "Lazio Roma",
+        "SS Lazio"
+      ]
+    },
+    "Lazio Roma": {
+      "names": [
+        "Latium",
+        "Lazio",
+        "Lazio Roma",
+        "SS Lazio"
+      ]
+    },
+    "SS Lazio": {
+      "names": [
+        "Latium",
+        "Lazio",
+        "Lazio Roma",
+        "SS Lazio"
+      ]
+    },
+    "Lazio": {
+      "names": [
+        "Latium",
+        "Lazio",
+        "Lazio Roma",
+        "SS Lazio"
+      ]
+    },
+    "Atalanta Bergame": {
+      "names": [
+        "Bergamo Calcio",
+        "Atalanta",
+        "Atalanta BC"
+      ]
+    },
+    "Atalanta Bergamo": {
+      "names": [
+        "Bergamo Calcio",
+        "Atalanta",
+        "Atalanta BC"
+      ]
+    },
+    "Atalanta BC": {
+      "names": [
+        "Bergamo Calcio",
+        "Atalanta",
+        "Atalanta BC"
+      ]
+    },
+    "Atalanta": {
+      "names": [
+        "Bergamo Calcio",
+        "Atalanta",
+        "Atalanta BC"
+      ]
+    },
+    "Naple": {
+      "names": [
+        "SSC Napoli",
+        "Napoli"
+      ]
+    },
+    "Naples": {
+      "names": [
+        "SSC Napoli",
+        "Napoli"
+      ]
+    },
+    "Napoli": {
+      "names": [
+        "SSC Napoli",
+        "Napoli"
+      ]
+    },
+    "SSC Napoli": {
+      "names": [
+        "SSC Napoli",
+        "Napoli"
+      ]
+    },
+    "Napoli SSC": {
+      "names": [
+        "SSC Napoli",
+        "Napoli"
+      ]
+    },
+    "FC Barcelone": {
+      "names": [
+        "FC Barcelone",
+        "FC Barcelona"
+      ]
+    },
+    "Barcelone": {
+      "names": [
+        "FC Barcelone",
+        "FC Barcelona"
+      ]
+    },
+    "AS Monaco": {
+      "names": [
+        "AS Monaco"
+      ]
+    },
+    "Monaco": {
+      "names": [
+        "AS Monaco"
+      ]
+    },
+    "Ol. Lyonnais": {
+      "names": [
+        "Olympique Lyonnais"
+      ]
+    },
+    "Olympique Lyonnais": {
+      "names": [
+        "Olympique Lyonnais"
+      ]
+    },
+    "Tottenham": {
+      "names": [
+        "Tottenham Hotspur"
+      ]
+    }
+  },
+  "players": {}
+}

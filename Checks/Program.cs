@@ -98,6 +98,35 @@ if(resolved[0].PlayerId!="27")throw new Exception("Unique name was blocked by ol
 var freeExists=realCatalog.Rows("teams").Any(r=>FootballCatalog.Value(r,"teamid")=="111592");
 if(freeExists&&resolved[0].TeamId!="111592")throw new Exception("Free agent ID regression");
 Console.WriteLine("PASS C# Transfermarkt parser, order, normalization and exact player resolution");
+var enrich=EnrichedPlayers.Load(Path.Combine(root,"files/players_enrich.json"));
+var jesse=enrich.Match("Jesse Bisiwu","FC Barcelona");
+if(jesse?.PlayerId!="9009"||jesse.ShirtNumber!="27")throw new Exception("ATLink players_enrich.json Transfermarkt match failed");
+if(CompetitionCatalog.Match("Premier League","England")?.TransfermarktCode!="GB1")throw new Exception("Premier League Transfermarkt URL mapping failed");
+if(!CompetitionCatalog.ForCatalog(realCatalog).Any(l=>l.TransfermarktUrl?.Contains("/wettbewerb/GB1",StringComparison.Ordinal)==true))throw new Exception("FC26 leagues were not linked to Transfermarkt URLs");
+Console.WriteLine("PASS ATLink enrich matching and league Transfermarkt URLs");
+var liveNames=new NameNormalizer();
+var live=new TransferLiveResolver(realCatalog,enrich,liveNames);
+var retired=live.Resolve([new MarketTransfer(1,"Jesse Bisiwu","FC Barcelona","Fin de carrière","")]);
+if(retired.Resolved.Count!=0||retired.Unresolved.Count!=1||retired.Unresolved[0].Reason!=UnresolvedReasons.Retirement)
+    throw new Exception("Retirement destination was not classified as retirement");
+var jesseLive=live.Resolve([new MarketTransfer(1,"Jesse Bisiwu","FC Barcelona","Sans club","")]);
+if(jesseLive.Resolved.Count!=1||jesseLive.Resolved[0].PlayerId!="9009"||jesseLive.Resolved[0].ShirtNumber!="27")
+    throw new Exception("TransferLiveResolver Jesse Bisiwu match failed");
+if(freeExists&&jesseLive.Resolved[0].ToTeamId!="111592")throw new Exception("TransferLiveResolver free agent ID regression");
+var psg=new ClubNameResolver([new LiveTeam(73,"Paris Saint-Germain",false)],liveNames,LiveClubAliases.Load(liveNames));
+if(psg.ResolveClub("PSG").TeamId!=73)throw new Exception("ClubNameResolver PSG alias failed");
+if(psg.ResolveClub("Sans club").TeamId!=111592)throw new Exception("ClubNameResolver free agent alias failed");
+var homonym=EnrichedPlayers.FromPlayers([
+    new EnrichedPlayerInfo("1","John Smith","Same Club","10","10","Current A"),
+    new EnrichedPlayerInfo("2","John Smith","Same Club","11","20","Current B")
+]);
+var homonymResolver=new TransferLiveResolver(homonym,new ClubNameResolver([],liveNames),liveNames);
+var split=homonymResolver.Resolve([new MarketTransfer(1,"John Smith","Current A","Sans club","")]);
+if(split.Resolved.Count!=1||split.Resolved[0].PlayerId!="1")throw new Exception("CurrentTeam did not disambiguate Transfermarkt homonyms");
+var stillAmbiguous=homonymResolver.Resolve([new MarketTransfer(1,"John Smith","Same Club","Sans club","")]);
+if(stillAmbiguous.Unresolved.Count!=1||stillAmbiguous.Unresolved[0].Reason!=UnresolvedReasons.AmbiguousPlayer)
+    throw new Exception("Identical Transfermarkt clubs must stay ambiguous until CurrentTeam splits them");
+Console.WriteLine("PASS TransferLiveResolver retirement, PSG/free-agent aliases, CurrentTeam homonyms");
 
 
 // Generated tournaments: all team pairs, odd-team byes, full knockout progression and stale preview protection.

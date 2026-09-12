@@ -93,6 +93,21 @@ internal static class Program
         }
         var modules=new ATLink.Views.ModulesWindow(doc);
         RenderControl(modules,"modules",1536,960);
+        typeof(ATLink.Views.ModulesWindow).GetMethod("Switch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(modules,new object[]{"transfers"});
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(modules.FindName("PlayerContent") is not System.Windows.Controls.ContentControl transferHost||transferHost.Content is not ATLink.Views.TransfersPage transfers)
+            throw new Exception("Transfers tab did not host TransfersPage");
+        if(transfers.EmptyMessage.Visibility!=Visibility.Visible||transfers.Grid.Visibility!=Visibility.Collapsed)
+            throw new Exception("Empty transfers state missing");
+        if(transfers.VerifyButton.Content as string!="Verify"||transfers.AddManuallyButton.Content as string!="Add manually"||transfers.ApplyButton.Content as string!="Apply")
+            throw new Exception("Transfers actions missing");
+        RenderControl(modules,"transfers",1400,900);
+        typeof(ATLink.Views.ModulesWindow).GetMethod("Switch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(modules,new object[]{"players"});
+        typeof(ATLink.Views.ModulesWindow).GetMethod("Switch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(modules,new object[]{"transfers"});
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(modules.FindName("PlayerContent") is not System.Windows.Controls.ContentControl resetHost||resetHost.Content is not ATLink.Views.TransfersPage resetPage||resetPage.EmptyMessage.Visibility!=Visibility.Visible)
+            throw new Exception("Leaving Transfers did not reset the page");
+        Console.WriteLine("PASS transfers empty state, actions and reset on leave");
         var catalog=new FootballCatalog(doc);var player=doc.Tables.Single(t=>t.Name=="players");
         var editor=new ATLink.Views.EntityEditor(catalog,player,player.Data.Rows[0],catalog.PlayerName(player.Data.Rows[0]));
         RenderControl(editor,"player-editor",1080,720);
@@ -108,6 +123,14 @@ internal static class Program
         int realized=Enumerable.Range(0,clubBox.Items.Count).Count(i=>clubBox.ItemContainerGenerator.ContainerFromIndex(i) is not null);
         if(realized>=100)throw new Exception("Club picker eagerly realized "+realized+" clubs");
         Console.WriteLine($"PASS editable club picker: {realized} visible containers for {clubBox.Items.Count} clubs");
+        var clickedClub=Enumerable.Range(0,clubBox.Items.Count)
+            .Select(i=>clubBox.ItemContainerGenerator.ContainerFromIndex(i) as System.Windows.Controls.ComboBoxItem)
+            .FirstOrDefault(item=>item is not null && item.DataContext is ATLink.Views.PlayerTransferWindow.ClubChoice club && club.Id!=(clubBox.SelectedItem as ATLink.Views.PlayerTransferWindow.ClubChoice)?.Id);
+        if(clickedClub?.DataContext is not ATLink.Views.PlayerTransferWindow.ClubChoice mouseClub)throw new Exception("Club picker had no clickable destination");
+        clickedClub.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice,0,System.Windows.Input.MouseButton.Left){RoutedEvent=UIElement.PreviewMouseLeftButtonDownEvent});
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub?.Id!=mouseClub.Id)throw new Exception("Mouse selection in the club picker did not choose that club");
+        Console.WriteLine("PASS club picker mouse selection before typing");
         clubBox.IsDropDownOpen=false;
         clubBox.ApplyTemplate();
         var clubEditor=(System.Windows.Controls.TextBox)clubBox.Template.FindName("PART_EditableTextBox",clubBox);

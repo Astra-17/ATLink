@@ -43,6 +43,7 @@ public static class TransfermarktScraper
             if(!groups.TryGetValue(club,out var entries)){entries=[];groups.Add(club,entries);}
             foreach(var row in Nodes(table,".//tbody/tr").Where(r=>r.Ancestors("table").FirstOrDefault()==table))
             {
+                if(IsLoanEnd(row.InnerText))continue;
                 var cells=Nodes(row,"./td").ToArray();var playerLink=row.SelectSingleNode(".//a[contains(@href,'/profil/spieler/')]");if(playerLink is null)continue;
                 string player=Clean(playerLink.InnerText);if(player.Length==0)player=Clean(playerLink.GetAttributeValue("title",""));
                 if(index>=cells.Length)throw new InvalidDataException("Colonne du club manquante.");var cell=cells[index];var otherLink=cell.SelectSingleNode(".//a[contains(@href,'/verein/')]");
@@ -54,6 +55,12 @@ public static class TransfermarktScraper
         }
         var result=new List<MarketTransfer>();foreach(var group in groups)foreach(var row in group.Value.OrderBy(r=>r.Phase))result.Add(new(result.Count+1,row.Player,row.Phase==1?row.Other:group.Key,row.Phase==1?group.Key:row.Other,row.Phase==1?"arrival":"departure"));
         if(result.Count==0)throw new InvalidDataException("Aucun tableau de transferts reconnu.");return result;
+    }
+    static readonly string[] LoanEnds=["end of loan","fin de pret","fin de prêt","leih ende","retour de pret","retour de prêt","leiheende","loan end"];
+    static bool IsLoanEnd(string text)
+    {
+        string normalized=TransferResolver.Normalize(Clean(text));
+        return LoanEnds.Any(token=>normalized.Contains(TransferResolver.Normalize(token)));
     }
     public static IReadOnlyList<MarketTransfer> ParseCsv(string csv)
     {
@@ -131,6 +138,7 @@ public sealed class TransferResolver
         found=Unique(teams.Where(t=>TeamKey(t.Name)==TeamKey(name)));if(found is not null)return found;
         string parent=Regex.Replace(name,@"\s+(U21|U23|U19|U18|B|II|2)$","",RegexOptions.IgnoreCase);return parent!=name?Unique(teams.Where(t=>TeamKey(t.Name)==TeamKey(parent))):null;
     }
+    public EntityItem? FindTeam(string name)=>Team(name);
     public IReadOnlyList<ResolvedTransfer> Resolve(IEnumerable<MarketTransfer> input)
     {
         return input.OrderBy(t=>t.Sequence).Select(t=>{var player=Player(t.Player,t.OldClub);var team=Team(t.NewClub);return new ResolvedTransfer{Sequence=t.Sequence,Player=t.Player,OldClub=t.OldClub,NewClub=t.NewClub,PlayerId=player.Player?.Id??"",TeamId=team?.Id??"",Match=(player.Player is null?"Player unresolved":player.Reason)+(team is null?" · Team unresolved":"")};}).ToArray();

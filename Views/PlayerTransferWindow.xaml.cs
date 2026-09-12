@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using ATLink.Core;
 
@@ -35,6 +37,10 @@ public partial class PlayerTransferWindow : Window
         clubView=CollectionViewSource.GetDefaultView(choices);
         Clubs.ItemsSource=clubView;Clubs.SelectedItem=choices.FirstOrDefault(t=>t.Id==sourceClub);
         Clubs.AddHandler(TextBoxBase.TextChangedEvent,new TextChangedEventHandler(ClubTextChanged));
+        var itemStyle=new Style(typeof(ComboBoxItem),TryFindResource(typeof(ComboBoxItem)) as Style);
+        itemStyle.Setters.Add(new EventSetter(UIElement.PreviewMouseLeftButtonDownEvent,new MouseButtonEventHandler(ClubItemPressed)));
+        Clubs.ItemContainerStyle=itemStyle;
+        Clubs.DropDownOpened+=(_,_)=>{AttachClubPopup();Dispatcher.BeginInvoke(AttachClubPopup,System.Windows.Threading.DispatcherPriority.Loaded);};
         var field=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
         int first=(int)Math.Max(DateTime.Today.Year,field.Minimum),last=(int)Math.Min(DateTime.Today.Year+15,field.Maximum);
         ContractYear.ItemsSource=Enumerable.Range(first,Math.Max(0,last-first+1)).Select(y=>y.ToString(CultureInfo.InvariantCulture)).ToArray();
@@ -64,6 +70,49 @@ public partial class PlayerTransferWindow : Window
             }
             finally{filteringClubs=false;}
         }));
+    }
+    void AttachClubPopup()
+    {
+        if(Clubs.Template.FindName("PART_Popup",Clubs) is not Popup popup)return;
+        popup.Opened-=ClubPopupOpened;popup.Opened+=ClubPopupOpened;
+        if(popup.Child is UIElement child)HookClubPopup(child);
+    }
+    void ClubPopupOpened(object? sender,EventArgs e)
+    {
+        if(sender is Popup {Child: UIElement child})HookClubPopup(child);
+    }
+    void HookClubPopup(UIElement child)
+    {
+        child.PreviewMouseLeftButtonDown-=ClubItemPressed;
+        child.PreviewMouseLeftButtonDown+=ClubItemPressed;
+        if(PresentationSource.FromVisual(child) is HwndSource source)
+        {
+            source.RemoveHook(ClubPopupActivate);
+            source.AddHook(ClubPopupActivate);
+        }
+    }
+    static IntPtr ClubPopupActivate(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
+    {
+        // First click on a new popup HWND is otherwise eaten as activation.
+        if(message==0x0021){handled=true;return new IntPtr(3);}
+        return IntPtr.Zero;
+    }
+    void ClubItemPressed(object sender,MouseButtonEventArgs e)
+    {
+        var source=e.OriginalSource as DependencyObject;
+        while(source is not null && source is not ComboBoxItem)source=VisualTreeHelper.GetParent(source);
+        if(source is not ComboBoxItem item || item.DataContext is not ClubChoice club)return;
+        queryVersion++;
+        filteringClubs=true;
+        try
+        {
+            clubView.Filter=null;
+            Clubs.SelectedItem=club;
+            Clubs.Text=club.Name;
+            Clubs.IsDropDownOpen=false;
+        }
+        finally{filteringClubs=false;}
+        e.Handled=true;
     }
     public ClubChoice? ChosenClub
     {
