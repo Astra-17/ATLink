@@ -59,7 +59,34 @@ internal static class TransferUiChecks
         var combo=(ComboBox)((StackPanel)rows.Children[0]).Tag;
         Require(combo.Items.Count==33,"33 competition selector");
         Complete(page.VerifyAsync());
-        Require(page.Grid.Items.Count==2&&page.ApplyButton.IsEnabled,"Repeated player's two movements must remain visible");
+        Require(page.Grid.Items.Count==1&&page.ApplyButton.IsEnabled,"Already-at-destination movement is omitted; remaining transfer stays visible");
+        var kept=(TransferDraft)page.Grid.Items[0];
+        Require(kept.OldClubId==initial&&kept.OldClubName==firstName,"Old club uses FC26 id and name");
+        Require(kept.Destination?.Id==nextId,"Remaining movement is the real destination change");
+        Task<IReadOnlyList<MarketTransfer>> FetchReclass(IEnumerable<string> _,CancellationToken token)=>Task.FromResult<IReadOnlyList<MarketTransfer>>([
+            new(1,candidate.TransfermarktName,firstName,nextName,"arrival"),
+            new(2,candidate.TransfermarktName,"Unrelated Club",nextName,"arrival"),
+            new(3,candidate.TransfermarktName,"Old TM Club",firstName,"departure")]);
+        var reclass=new TransfersPage(catalog,FetchReclass);
+        Complete(reclass.VerifyAsync());
+        Require(reclass.Grid.Items.Count==1&&((TransferDraft)reclass.Grid.Items[0]).Destination?.Id==nextId,"Real transfer remains when a sibling departure is already completed");
+        Require(reclass.Grid.Items.Cast<TransferDraft>().All(d=>d.OldClubId==initial),"Mismatched Transfermarkt from-club is omitted when a departure targets the FC26 club");
+        Require(page.Grid.Columns.Count==6&&page.Grid.Columns.Cast<DataGridColumn>().All(c=>c.Header as string!=""),"Remove column must not be in the grid");
+        Require(page.Grid.CanUserSortColumns&&page.Grid.Columns.Cast<DataGridColumn>().All(c=>!string.IsNullOrWhiteSpace(c.SortMemberPath)),"Every column can sort");
+        Require(page.SearchBox.Width==220&&page.SearchBox.MaxWidth==260,"Search box stays compact");
+        Require(page.SearchBox.Parent is Grid host&&host.Parent is DockPanel bar&&
+            bar.Children.OfType<Panel>().Any(p=>p.Children.Contains(page.SelectAllButton)&&p.Children.Contains(page.RemoveSelectedButton)),
+            "Search shares the toolbar with Select all and Remove");
+        page.SearchBox.Text=kept.PlayerName;
+        Require(page.Grid.Items.Count==1,"Search keeps the matching transfer");
+        page.SearchBox.Text="___no_such_transfer___";
+        Require(page.Grid.Items.Count==0&&page.ApplyButton.IsEnabled,"Search isolates without dropping drafts");
+        page.SearchBox.Text="";
+        Require(page.Grid.Items.Count==1,"Clearing search restores the table");
+        Require(kept.Number==candidate.ShirtNumber,"Verify fills Number from players_enrich.json");
+        page.Grid.UnselectAll();
+        Require(!page.RemoveSelectedButton.IsEnabled,"Remove is disabled without a selection");
+        Require(page.SelectAllButton.IsEnabled&&page.SelectAllButton.Content as string=="Select all","Select all button");
         var output=Path.Combine(root,"artifacts/ttlive-integration");Directory.CreateDirectory(output);
         page.Width=1380;page.Height=820;page.Measure(new Size(1380,820));page.Arrange(new Rect(0,0,1380,820));page.UpdateLayout();
         var bitmap=new RenderTargetBitmap(1380,820,96,96,PixelFormats.Pbgra32);bitmap.Render(page);

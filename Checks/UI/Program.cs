@@ -166,7 +166,7 @@ internal static class Program
         if(transferPopup.ChosenClub?.Id!=typedClub.Id)throw new Exception("Search did not recover after no results");
         Console.WriteLine("PASS repeated club searches, selection/reopening, clearing, unknown text and recovery by ID");
         ((FrameworkElement)transferPopup.Content).Margin=new Thickness(0);
-        RenderControl((FrameworkElement)transferPopup.Content,"player-transfer-popup",516,310);
+        RenderControl((FrameworkElement)transferPopup.Content,"player-transfer-popup",516,380);
         transferPopup.Close();
         typeof(MainWindow).GetMethod("OpenPlayers",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(window,null);
         if(model.Screen!="Page"||model.Page is not ATLink.Views.ModulesWindow)throw new Exception("Loaded DB must open players directly");

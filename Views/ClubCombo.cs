@@ -125,6 +125,7 @@ public sealed class TransferDraft:INotifyPropertyChanged
     public string PlayerLabel=>$"{PlayerName} ({PlayerId})";
     public string OldClubLabel=>string.IsNullOrEmpty(OldClubId)?OldClubName:$"{OldClubName} ({OldClubId})";
     public ImageSource? OldCrest=>string.IsNullOrEmpty(OldClubId)?null:EntityImages.Crest(OldClubId);
+    public string DestinationName=>Destination?.Name??"";
     public ClubOption? Destination
     {
         get=>destination;
@@ -132,6 +133,7 @@ public sealed class TransferDraft:INotifyPropertyChanged
             {
                 destination=value;
                 PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Destination)));
+                PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(DestinationName)));
             }
     }
     public string Number

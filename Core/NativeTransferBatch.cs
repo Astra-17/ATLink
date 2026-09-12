@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 namespace ATLink.Core;
 
 public sealed record NativeTransferEdit(int Sequence,string PlayerId,string DestinationId,string? ContractYear=null,string? JerseyNumber=null);
@@ -7,6 +8,7 @@ public sealed record NativeTransferStep(int Sequence,string PlayerId,string Sour
 /// <summary>Stages ordered movements in the open document, without Lua or disk writes.</summary>
 public sealed class NativeTransferBatch
 {
+    const int JerseyLow=1,JerseyHigh=99;
     readonly FootballCatalog catalog;
     readonly Dictionary<(DataRow Row,string Column),string> before = [];
     readonly Dictionary<(DataRow Row,string Column),string> after = [];
@@ -24,28 +26,29 @@ public sealed class NativeTransferBatch
         players=catalog.Rows("players").ToDictionary(r=>FootballCatalog.Value(r,"playerid"));
         teams=catalog.Rows("teams").ToDictionary(r=>FootballCatalog.Value(r,"teamid"));
     }
-    public static NativeTransferBatch Preview(FootballCatalog catalog,IEnumerable<NativeTransferEdit> edits)
+    public static NativeTransferBatch Preview(FootballCatalog catalog,IEnumerable<NativeTransferEdit> edits,Random? rng=null)
     {
         if(catalog.NationalTeamIds.Count==0)throw new InvalidOperationException("Load national team IDs before applying club transfers.");
+        rng??=Random.Shared;
         var batch=new NativeTransferBatch(catalog);
-        var clubLinks=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid")))
-            .ToLookup(r=>FootballCatalog.Value(r,"playerid"));
+        var clubLinks=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToArray();
+        var clubByPlayer=clubLinks.ToLookup(r=>FootballCatalog.Value(r,"playerid"));
         var steps=new List<NativeTransferStep>();
         foreach(var edit in edits.OrderBy(e=>e.Sequence))
         {
             if(!batch.players.TryGetValue(edit.PlayerId,out var player))throw new InvalidDataException($"Player {edit.PlayerId} is absent from the open database.");
             if(!batch.teams.ContainsKey(edit.DestinationId))throw new InvalidDataException($"Team {edit.DestinationId} is absent from the open database.");
             if(catalog.NationalTeamIds.Contains(edit.DestinationId))throw new InvalidDataException("National team destination is forbidden.");
-            var candidates=clubLinks[edit.PlayerId].ToArray();
+            var candidates=clubByPlayer[edit.PlayerId].ToArray();
             if(candidates.Length!=1)throw new InvalidDataException($"Player {edit.PlayerId}: {candidates.Length} club links; manual review required.");
             var link=candidates[0];batch.links[edit.PlayerId]=link;
-            var key=(link,"teamid");
-            string source=batch.after.GetValueOrDefault(key,FootballCatalog.Value(link,"teamid"));
+            string source=batch.Staged(link,"teamid");
+            bool moved=source!=edit.DestinationId;
             batch.Stage(link,"teamid",edit.DestinationId);
-            steps.Add(new(edit.Sequence,edit.PlayerId,source,edit.DestinationId,source==edit.DestinationId));
-            // Blank fields keep existing DB values; they never prevent an otherwise valid transfer.
+            steps.Add(new(edit.Sequence,edit.PlayerId,source,edit.DestinationId,!moved));
             if(!string.IsNullOrWhiteSpace(edit.ContractYear))batch.Stage(player,"contractvaliduntil",edit.ContractYear.Trim());
-            if(!string.IsNullOrWhiteSpace(edit.JerseyNumber))batch.Stage(link,"jerseynumber",edit.JerseyNumber.Trim());
+            else if(moved)batch.Stage(player,"contractvaliduntil","2030");
+            batch.AssignJersey(clubLinks,link,edit.DestinationId,edit.JerseyNumber,moved,rng);
         }
         batch.Steps=steps;
         batch.movedPlayers=steps.Where(s=>!s.AlreadyThere).Select(s=>s.PlayerId).ToHashSet();
@@ -54,6 +57,39 @@ public sealed class NativeTransferBatch
             batch.cancellations[row]=row.ItemArray.ToArray();
         return batch;
     }
+    void AssignJersey(DataRow[] clubLinks,DataRow link,string destinationId,string? requested,bool moved,Random rng)
+    {
+        if(!string.IsNullOrWhiteSpace(requested))
+        {
+            string number=requested.Trim();
+            Stage(link,"jerseynumber",number);
+            if(!TryJersey(number,out int taken))return;
+            foreach(var occupant in clubLinks.Where(row=>!ReferenceEquals(row,link)&&Staged(row,"teamid")==destinationId&&TryJersey(Staged(row,"jerseynumber"),out int existing)&&existing==taken).ToArray())
+                Stage(occupant,"jerseynumber",PickFree(Taken(clubLinks,destinationId,occupant),rng).ToString(CultureInfo.InvariantCulture));
+            return;
+        }
+        if(!moved)return;
+        Stage(link,"jerseynumber",PickFree(Taken(clubLinks,destinationId,link),rng).ToString(CultureInfo.InvariantCulture));
+    }
+    HashSet<int> Taken(DataRow[] clubLinks,string teamId,DataRow except)
+    {
+        var taken=new HashSet<int>();
+        foreach(var row in clubLinks)
+        {
+            if(ReferenceEquals(row,except)||Staged(row,"teamid")!=teamId)continue;
+            if(TryJersey(Staged(row,"jerseynumber"),out int number))taken.Add(number);
+        }
+        return taken;
+    }
+    static int PickFree(HashSet<int> taken,Random rng)
+    {
+        var free=new List<int>(JerseyHigh);
+        for(int number=JerseyLow;number<=JerseyHigh;number++)if(!taken.Contains(number))free.Add(number);
+        if(free.Count==0)throw new InvalidDataException("No free shirt number remains at the destination club.");
+        return free[rng.Next(free.Count)];
+    }
+    static bool TryJersey(string value,out int number)=>int.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out number)&&number>=JerseyLow&&number<=JerseyHigh;
+    string Staged(DataRow row,string column)=>after.GetValueOrDefault((row,column),FootballCatalog.Value(row,column));
     void Stage(DataRow row,string column,string value)
     {
         var field=catalog.Table(row.Table.TableName).Fields.Single(f=>f.Name==column);

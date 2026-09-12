@@ -195,6 +195,23 @@ public sealed class ClubNameResolver
         return result;
     }
 
+    public bool RefersToTeam(string query,int teamId,string teamName)
+    {
+        if(string.IsNullOrWhiteSpace(query)||teamId<=0)return false;
+        var resolved=ResolveClub(query);
+        if(resolved.Team?.TeamId==teamId)return true;
+        var qn=NormalizeClubName(query);var tn=NormalizeClubName(teamName);
+        if(qn.Length>0&&qn==tn)return true;
+        var qk=_normalizer.TeamKey(query);var tk=_normalizer.TeamKey(teamName);
+        if(qk.Length>0&&qk==tk)return true;
+        var qc=NormalizeClubCoreName(query);var tc=NormalizeClubCoreName(teamName);
+        if(qc.Length>0&&qc==tc)return true;
+        if(_logicalAliases.TryGetValue(qn,out var group)&&group.Select(NormalizeClubName).Contains(tn))return true;
+        if(_aliases.TryGetValue(qn,out var fromAlias)&&(fromAlias.ExplicitId==teamId||fromAlias.Names.Select(NormalizeClubName).Contains(tn)))return true;
+        if(_aliases.TryGetValue(tn,out var dbAlias)&&(dbAlias.ExplicitId==teamId||dbAlias.Names.Select(NormalizeClubName).Contains(qn)))return true;
+        return false;
+    }
+
     private ClubResolution ResolveCore(string query)
     {
         var normalized = NormalizeClubName(query);

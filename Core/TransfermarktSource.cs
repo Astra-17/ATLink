@@ -204,7 +204,8 @@ public sealed class TransfermarktSource : IDisposable
                 Sequence = results.Count + 1,
                 PlayerName = _normalizer.Clean(playerName),
                 FromClub = _normalizer.Clean(fromClub),
-                ToClub = _normalizer.Clean(toClub)
+                ToClub = _normalizer.Clean(toClub),
+                Phase = isArrival ? "arrival" : "departure"
             });
         }
     }

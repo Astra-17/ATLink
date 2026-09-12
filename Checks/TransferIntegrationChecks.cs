@@ -6,6 +6,9 @@ internal static class TransferIntegrationChecks
 {
     static readonly JsonSerializerOptions Json=new(){PropertyNameCaseInsensitive=true,WriteIndented=true};
     static void Require(bool condition,string message){if(!condition)throw new Exception(message);}
+    static IReadOnlyList<string> SquadJerseys(FootballCatalog catalog,string teamId)=>catalog.Rows("teamplayerlinks")
+        .Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))&&FootballCatalog.Value(r,"teamid")==teamId)
+        .Select(r=>FootballCatalog.Value(r,"jerseynumber")).ToArray();
     public static async Task Run(string root)
     {
         using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Checks/Fixtures/ttlive-parity.json")));
@@ -51,7 +54,6 @@ internal static class TransferIntegrationChecks
         var destinations=catalog.Rows("teams").Select(r=>FootballCatalog.Value(r,"teamid"))
             .Where(t=>t!=original&&!catalog.NationalTeamIds.Contains(t)).Take(2).ToArray();
         var playerRow=catalog.Rows("players").Single(r=>FootballCatalog.Value(r,"playerid")==id);
-        string contract=FootballCatalog.Value(playerRow,"contractvaliduntil"),number=FootballCatalog.Value(link,"jerseynumber");
         var nationalBefore=catalog.Rows("teamplayerlinks").Where(r=>catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToDictionary(r=>r,r=>r.ItemArray.ToArray());
         var plan=NativeTransferBatch.Preview(catalog,[
             new(1,id,original),new(2,id,destinations[0]),new(3,id,destinations[1])]);
@@ -59,7 +61,10 @@ internal static class TransferIntegrationChecks
         Require(FootballCatalog.Value(link,"teamid")==original,"Preview must not mutate");
         plan.Apply();
         Require(FootballCatalog.Value(link,"teamid")==destinations[1],"Final destination");
-        Require(FootballCatalog.Value(playerRow,"contractvaliduntil")==contract&&FootballCatalog.Value(link,"jerseynumber")==number,"Blank edits preserve contract/jersey");
+        Require(FootballCatalog.Value(playerRow,"contractvaliduntil")=="2030","Blank contract becomes 2030");
+        string assigned=FootballCatalog.Value(link,"jerseynumber");
+        Require(int.TryParse(assigned,out int jersey)&&jersey is >=1 and <=99,"Blank number becomes 1-99");
+        Require(SquadJerseys(catalog,destinations[1]).Count(n=>n==assigned)==1,"Assigned number is unique in the destination squad");
         foreach(var pair in nationalBefore)Require(pair.Key.ItemArray.SequenceEqual(pair.Value),"National links unchanged");
         var output=Path.Combine(root,"artifacts/ttlive-integration");Directory.CreateDirectory(output);
         string saved=Path.Combine(output,"native-transfer-"+Guid.NewGuid().ToString("N")+".db");
@@ -67,6 +72,7 @@ internal static class TransferIntegrationChecks
         var reopened=DatabaseDocument.Open(saved,Path.Combine(root,"files/fifa_ng_db-meta.xml"));
         Require(new FootballCatalog(reopened).Rows("teamplayerlinks").Any(r=>FootballCatalog.Value(r,"playerid")==id&&FootballCatalog.Value(r,"teamid")==destinations[1]),"Persisted transfer");
         var noOp=NativeTransferBatch.Preview(catalog,[new(1,id,destinations[1])]);noOp.Apply();Require(noOp.Steps[0].AlreadyThere,"Already-there no-op");
+        Require(FootballCatalog.Value(playerRow,"contractvaliduntil")=="2030"&&FootballCatalog.Value(link,"jerseynumber")==assigned,"Already-there blank edits preserve contract/jersey");
         bool failed=false;
         try{NativeTransferBatch.Preview(catalog,[new(1,id,original),new(2,id,"999999999")]);}catch(InvalidDataException){failed=true;}
         Require(failed&&FootballCatalog.Value(link,"teamid")==destinations[1],"Invalid batch must not partially apply");
@@ -122,7 +128,22 @@ internal static class TransferIntegrationChecks
             Require(FootballCatalog.Value(link,"teamid")==destinations[0],"Sequential transfer after cancellation");
             Console.WriteLine($"PASS {tableName}: cancellation, no-op preservation, stale guard, rollback, unrelated player preservation");
         }
-        Console.WriteLine("PASS native ordered apply, already-there, blank metadata, national protection, atomic validation, stale preview and DB save/reopen");
+        var occupant=catalog.Rows("teamplayerlinks").First(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))
+            &&FootballCatalog.Value(r,"playerid")!=id&&FootballCatalog.Value(r,"teamid")!=FootballCatalog.Value(link,"teamid")
+            &&int.TryParse(FootballCatalog.Value(r,"jerseynumber"),out int existing)&&existing is >=1 and <=99);
+        string occupied=FootballCatalog.Value(occupant,"jerseynumber"),occupiedClub=FootballCatalog.Value(occupant,"teamid");
+        NativeTransferBatch.Preview(catalog,[new NativeTransferEdit(1,id,occupiedClub,null,occupied)],new Random(7)).Apply();
+        Require(FootballCatalog.Value(link,"teamid")==occupiedClub&&FootballCatalog.Value(link,"jerseynumber")==occupied,"Requested number is assigned");
+        string displaced=FootballCatalog.Value(occupant,"jerseynumber");
+        Require(int.TryParse(displaced,out int free)&&free is >=1 and <=99&&displaced!=occupied,"Occupant receives a free 1-99");
+        var destNumbers=SquadJerseys(catalog,occupiedClub);
+        Require(destNumbers.Count(n=>n==occupied)==1&&destNumbers.Count(n=>n==displaced)==1,"Requested and displaced numbers stay unique");
+        PlayerTransfer.Apply(catalog,id,destinations[0],"2031");
+        Require(FootballCatalog.Value(playerRow,"contractvaliduntil")=="2031","PlayerTransfer keeps an explicit contract");
+        string transferred=FootballCatalog.Value(link,"jerseynumber");
+        Require(int.TryParse(transferred,out int shirt)&&shirt is >=1 and <=99&&SquadJerseys(catalog,destinations[0]).Count(n=>n==transferred)==1,
+            "PlayerTransfer without a number assigns a free shirt");
+        Console.WriteLine("PASS native ordered apply, already-there, default contract/jersey, number displacement, national protection, atomic validation, stale preview and DB save/reopen");
 
         var cancelledFile=Path.Combine(output,"cancelled-relations-"+Guid.NewGuid().ToString("N")+".db");
         doc.SaveAs(cancelledFile);

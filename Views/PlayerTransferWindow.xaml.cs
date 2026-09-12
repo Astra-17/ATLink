@@ -133,9 +133,10 @@ public partial class PlayerTransferWindow : Window
         var field=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
         if(!int.TryParse(year,out int numeric)||numeric<Math.Max(1900,field.Minimum)||numeric>Math.Min(9999,field.Maximum))
         {ErrorText.Text="Enter a valid contract expiry year.";return;}
+        string? jersey=string.IsNullOrWhiteSpace(JerseyNumber.Text)?null:JerseyNumber.Text.Trim();
         try
         {
-            PlayerTransfer.Apply(catalog,player.Id,club.Id,year);
+            PlayerTransfer.Apply(catalog,player.Id,club.Id,year,jersey);
             DestinationId=club.Id;DialogResult=true;
         }
         catch(Exception){ErrorText.Text="The transfer could not be applied. Check the player and club links, then try again.";}

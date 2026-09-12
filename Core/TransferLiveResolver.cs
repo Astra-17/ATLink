@@ -10,7 +10,7 @@ public static class UnresolvedReasons
     public const string Retirement="retirement";
 }
 
-public sealed record LiveResolvedTransfer(int Sequence,string PlayerName,string PlayerId,string FromClub,string ToClub,string ToTeamId,string ToTeamName,string ShirtNumber,string PlayerMatchMethod,string TeamMatchMethod);
+public sealed record LiveResolvedTransfer(int Sequence,string PlayerName,string PlayerId,string FromClub,string ToClub,string ToTeamId,string ToTeamName,string ShirtNumber,string PlayerMatchMethod,string TeamMatchMethod,string Phase="");
 public sealed record LiveUnresolvedTransfer(int Sequence,string PlayerName,string FromClub,string ToClub,string Reason,string Details);
 public sealed record LiveResolveResult(IReadOnlyList<LiveResolvedTransfer> Resolved,IReadOnlyList<LiveUnresolvedTransfer> Unresolved);
 
@@ -76,7 +76,14 @@ public sealed class TransferLiveResolver
             return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,reason,clubResult.Diagnostic is null ? details : System.Text.Json.JsonSerializer.Serialize(clubResult.Diagnostic)));
         }
 
-        return (new LiveResolvedTransfer(sequence,playerName,player.PlayerId,fromClub,toClub,clubResult.Team.TeamId.ToString(),clubResult.Team.TeamName,player.ShirtNumber,playerMethod,clubResult.MatchMethod),null);
+        return (new LiveResolvedTransfer(sequence,playerName,player.PlayerId,fromClub,toClub,clubResult.Team.TeamId.ToString(),clubResult.Team.TeamName,player.ShirtNumber,playerMethod,clubResult.MatchMethod,transfer.Phase),null);
+    }
+
+    public bool MatchesSourceClub(string transfermarktFromClub,string fc26TeamId,string fc26TeamName)
+    {
+        var from=normalizer.Clean(transfermarktFromClub);
+        if(from.Length==0||!int.TryParse(fc26TeamId,out var teamId)||teamId<=0)return false;
+        return clubs.RefersToTeam(from,teamId,fc26TeamName);
     }
 
     public EnrichedPlayerInfo? ResolvePlayer(string playerName,string fromClub,out string reason,out string details)

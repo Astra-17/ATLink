@@ -129,6 +129,8 @@ if(split.Resolved.Count!=1||split.Resolved[0].PlayerId!="1")throw new Exception(
 var stillAmbiguous=homonymResolver.Resolve([new MarketTransfer(1,"John Smith","Same Club","Sans club","")]);
 if(stillAmbiguous.Unresolved.Count!=1||stillAmbiguous.Unresolved[0].Reason!=UnresolvedReasons.AmbiguousPlayer)
     throw new Exception("Identical Transfermarkt clubs must stay ambiguous until CurrentTeam splits them");
+if(!live.MatchesSourceClub("FC Barcelona","241","FC Barcelone"))throw new Exception("Transfermarkt FC Barcelona must match FC26 FC Barcelone");
+if(live.MatchesSourceClub("FC Barcelona","73","Paris Saint-Germain"))throw new Exception("Transfermarkt old club must not match a different FC26 club");
 Console.WriteLine("PASS TransferLiveResolver retirement, PSG/free-agent aliases, CurrentTeam homonyms");
 
 

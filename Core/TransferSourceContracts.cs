@@ -6,6 +6,7 @@ public sealed class SourceTransfer
     public string PlayerName {get;init;} = "";
     public string FromClub {get;init;} = "";
     public string ToClub {get;init;} = "";
+    public string Phase {get;init;} = "";
 }
 public sealed class SourceFetchResult
 {
@@ -30,7 +31,7 @@ public static class TransferImport
     {
         // Do not deduplicate players: A -> B -> C is two distinct ordered movements.
         return leagues.SelectMany(l => l.OrderBy(t => t.Sequence))
-            .Select((t,i) => new MarketTransfer(i+1,t.PlayerName,t.FromClub,t.ToClub,"transfermarkt")).ToArray();
+            .Select((t,i) => new MarketTransfer(i+1,t.PlayerName,t.FromClub,t.ToClub,t.Phase)).ToArray();
     }
     public static async Task<IReadOnlyList<MarketTransfer>> FetchAsync(IEnumerable<string> urls, CancellationToken token=default)
     {
