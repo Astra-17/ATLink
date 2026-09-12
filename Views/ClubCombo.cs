@@ -109,6 +109,11 @@ internal static class ClubCombo
 
 public sealed class TransferDraft:INotifyPropertyChanged
 {
+    public int Sequence {get;set;}
+    public bool Imported {get;init;}
+    public string PlayerMatchMethod {get;init;} = "";
+    public string TeamMatchMethod {get;init;} = "";
+
     ClubOption? destination;
     string number="",contract="";
     public event PropertyChangedEventHandler? PropertyChanged;

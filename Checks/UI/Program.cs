@@ -14,6 +14,7 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--transfers")){TransferUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--transfers")??"."));return;}
         string root=Path.GetFullPath(args.Length>0?args[0]:".");
         var app=new Application();
         var window=new MainWindow();

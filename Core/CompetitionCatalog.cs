@@ -82,6 +82,18 @@ public static class CompetitionCatalog
         }).ToArray();
     }
 
+    public static IReadOnlyList<LeagueTransferOption> TransferChoices()
+    {
+        string Iso(string code)=>code switch
+        {
+            "L1" or "L2" or "L3"=>"de","GB1" or "GB2" or "GB3" or "GB4"=>"gb",
+            "A1"=>"at","AR1N"=>"ar","AUS1"=>"au","CSL"=>"cn","RSK1"=>"kr",
+            "MLS1"=>"us","IND1"=>"in","IR1"=>"ie","PO1"=>"pt","C1"=>"ch",
+            _=>code[..2].ToLowerInvariant()
+        };
+        return All.Select(c=>new LeagueTransferOption(c.TransfermarktCode,c.Name,"",c.Country,Iso(c.TransfermarktCode),c.TransfermarktUrl)).ToArray();
+    }
+
     static int Score(TransfermarktCompetition competition,string league,string country)
     {
         string tm=TransferResolver.Normalize(competition.Name);
@@ -127,10 +139,11 @@ public static class CompetitionCatalog
         "AUS1"=>["a league","a-league"],
         "RSK1"=>["k league","k-league"],
         "IR1"=>["league of ireland"],
-        "BE1"=>["belgian pro league","jupiler"],
+        "BE1"=>["belgian pro league","belgium pro league","jupiler","1a pro league"],
         "AR1N"=>["liga profesional"],
         "IND1"=>["indian super league"],
-        "CSL"=>["chinese super league"],
+        "CSL"=>["chinese super league","china super league"],
+        "RO1"=>["superliga","romania liga i","liga i"],
         _=>[]
     };
 }

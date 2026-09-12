@@ -21,7 +21,10 @@ public sealed class TransfersPage:UserControl
     readonly TextBlock status=new();
     readonly Button unmatchedButton=new(){Content="View unmatched",Padding=new Thickness(12,6,12,6),Visibility=Visibility.Collapsed};
     readonly Ellipse verifyDot=new(){Width=14,Height=14,Margin=new Thickness(10,0,0,0),VerticalAlignment=VerticalAlignment.Center,Fill=new SolidColorBrush(Color.FromRgb(0x6B,0x6B,0x6B))};
-    readonly TransferLiveResolver resolver;
+    CancellationTokenSource? verifyCancellation;
+    readonly Func<IEnumerable<string>,CancellationToken,Task<IReadOnlyList<MarketTransfer>>> fetch;
+    bool busy;
+    readonly Button addLeague=new(){Content="Add",Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left};
     readonly Dictionary<string,EntityItem> players;
     public Button VerifyButton {get;}
     public Button AddManuallyButton {get;}
@@ -34,15 +37,16 @@ public sealed class TransfersPage:UserControl
     static Brush B(string key)=>StudioPalette.Get(key);
     static TextBlock Label(string text,double size=13,bool bold=false)=>new(){Text=text,FontSize=size,FontWeight=bold?FontWeights.SemiBold:FontWeights.Normal,Foreground=B("TextBrush"),TextWrapping=TextWrapping.Wrap};
 
-    public TransfersPage(FootballCatalog catalog)
+    public TransfersPage(FootballCatalog catalog,Func<IEnumerable<string>,CancellationToken,Task<IReadOnlyList<MarketTransfer>>>? fetch=null)
     {
         this.catalog=catalog;
+        this.fetch=fetch??TransferImport.FetchAsync;
         clubs=ClubCombo.Clubs(catalog);
         players=catalog.Entities("players").ToDictionary(p=>p.Id,StringComparer.Ordinal);
         enrich=EnrichedPlayers.Load();
-        resolver=new TransferLiveResolver(catalog,enrich);
+        Unloaded+=(_,_)=>verifyCancellation?.Cancel();
         contracts=TransferContracts.Load();
-        var leagues=CompetitionCatalog.ForCatalog(catalog)
+        var leagues=CompetitionCatalog.TransferChoices()
             .Select(option=>new LeagueChoice(option,NationFlags.Load(option.Iso,option.CountryName))).ToArray();
 
         var root=new DockPanel();
@@ -55,7 +59,6 @@ public sealed class TransfersPage:UserControl
         VerifyButton.Click+=async(_,_)=>await VerifyAsync();
         AddLeagueRow(leagues,false);
         header.Children.Add(leagueRows);
-        var addLeague=new Button{Content="Add",Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left};
         addLeague.Click+=(_,_)=>AddLeagueRow(leagues,true);
         header.Children.Add(addLeague);
 
@@ -78,6 +81,7 @@ public sealed class TransfersPage:UserControl
         EmptyMessage.Foreground=B("MutedBrush");EmptyMessage.HorizontalAlignment=HorizontalAlignment.Center;EmptyMessage.VerticalAlignment=VerticalAlignment.Center;
         Grid=new DataGrid{AutoGenerateColumns=false,CanUserAddRows=false,CanUserDeleteRows=false,CanUserResizeColumns=true,SelectionMode=DataGridSelectionMode.Single,HeadersVisibility=DataGridHeadersVisibility.Column,RowHeight=52,ColumnHeaderHeight=38,EnableRowVirtualization=true,EnableColumnVirtualization=true,GridLinesVisibility=DataGridGridLinesVisibility.Horizontal,ItemsSource=drafts,Visibility=Visibility.Collapsed};
         Grid.BeginningEdit+=(_,e)=>e.Cancel=true;
+        Grid.Columns.Add(new DataGridTextColumn{Header="#",Binding=new Binding("Sequence"),Width=50,IsReadOnly=true});
         Grid.Columns.Add(PersonColumn("Player","Portrait","PlayerLabel"));
         Grid.Columns.Add(PersonColumn("Old club","OldCrest","OldClubLabel"));
         Grid.Columns.Add(ClubColumn());
@@ -94,6 +98,8 @@ public sealed class TransfersPage:UserControl
         var combo=new ComboBox{ItemsSource=leagues,MinHeight=36,Width=420,MaxDropDownHeight=220,HorizontalAlignment=HorizontalAlignment.Left,IsEditable=false,IsTextSearchEnabled=true};
         combo.ItemTemplate=LeagueTemplate();
         if(leagues.Length>0)combo.SelectedIndex=0;
+        combo.ToolTip="Transfermarkt competition";
+        combo.SelectionChanged+=(_,_)=>InvalidateImport();
         row.Children.Add(combo);
         if(!extra)
         {
@@ -103,10 +109,11 @@ public sealed class TransfersPage:UserControl
         else
         {
             var remove=new Button{Content="Remove",Padding=new Thickness(10,8,10,8),Margin=new Thickness(8,0,0,0)};
-            remove.Click+=(_,_)=>leagueRows.Children.Remove(row);
+            remove.Click+=(_,_)=>{leagueRows.Children.Remove(row);InvalidateImport();};
             row.Children.Add(remove);
         }
         row.Tag=combo;leagueRows.Children.Add(row);
+        if(extra)InvalidateImport();
     }
 
     static DataTemplate LeagueTemplate()
@@ -192,6 +199,7 @@ public sealed class TransfersPage:UserControl
         bool empty=drafts.Count==0;
         EmptyMessage.Visibility=empty?Visibility.Visible:Visibility.Collapsed;
         Grid.Visibility=empty?Visibility.Collapsed:Visibility.Visible;
+        ApplyButton.IsEnabled=!busy&&!empty;
     }
 
     IEnumerable<LeagueChoice> SelectedLeagues()
@@ -202,37 +210,73 @@ public sealed class TransfersPage:UserControl
 
     void SetVerifyDot(bool? ok)=>verifyDot.Fill=ok is null?NeutralDot:ok.Value?OkDot:FailDot;
 
-    async Task VerifyAsync()
+    void InvalidateImport()
     {
-        var selected=SelectedLeagues().ToArray();
+        verifyCancellation?.Cancel();
+        foreach(var draft in drafts.Where(d=>d.Imported).ToArray())drafts.Remove(draft);
         unmatched.Clear();unmatchedButton.Visibility=Visibility.Collapsed;
-        if(selected.Length==0){status.Text="Choose a league.";SetVerifyDot(false);return;}
-        var missing=selected.Where(l=>string.IsNullOrEmpty(l.Option.TransfermarktUrl)).Select(l=>l.Option.Display).ToArray();
-        if(missing.Length>0){status.Text="No Transfermarkt URL for: "+string.Join(", ",missing);SetVerifyDot(false);return;}
-        VerifyButton.IsEnabled=false;status.Text="Checking Transfermarkt…";SetVerifyDot(null);
+        SetVerifyDot(null);status.Text="";
+        if(EmptyMessage is not null)RefreshEmpty();
+    }
+
+    public async Task VerifyAsync()
+    {
+        if(busy)return;
+        var urls=SelectedLeagues().Select(l=>l.Option.TransfermarktUrl!).Distinct().ToArray();
+        if(urls.Length==0){status.Text="Choose a league.";SetVerifyDot(false);return;}
+        InvalidateImport();
+        verifyCancellation=new CancellationTokenSource();
+        var token=verifyCancellation.Token;
+        busy=true;VerifyButton.IsEnabled=false;ApplyButton.IsEnabled=false;
+        AddManuallyButton.IsEnabled=false;addLeague.IsEnabled=false;leagueRows.IsEnabled=false;Grid.IsEnabled=false;
+        status.Text="Checking Transfermarkt…";
         try
         {
-            var fetched=new List<MarketTransfer>();
-            foreach(var league in selected.DistinctBy(l=>l.Option.TransfermarktUrl))
-                fetched.AddRange(await TransfermarktScraper.Fetch(league.Option.TransfermarktUrl!));
-            int added=0;
-            var known=drafts.Select(d=>d.PlayerId).ToHashSet(StringComparer.Ordinal);
-            var result=resolver.Resolve(fetched);
+            var fetched=await fetch(urls,token);
+            token.ThrowIfCancellationRequested();
+            // The catalog may have been edited since the page was opened.
+            var resolver=new TransferLiveResolver(catalog,EnrichedPlayers.Load());
+            var result=await Task.Run(()=>resolver.Resolve(fetched),token);
+            token.ThrowIfCancellationRequested();
             foreach(var miss in result.Unresolved)
-                unmatched.Add(new UnmatchedTransfer(miss.PlayerName,miss.FromClub,miss.ToClub,miss.Reason,miss.Details));
+                unmatched.Add(new UnmatchedTransfer(miss.PlayerName,miss.FromClub,miss.ToClub,miss.Reason,miss.Details){Sequence=miss.Sequence});
+            var availablePlayers=catalog.Rows("players").Select(r=>FootballCatalog.Value(r,"playerid")).ToHashSet();
+            var availableTeams=catalog.Rows("teams").Select(r=>FootballCatalog.Value(r,"teamid")).ToHashSet();
+            var clubCounts=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid")))
+                .ToLookup(r=>FootballCatalog.Value(r,"playerid"));
+            int added=0;
             foreach(var transfer in result.Resolved)
             {
-                if(!known.Add(transfer.PlayerId))continue;
-                drafts.Add(CreateDraft(transfer.PlayerId,transfer.ShirtNumber,DestinationOption(transfer.ToTeamId,transfer.ToTeamName)));
+                if(!availablePlayers.Contains(transfer.PlayerId)||!availableTeams.Contains(transfer.ToTeamId))
+                {
+                    unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,
+                        !availablePlayers.Contains(transfer.PlayerId)?"player_not_in_database":"destination_not_in_database",
+                        $"Resolved ID {transfer.PlayerId} → {transfer.ToTeamId} is absent from the open database."){Sequence=transfer.Sequence});
+                    continue;
+                }
+                var currentLinks=clubCounts[transfer.PlayerId].ToArray();
+                string? block=catalog.NationalTeamIds.Count==0?"Load national team IDs first.":
+                    catalog.NationalTeamIds.Contains(transfer.ToTeamId)?"National team destination is forbidden.":
+                    currentLinks.Length!=1?$"{currentLinks.Length} club links; manual review required.":null;
+                if(block is not null)
+                {
+                    unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,"database_transfer_blocked",block){Sequence=transfer.Sequence});
+                    continue;
+                }
+                drafts.Add(CreateDraft(transfer));
                 added++;
             }
-            RefreshEmpty();
             SetVerifyDot(true);
-            status.Text=$"{added} transfer{(added==1?"":"s")} added."+(unmatched.Count==0?"":$" {unmatched.Count} could not be matched.");
+            status.Text=$"{fetched.Count} movements checked · {added} ready · {unmatched.Count} unmatched. Contract and number are optional.";
             unmatchedButton.Visibility=unmatched.Count==0?Visibility.Collapsed:Visibility.Visible;
         }
-        catch(Exception ex){SetVerifyDot(false);status.Text=ex.Message;ShellDialogs.Message(this,ex.Message,"ATLink");}
-        finally{VerifyButton.IsEnabled=true;}
+        catch(OperationCanceledException){SetVerifyDot(null);status.Text="Verification cancelled.";}
+        catch(Exception ex){SetVerifyDot(false);status.Text=ex.Message;}
+        finally
+        {
+            busy=false;VerifyButton.IsEnabled=true;AddManuallyButton.IsEnabled=true;
+            addLeague.IsEnabled=true;leagueRows.IsEnabled=true;Grid.IsEnabled=true;RefreshEmpty();
+        }
     }
 
     void ShowUnmatched()
@@ -248,7 +292,7 @@ public sealed class TransfersPage:UserControl
         if(Window.GetWindow(this) is Window owner)dialog.Owner=owner;
         if(dialog.ShowDialog()==true&&dialog.Draft is TransferDraft draft)
         {
-            if(drafts.Any(d=>d.PlayerId==draft.PlayerId)){status.Text="That player is already in the list.";return;}
+            draft.Sequence=drafts.Select(d=>d.Sequence).DefaultIfEmpty(0).Max()+1;
             drafts.Add(draft);RefreshEmpty();status.Text="Player added.";
         }
     }
@@ -259,16 +303,18 @@ public sealed class TransfersPage:UserControl
         return existing??new ClubOption(id,name);
     }
 
-    TransferDraft CreateDraft(string playerId,string number,ClubOption? destination)
+    TransferDraft CreateDraft(LiveResolvedTransfer transfer)
     {
-        players.TryGetValue(playerId,out var player);
-        var club=CurrentClub(playerId);
-        contracts.TryGetValue(playerId,out string? year);
+        players.TryGetValue(transfer.PlayerId,out var player);
+        var club=CurrentClub(transfer.PlayerId);
         return new TransferDraft
         {
-            PlayerId=playerId,PlayerName=player?.Name??$"Player {playerId}",
-            OldClubId=club.Id,OldClubName=club.Name,
-            Destination=destination,Number=number,Contract=year??""
+            Sequence=transfer.Sequence,Imported=true,
+            PlayerId=transfer.PlayerId,PlayerName=player?.Name??transfer.PlayerName,
+            OldClubId=club.Id,OldClubName=transfer.FromClub,
+            Destination=DestinationOption(transfer.ToTeamId,transfer.ToTeamName),
+            // Preserve DB contract/number unless the user explicitly edits them.
+            Number="",Contract="",PlayerMatchMethod=transfer.PlayerMatchMethod,TeamMatchMethod=transfer.TeamMatchMethod
         };
     }
 
@@ -286,21 +332,16 @@ public sealed class TransfersPage:UserControl
         if(drafts.Count==0){status.Text="No transfers yet. Verify a league or add a player manually.";return;}
         try
         {
-            var yearField=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
-            var jerseyField=catalog.Table("teamplayerlinks").Fields.Single(f=>f.Name=="jerseynumber");
-            foreach(var draft in drafts)
+            var edits=drafts.Select((draft,index)=>
             {
                 if(draft.Destination is not ClubOption club)throw new InvalidDataException($"{draft.PlayerName}: choose a destination club.");
-                if(string.IsNullOrWhiteSpace(draft.Contract))throw new InvalidDataException($"{draft.PlayerName}: enter a contract year.");
-                DatabaseDocument.ValidateValue(yearField,draft.Contract.Trim());
-                DatabaseDocument.ValidateValue(jerseyField,draft.Number.Trim());
-                catalog.PreviewTransfer(draft.PlayerId,club.Id);
-            }
-            int count=drafts.Count;
-            foreach(var draft in drafts.ToArray())
-                PlayerTransfer.Apply(catalog,draft.PlayerId,draft.Destination!.Id,draft.Contract.Trim(),draft.Number.Trim());
+                return new NativeTransferEdit(index+1,draft.PlayerId,club.Id,draft.Contract,draft.Number);
+            }).ToArray();
+            var batch=NativeTransferBatch.Preview(catalog,edits);
+            batch.Apply();
+            int changed=batch.Steps.Count(s=>!s.AlreadyThere),already=batch.Steps.Count(s=>s.AlreadyThere);
             drafts.Clear();RefreshEmpty();
-            status.Text=$"{count} transfer{(count==1?"":"s")} applied. Pending save.";
+            status.Text=$"{changed} movements applied · {already} already at destination · {batch.CancelledLoans} loans and {batch.CancelledPresignedContracts} presigned contracts cancelled. Pending save.";
         }
         catch(Exception ex){status.Text=ex.Message;ShellDialogs.Message(this,ex.Message,"ATLink");}
     }

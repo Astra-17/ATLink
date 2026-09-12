@@ -73,7 +73,7 @@ public sealed class TransferLiveResolver
             var details=reason==UnresolvedReasons.Retirement?"Fin de carrière"
                 :reason==UnresolvedReasons.AmbiguousDestinationTeam?"Plusieurs clubs correspondent à ce nom."
                 :"Club de destination introuvable dans la DB.";
-            return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,reason,details));
+            return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,reason,clubResult.Diagnostic is null ? details : System.Text.Json.JsonSerializer.Serialize(clubResult.Diagnostic)));
         }
 
         return (new LiveResolvedTransfer(sequence,playerName,player.PlayerId,fromClub,toClub,clubResult.Team.TeamId.ToString(),clubResult.Team.TeamName,player.ShirtNumber,playerMethod,clubResult.MatchMethod),null);

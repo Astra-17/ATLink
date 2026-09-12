@@ -27,7 +27,7 @@ public static class NationFlags
     public static ImageSource? Load(string? iso,string nation)
     {
         string code=nation switch {
-            "England"=>"gb-eng","Scotland"=>"gb-sct","Wales"=>"gb-wls","Northern Ireland"=>"gb-nir",
+            "England" or "Angleterre"=>"gb-eng","Scotland" or "Écosse"=>"gb-sct","Wales"=>"gb-wls","Northern Ireland"=>"gb-nir",
             _=>(iso??"").Trim().ToLowerInvariant()
         };
         if(code.Length!=2&&!new[]{"gb-eng","gb-sct","gb-wls","gb-nir"}.Contains(code))return null;

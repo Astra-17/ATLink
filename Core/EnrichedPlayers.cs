@@ -20,6 +20,8 @@ public sealed class EnrichedPlayers
 
     static EnrichedPlayers? cached;
     static string? cachedPath;
+    static long cachedLength;
+    static DateTime cachedWrite;
     public static EnrichedPlayers FromPlayers(IReadOnlyList<EnrichedPlayerInfo> players)=>new(players);
     public static EnrichedPlayers Load(string? path=null)
     {
@@ -29,7 +31,8 @@ public sealed class EnrichedPlayers
         if(!File.Exists(file))
             file=Path.Combine(Directory.GetCurrentDirectory(),"files","players_enrich.json");
         if(!File.Exists(file))throw new FileNotFoundException("players_enrich.json is required to match Transfermarkt names.");
-        if(cached is not null&&cachedPath==file)return cached;
+        var stamp=new FileInfo(file);
+        if(cached is not null&&cachedPath==file&&cachedLength==stamp.Length&&cachedWrite==stamp.LastWriteTimeUtc)return cached;
         using var stream=File.OpenRead(file);
         using var document=JsonDocument.Parse(stream);
         if(!document.RootElement.TryGetProperty("players",out var array)||array.ValueKind!=JsonValueKind.Array)
@@ -44,7 +47,7 @@ public sealed class EnrichedPlayers
             if(shirt.Length==0)shirt=ReadNumber(player,"transfermarkt_shirt_number");
             players.Add(new EnrichedPlayerInfo(id,name,ReadString(player,"transfermarkt_club"),shirt,ReadId(player,"current_teamid"),ReadString(player,"current_teamname")));
         }
-        cached=new EnrichedPlayers(players);cachedPath=file;return cached;
+        cached=new EnrichedPlayers(players);cachedPath=file;cachedLength=stamp.Length;cachedWrite=stamp.LastWriteTimeUtc;return cached;
     }
 
     public IReadOnlyList<EnrichedPlayerInfo> FindByPersonName(string transfermarktName)
