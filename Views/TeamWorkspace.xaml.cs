@@ -14,6 +14,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
 {
     public event Action<bool>? Closed;
     readonly FootballCatalog catalog;
+    readonly TeamRosterDraft roster;
     readonly EntityItem team;
     readonly DataRow row;
     readonly string teamId;
@@ -37,7 +38,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     public TeamWorkspace(FootballCatalog catalog,EntityItem team)
     {
         InitializeComponent();
-        this.catalog=catalog;this.team=team;row=team.Row;teamId=team.Id;
+        this.catalog=catalog;this.team=team;row=team.Row;teamId=team.Id;roster=new(catalog,teamId);
         Crest.Source=EntityImages.Crest(teamId);TeamKicker.Text="Team "+teamId;TeamTitle.Text=team.Name;
         foreach(var (label,field) in new[]{("OVR","overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
             Badges.Children.Add(Badge(label+" "+FootballCatalog.Value(row,field)));
@@ -196,7 +197,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     ItemsControl ListHost()=>new ItemsControl{Margin=new Thickness(0,4,0,0)};
     UIElement FormationsPage()
     {
-        try{formation=new FormationEditor(catalog,teamId);}catch(Exception ex){return new TextBlock{Text=ex.Message,Foreground=muted,TextWrapping=TextWrapping.Wrap};}
+        try{formation=new FormationEditor(catalog,teamId);if(roster.Changed){formation.SyncSquad(roster.Rows.Select(r=>FootballCatalog.Value(r,"playerid")));formationTouched=true;}}catch(Exception ex){return new TextBlock{Text=ex.Message,Foreground=muted,TextWrapping=TextWrapping.Wrap};}
         var root=new Grid();
         root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
         root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
@@ -257,8 +258,8 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     }
     void RevertFormation()
     {
-        try{formation=new FormationEditor(catalog,teamId);}catch(Exception ex){ErrorText.Text=ex.Message;return;}
-        formationTouched=false;selectedSlot=null;BindFormationCombo();DrawPitch();
+        try{formation=new FormationEditor(catalog,teamId);if(roster.Changed){formation.SyncSquad(roster.Rows.Select(r=>FootballCatalog.Value(r,"playerid")));formationTouched=true;}}catch(Exception ex){ErrorText.Text=ex.Message;return;}
+        formationTouched=roster.Changed;selectedSlot=null;BindFormationCombo();DrawPitch();
     }
     UIElement KitsPage()
     {
@@ -273,12 +274,17 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     void RefreshPlayers()
     {
         if(playerList is null)return;playerList.Items.Clear();
-        foreach(var player in catalog.Squad(teamId))
+        var playerNames=catalog.Names();
+        var playersById=catalog.Rows("players").ToDictionary(r=>FootballCatalog.Value(r,"playerid"));
+        foreach(var link in roster.Rows)
         {
+            string id=FootballCatalog.Value(link,"playerid");
+            var player=new {Id=id,Name=playersById.TryGetValue(id,out var data)?catalog.PlayerName(data,playerNames):"Player "+id,Link=link};
             var card=RowCard();
             var dock=new DockPanel();
             var remove=new Button{Content="Remove",Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);
-            var captured=player;remove.Click+=(_,_)=>{captured.Link.Delete();RefreshPlayers();};
+            remove.IsEnabled=!catalog.NationalTeamIds.Contains(teamId);
+            remove.Click+=(_,_)=>{try{CommitRosterInputs();roster.Remove(link);SyncRoster();RefreshPlayers();}catch(Exception ex){ErrorText.Text=ex.Message;}};
             dock.Children.Add(remove);
             var identity=new StackPanel{Orientation=Orientation.Horizontal};
             identity.Children.Add(Portrait(player.Id));
@@ -471,9 +477,22 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         var names=catalog.Names();
         var match=catalog.Rows("players").Select(r=>new{Row=r,Id=FootballCatalog.Value(r,"playerid"),Name=catalog.PlayerName(r,names)}).FirstOrDefault(p=>p.Id==text||p.Name.Contains(text,StringComparison.CurrentCultureIgnoreCase));
         if(match is null){ErrorText.Text="No player matches that search.";return;}
-        if(catalog.Rows("teamplayerlinks").Any(r=>FootballCatalog.Value(r,"teamid")==teamId&&FootballCatalog.Value(r,"playerid")==match.Id)){ErrorText.Text="That player is already in the squad.";return;}
-        var table=catalog.Table("teamplayerlinks");var created=TableEditing.Add(table,catalog.Rows("teamplayerlinks").FirstOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId));
-        created["teamid"]=teamId;created["playerid"]=match.Id;RefreshPlayers();ErrorText.Text="";
+        try{CommitRosterInputs();roster.Add(match.Id);SyncRoster();RefreshPlayers();ErrorText.Text="";}
+        catch(Exception ex){ErrorText.Text=ex.Message;}
+    }
+    void CommitRosterInputs()
+    {
+        var entries=binds.Where(b=>roster.Rows.Contains(b.Row)).ToArray();
+        foreach(var entry in entries)DatabaseDocument.ValidateValue(entry.Field,entry.Get());
+        foreach(var entry in entries)entry.Row[entry.Field.Name]=entry.Get();
+        binds.RemoveAll(b=>b.Row.Table.TableName=="teamplayerlinks");
+    }
+    void SyncRoster()
+    {
+        if(formation is null)return;
+        formation.SyncSquad(roster.Rows.Select(r=>FootballCatalog.Value(r,"playerid")));
+        formationTouched=true;
+        DrawPitch();
     }
     void AddRival()
     {
@@ -515,8 +534,11 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         {
             var changes=binds.Where(x=>x.Get()!=FootballCatalog.Value(x.Row,x.Field.Name)).ToArray();
             foreach(var entry in changes)DatabaseDocument.ValidateValue(entry.Field,entry.Get());
+            if(formationTouched)formation?.Apply(validateOnly:true);
             foreach(var entry in changes)entry.Row[entry.Field.Name]=entry.Get();
+            roster.Validate();
             if(formationTouched)formation?.Apply();
+            roster.Apply();
             TeamTitle.Text=FootballCatalog.Value(row,"teamname");ErrorText.Text="";return true;
         }
         catch(Exception ex){ErrorText.Text=ex.Message;return false;}

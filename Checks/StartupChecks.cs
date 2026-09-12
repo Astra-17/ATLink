@@ -33,6 +33,16 @@ internal static class StartupChecks
             Check(!name.StartsWith("Player "),"Missing Squad name "+id);
             Console.WriteLine($"PASS Squad player {id}: {name}");
         }
+        var nationNames=catalog.NationNames();
+        var nationCodes=catalog.NationCodes();
+        foreach(string id in new[]{"81927","81928"})
+        {
+            var player=catalog.Rows("players").Single(r=>FootballCatalog.Value(r,"playerid")==id);
+            string nationId=FootballCatalog.Value(player,"nationality");
+            Check(nationNames.TryGetValue(nationId,out string? nation)&&!string.IsNullOrWhiteSpace(nation),"Missing Squad nation "+nationId);
+            Check(nationCodes.TryGetValue(nationId,out string? iso)&&!string.IsNullOrWhiteSpace(iso),"Missing Squad nation ISO "+nationId);
+            Console.WriteLine($"PASS Squad nation {nationId}: {nation} ({iso})");
+        }
         foreach(var name in catalog.Rows("dcplayernames"))
             Check(names[FootballCatalog.Value(name,"nameid")]==FootballCatalog.Value(name,"name"),"Squad name overrides base dictionary");
         Check(!selected.Main.Tables.Any(t=>t.Name=="playernames"),"Reference names must not become Squad tables");
@@ -41,6 +51,11 @@ internal static class StartupChecks
         Check(formation.TeamData is null&&formation.Slots.Count>=11,"Squad formation without defaultteamdata");
         Check(formation.Slots.Take(11).All(s=>double.IsFinite(s.X)&&double.IsFinite(s.Y)),"Squad pitch positions");
         Check(!selected.Main.HasChanges&&selected.Main.Serialize().AsSpan().SequenceEqual(File.ReadAllBytes(squad)),"Opening names and formations preserves Squad bytes");
+        var editedPlayer=catalog.Rows("players").Single(r=>FootballCatalog.Value(r,"playerid")=="81928");
+        string originalNation=FootballCatalog.Value(editedPlayer,"nationality");
+        var embeddedNationIds=catalog.Rows("nations").Select(r=>FootballCatalog.Value(r,"nationid")).ToHashSet();
+        string replacementNation=nationNames.Keys.First(id=>id!=originalNation&&!embeddedNationIds.Contains(id));
+        editedPlayer["nationality"]=replacementNation;
         // The supplied Squad has stale team-sheet references after transfers.
         // Build a valid lineup in this disposable copy before testing persistence.
         Check(formation.Players.Count>=11,"Enough players for formation fixture");
@@ -50,7 +65,11 @@ internal static class StartupChecks
         formation.Slots[0].PlayerId=second;formation.Slots[1].PlayerId=first;formation.Apply();
         string saved=Path.Combine(temp,"EditedSquad");
         selected.Main.SaveAs(saved);
-        var reopened=new FormationEditor(new FootballCatalog(SquadFile.Open(saved,studio.Metadata).Database),"1");
+        var reopenedCatalog=new FootballCatalog(SquadFile.Open(saved,studio.Metadata).Database);
+        var reopenedPlayer=reopenedCatalog.Rows("players").Single(r=>FootballCatalog.Value(r,"playerid")=="81928");
+        Check(FootballCatalog.Value(reopenedPlayer,"nationality")==replacementNation,"Squad nationality edit did not survive save/reopen");
+        Console.WriteLine($"PASS Squad nationality edit/save/reopen: {originalNation} -> {replacementNation} ({nationNames[replacementNation]})");
+        var reopened=new FormationEditor(reopenedCatalog,"1");
         Check(reopened.Slots[0].PlayerId==second&&reopened.Slots[1].PlayerId==first,"Squad formation edit survives save/reopen");
         Console.WriteLine("PASS Squad formation display data, edit and save/reopen without defaultteamdata");
         File.Delete(saved);File.Delete(squad);File.Delete(settings);Directory.Delete(temp);

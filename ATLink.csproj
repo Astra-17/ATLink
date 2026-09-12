@@ -5,6 +5,7 @@
   <Content Include="docs/fifarating-LICENSE.txt" Link="fifarating-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="docs/UTILISATION.md" Link="UTILISATION.md" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="docs/PORTAGE.md" Link="PORTAGE.md" CopyToOutputDirectory="PreserveNewest" />
+  <Content Include="docs/DBM-PARITY.md" Link="DBM-PARITY.md" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="files/temp.png" CopyToOutputDirectory="PreserveNewest" />
 </ItemGroup>
 <ItemGroup>
@@ -14,4 +15,5 @@
   <Content Include="files/head/**/*.png" Link="Data/head/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   <Content Include="files/crest/**/*.png" Link="Data/crest/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 </ItemGroup>
+<ItemGroup><Content Include="files/flags/**/*.png" Link="Data/flags/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup><ItemGroup><Content Include="files/players_enrich.json" Link="Data/players_enrich.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>

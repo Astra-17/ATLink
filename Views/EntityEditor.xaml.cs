@@ -13,7 +13,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
     private readonly List<(Field Field,Func<string> Get,Action<string> Set)> inputs=[];
     private readonly Dictionary<string,TextBox> names=[];
     private readonly Dictionary<string,string> initialNames=[];
-    public EntityEditor(FootballCatalog catalog,DatabaseTable table,DataRow row,string title)
+    public EntityEditor(FootballCatalog catalog,DatabaseTable table,DataRow row,string title,DataRow? namesFrom=null)
     {
         InitializeComponent();this.catalog=catalog;this.table=table;this.row=row;EntityTitle.Text=title;Kicker.Text=table.Name;
         if(table.Name is "players" or "teams"){EntityPortrait.Source=table.Name=="players"?EntityImages.Player(FootballCatalog.Value(row,"playerid")):EntityImages.Crest(FootballCatalog.Value(row,"teamid"));EntityPortrait.Visibility=Visibility.Visible;}
@@ -51,7 +51,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
                 };
                 WorkspaceController.Open(dialog);
             };
-            var map=catalog.Names();var edited=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==FootballCatalog.Value(row,"playerid"));
+            var map=catalog.Names();var edited=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==FootballCatalog.Value(namesFrom??row,"playerid"));
             foreach(var (field,id,label) in new[]{("firstname","firstnameid","First name"),("surname","lastnameid","Surname"),("commonname","commonnameid","Common name"),("playerjerseyname","playerjerseynameid","Jersey name")})
             {
                 string value=edited is null?map.GetValueOrDefault(FootballCatalog.Value(row,id),""):FootballCatalog.Value(edited,field);
@@ -62,9 +62,20 @@ public partial class EntityEditor : UserControl, IWorkspacePage
         {
             string category=f.IsKey||f.Name.Contains("name")||f.Name.Contains("birth")||f.Name.Contains("national")?"Identity":f.Name.Contains("colour")||f.Name.Contains("color")||f.Name.Contains("hair")||f.Name.Contains("head")||f.Name.Contains("skin")||f.Name.Contains("accessory")?"Appearance":f.Name.Contains("rating")||f.Name.Contains("skill")||f.Name.Contains("speed")||f.Name.Contains("shoot")||f.Name.Contains("pass")||f.Name.Contains("potential")?"Attributes":"Advanced";
             var panel=Group(category);
-            var choices=FieldChoices.For(f.Name);
+            IReadOnlyList<FieldChoice>? choices=f.Name.Equals("nationality",StringComparison.OrdinalIgnoreCase)
+                ? catalog.NationNames().OrderBy(pair=>pair.Value,StringComparer.OrdinalIgnoreCase).Select(pair=>new FieldChoice(pair.Key,pair.Value)).ToArray()
+                : FieldChoices.For(f.Name);
             Func<string> read;Action<string> write;StackPanel host;
-            if(choices is null)
+            if(table.Name=="players" && f.Name is "birthdate" or "playerjointeamdate")
+            {
+                string raw=FootballCatalog.Value(row,f.Name);
+                string displayed=FifaDate.ToIso(raw)??raw;
+                var box=Input(panel,f.Name,displayed,"YYYY-MM-DD",f.IsKey);
+                read=()=>box.Text==displayed?raw:FifaDate.FromIso(box.Text.Trim());
+                write=v=>{raw=v;displayed=FifaDate.ToIso(v)??v;box.Text=displayed;};
+                host=(StackPanel)box.Parent;
+            }
+            else if(choices is null)
             {
                 var box=Input(panel,f.Name,FootballCatalog.Value(row,f.Name),f.Type==3?$"{f.Minimum} … {f.Maximum}":$"{f.Depth} bits",f.IsKey);
                 read=()=>box.Text;write=v=>box.Text=v;host=(StackPanel)box.Parent;
@@ -91,19 +102,14 @@ public partial class EntityEditor : UserControl, IWorkspacePage
     {
         try
         {
-            var changes=inputs.Where(x=>x.Get()!=FootballCatalog.Value(row,x.Field.Name)).ToArray();
-            foreach(var entry in changes)DatabaseDocument.ValidateValue(entry.Field,entry.Get());
-            var changedNames=names.Where(kv=>kv.Value.Text!=initialNames[kv.Key]).ToArray();
-            DatabaseTable? nameTable=null;DataRow? nameRow=null;
-            if(changedNames.Length>0)
+            var changes=inputs.Select(x=>(x.Field,Value:x.Get())).Where(x=>x.Value!=FootballCatalog.Value(row,x.Field.Name)).ToArray();
+            if(table.Name=="players")
+                PlayerEditing.Apply(catalog,row,changes.ToDictionary(x=>x.Field.Name,x=>x.Value),names.ToDictionary(x=>x.Key,x=>x.Value.Text));
+            else
             {
-                nameTable=catalog.Table("editedplayernames");
-                foreach(var entry in names)DatabaseDocument.ValidateValue(nameTable.Fields.Single(f=>f.Name==entry.Key),entry.Value.Text);
-                nameRow=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==FootballCatalog.Value(row,"playerid"));
-                if(nameRow is null){nameRow=nameTable.Data.NewRow();foreach(var f in nameTable.Fields)nameRow[f.Name]=f.Name=="playerid"?FootballCatalog.Value(row,"playerid"):names.GetValueOrDefault(f.Name)?.Text??"";}
+                foreach(var entry in changes)DatabaseDocument.ValidateValue(entry.Field,entry.Value);
+                foreach(var entry in changes)row[entry.Field.Name]=entry.Value;
             }
-            foreach(var entry in changes)row[entry.Field.Name]=entry.Get();
-            if(nameRow is not null){foreach(var entry in names)nameRow[entry.Key]=entry.Value.Text;if(nameRow.RowState==DataRowState.Detached)nameTable!.Data.Rows.Add(nameRow);}
             Closed?.Invoke(true);
         }
         catch(Exception ex){ErrorText.Text=ex.Message;}

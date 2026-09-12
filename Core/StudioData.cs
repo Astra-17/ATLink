@@ -10,6 +10,8 @@ public sealed record StudioPreferences(string DatabaseLanguage);
 public sealed class StudioData
 {
     private IReadOnlyDictionary<string,string>? referencePlayerNames;
+    private IReadOnlyDictionary<string,string>? referenceNationNames;
+    private IReadOnlyDictionary<string,string>? referenceNationCodes;
     public string Root {get;}
     public string PreferencesPath {get;}
     public StudioData(string root,string? preferencesPath=null)
@@ -51,8 +53,16 @@ public sealed class StudioData
         var main=SquadFile.Open(path,Metadata).Database;
         // Squad files carry only additional names; the base dictionary stays read-only
         // and is never inserted into the Squad's serialized tables.
-        referencePlayerNames??=new FootballCatalog(DatabaseDocument.Open(BaseDatabase,Metadata)).Names();
+        if(referencePlayerNames is null||referenceNationNames is null||referenceNationCodes is null)
+        {
+            var reference=new FootballCatalog(DatabaseDocument.Open(BaseDatabase,Metadata));
+            referencePlayerNames=reference.Names();
+            referenceNationNames=reference.NationNames();
+            referenceNationCodes=reference.NationCodes();
+        }
         main.ReferencePlayerNames=referencePlayerNames;
+        main.ReferenceNationNames=referenceNationNames;
+        main.ReferenceNationCodes=referenceNationCodes;
         return (main,OpenLocalization(code));
     }
     public void SaveLanguage(string code)

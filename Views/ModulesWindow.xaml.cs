@@ -87,7 +87,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         {
             var table=catalog.Table(kind);row=TableEditing.Add(table,template.Row);
             var created=new EntityItem(FootballCatalog.Value(row,kind=="teams"?"teamid":kind=="players"?"playerid":kind is "leagues"?"leagueid":"stadiumid"),"New "+kind.TrimEnd('s'),"",row);
-            var editor=kind=="teams"?new TeamWorkspace(catalog,created):(UserControl)new EntityEditor(catalog,table,row,created.Name);
+            var editor=kind=="teams"?new TeamWorkspace(catalog,created):(UserControl)new EntityEditor(catalog,table,row,created.Name,namesFrom:template.Row);
             if(editor is IWorkspacePage hosted)hosted.Closed+=ok=>{if(!ok&&row?.RowState==DataRowState.Added)row.Delete();Switch(kind);};
             WorkspaceController.Open(editor);
         }

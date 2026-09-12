@@ -61,7 +61,8 @@ public sealed partial class DatabaseDocument
             foreach(var row in changed)
             {
                 string id=row[fk.Name].ToString()??"";
-                if(long.TryParse(id,out long number)&&number>0&&!ids.Contains(id))throw new InvalidDataException($"{child.Name}.{fk.Name}: référence absente {id} dans {parent.Name}.");
+                bool knownReference=parent.Name=="nations"&&ReferenceNationNames.ContainsKey(id);
+                if(long.TryParse(id,out long number)&&number>0&&!ids.Contains(id)&&!knownReference)throw new InvalidDataException($"{child.Name}.{fk.Name}: référence absente {id} dans {parent.Name}.");
             }
             if(deleted[parent.Name].Length==0)continue;
             var removed=deleted[parent.Name].Select(r=>r[key.Name,DataRowVersion.Original].ToString()??"").Where(id=>!ids.Contains(id)).ToHashSet();

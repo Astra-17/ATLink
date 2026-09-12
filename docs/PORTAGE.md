@@ -80,3 +80,13 @@ Vérifications supplémentaires : `dotnet run --project Checks/ATLink.Checks.csp
 - **Sélecteurs spécialisés** : pied, postes, stars, genre, réputation dans l'éditeur d'entité. Suggestions visuelles étendues aux couleurs de cheveux/barbe. Module Stadiums.
 
 Les pondérations `Core/Resources/RatingWeights.json` proviennent de [fifarating](https://github.com/Celtian/fifarating), sous MIT ; voir `docs/fifarating-LICENSE.txt`. Cette licence doit accompagner les distributions. Aucun asset visuel du dépôt DBM n'est incorporé.
+
+
+## 12 septembre — référence métier explicite
+
+La révision DBM 1828c34e9650875a5b6befdf493854f8e4fbcfe1 a été récupérée et comparée.
+Les règles de noms personnalisés, de dates civiles et de brouillons d'effectif sont désormais portées et raccordées aux vues WPF.
+Contrairement à l'affirmation précédente, le transfert individuel DBM modifie lui aussi uniquement teamplayerlinks.teamid ; il ne nettoie pas les compositions.
+La synchronisation des références de formation concerne l'éditeur d'effectif.
+Voir DBM-PARITY.md pour les sources précises, tests, adaptations FC26 conservées et travaux restants.
+Les mentions historiques « aucun fichier source incorporé » décrivent les premières passes ; les nouveaux services C# portent explicitement les comportements des sources référencées.

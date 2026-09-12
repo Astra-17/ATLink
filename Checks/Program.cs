@@ -1,4 +1,5 @@
 using ATLink.Core;
+if(args.Contains("--dbm")){DbmParityChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--dbm")??"."));return;}
 if(args.Contains("--startup")){StartupChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--startup")??"."));return;}
 if(args.Contains("--features")){ExtendedChecks.Run();return;}
 var root=Path.GetFullPath(args.Length>0?args[0]:".");

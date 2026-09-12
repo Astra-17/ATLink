@@ -29,7 +29,7 @@ public sealed class FormationEditor
     public DataRow? Template {get;set;}
     private readonly Dictionary<string,EntityItem> playersById;
     public EntityItem? FindPlayer(string id)=>playersById.GetValueOrDefault(id);
-    public IReadOnlyList<EntityItem> Players {get;}
+    public IReadOnlyList<EntityItem> Players {get;private set;}
     public FormationEditor(FootballCatalog catalog,string teamId)
     {
         this.catalog=catalog;this.teamId=teamId;
@@ -44,18 +44,26 @@ public sealed class FormationEditor
         for(int i=0;i<52;i++)if(Sheet.Table.Columns.Contains($"playerid{i}"))Slots.Add(new(){Index=i,PlayerId=FootballCatalog.Value(Sheet,$"playerid{i}"),Position=FootballCatalog.Value(Formation,$"position{i}"),Role=FootballCatalog.Value(Formation,$"pos{i}role"),X=Number(Formation,$"offset{i}x"),Y=Number(Formation,$"offset{i}y")});
         foreach(DataColumn c in Sheet.Table.Columns)if(c.ColumnName=="captainid"||c.ColumnName.EndsWith("takerid"))Takers[c.ColumnName]=FootballCatalog.Value(Sheet,c.ColumnName);
     }
+    // DBM team-formation-editor.service.ts::syncSquadPlayers.
+    public void SyncSquad(IEnumerable<string> playerIds)
+    {
+        var ids=playerIds.ToHashSet();
+        Players=playersById.Values.Where(p=>ids.Contains(p.Id)).ToArray();
+        foreach(var slot in Slots)if(!ids.Contains(slot.PlayerId))slot.PlayerId="-1";
+        foreach(var key in Takers.Keys.ToArray())if(!ids.Contains(Takers[key]))Takers[key]="-1";
+    }
     private static double Number(DataRow row,string column)=>double.TryParse(FootballCatalog.Value(row,column),NumberStyles.Float,CultureInfo.InvariantCulture,out double value)?value:0.5;
     public void SelectTemplate(DataRow row)
     {
         if(!Templates.Contains(row))throw new InvalidOperationException("Modèle global inconnu.");Template=row;
         foreach(var slot in Slots.Where(s=>s.Index<11)){int i=slot.Index;slot.Position=FootballCatalog.Value(row,$"position{i}");slot.Role=FootballCatalog.Value(row,$"pos{i}role");slot.X=Number(row,$"offset{i}x");slot.Y=Number(row,$"offset{i}y");}
     }
-    public void Apply()
+    public void Apply(bool validateOnly=false)
     {
         var ids=Players.Select(p=>p.Id).ToHashSet();var populated=Slots.Where(s=>s.PlayerId!="-1"&&s.PlayerId!="0"&&s.PlayerId!="").ToArray();
         if(populated.Any(s=>!ids.Contains(s.PlayerId)))throw new InvalidDataException("Un joueur sélectionné ne fait pas partie de cette équipe.");
         if(populated.Select(s=>s.PlayerId).Distinct().Count()!=populated.Length)throw new InvalidDataException("Un joueur occupe plusieurs emplacements.");
-        if(Slots.Take(11).Any(s=>!ids.Contains(s.PlayerId)))throw new InvalidDataException("Les onze titulaires doivent être renseignés.");
+
         foreach(var value in Takers.Values)if(value!="-1"&&value!="0"&&!ids.Contains(value))throw new InvalidDataException("Capitaine ou tireur absent de l'équipe.");
         var changes=new List<(DataRow Row,string Column,string Value)>();
         void Set(DataRow row,string column,string value){if(!row.Table.Columns.Contains(column))return;var f=catalog.Table(row.Table.TableName).Fields.Single(f=>f.Name==column);if(value==FootballCatalog.Value(row,column))return;DatabaseDocument.ValidateValue(f,value);changes.Add((row,column,value));}
@@ -72,6 +80,7 @@ public sealed class FormationEditor
             foreach(string column in new[]{"relativeformationid","formationname","formationfullnameid","formationaudioid","defenders","midfielders","attackers","offensiverating"})Set(Formation,column,FootballCatalog.Value(Template,column));
             Set(Mentality,"sourceformationid",FootballCatalog.Value(Template,"formationid"));
         }
+        if(validateOnly)return;
         foreach(var change in changes)change.Row[change.Column]=change.Value;
     }
 }

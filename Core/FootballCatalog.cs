@@ -18,6 +18,18 @@ public sealed class FootballCatalog(DatabaseDocument document)
         foreach(string table in new[]{"playernames","dcplayernames"})foreach(var row in Rows(table))result[Value(row,"nameid")]=Value(row,"name");
         return result;
     }
+    public Dictionary<string,string> NationNames()=>NationValues("nationname",document.ReferenceNationNames);
+    public Dictionary<string,string> NationCodes()=>NationValues("isocountrycode",document.ReferenceNationCodes);
+    Dictionary<string,string> NationValues(string column,IReadOnlyDictionary<string,string> reference)
+    {
+        var result=new Dictionary<string,string>(reference);
+        foreach(var row in Rows("nations"))
+        {
+            string id=Value(row,"nationid"),value=Value(row,column);
+            if(id.Length>0&&!string.IsNullOrWhiteSpace(value))result[id]=value;
+        }
+        return result;
+    }
     public string PlayerName(DataRow row,Dictionary<string,string>? names=null)
     {
         names??=Names();string id=Value(row,"playerid");

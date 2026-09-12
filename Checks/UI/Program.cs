@@ -9,6 +9,8 @@ using ATLink.ViewModels;
 
 internal static class Program
 {
+    [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr hwnd,uint message,IntPtr wParam,IntPtr lParam);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr GetCursor();
     [STAThread]
     private static void Main(string[] args)
     {
@@ -37,6 +39,17 @@ internal static class Program
         var imageTable=new System.Data.DataTable();imageTable.Columns.Add("playerid");var imageRow=imageTable.Rows.Add("1025");
         if(!ReferenceEquals(head,ATLink.Views.EntityImages.For(new EntityItem("1025","Player","",imageRow))))throw new Exception("Player list image binding failed");
         Console.WriteLine("PASS portrait/crest ID mapping, packaged images, cache and missing-image fallback");
+        var ratingCases=new[]{(1,"#C91C1C"),(50,"#C91C1C"),(51,"#E48921"),(60,"#E48921"),(61,"#EABA36"),(70,"#EABA36"),(71,"#1F9C19"),(80,"#1F9C19"),(81,"#10680C"),(99,"#10680C")};
+        foreach(var (rating,expected) in ratingCases)
+        {
+            var brush=(System.Windows.Media.SolidColorBrush)ATLink.Views.RatingColors.For(rating);
+            var expectedColor=(System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(expected);
+            if(brush.Color!=expectedColor)throw new Exception($"Rating color {rating}: {brush.Color}, expected {expected}");
+        }
+        Console.WriteLine("PASS inclusive rating color boundaries 1-99");
+        if(ATLink.Views.PlayerMarketValues.For("9009")!=800000m)throw new Exception("Enriched market value lookup failed");
+        if(ATLink.Views.PlayerMarketValues.Format(180000000m)!="180 M €"||ATLink.Views.PlayerMarketValues.Format(25500m)!="25.5 K €"||ATLink.Views.PlayerMarketValues.Format(null)!="—")throw new Exception("Market value formatting failed");
+        Console.WriteLine("PASS enriched market values and K/M euro formatting");
         if(model.Screen!="Editing")throw new Exception("Startup must show database selection");
         Render("editing");
         if(((System.Windows.Controls.Button)window.FindName("BaseDbButton")).Visibility!=Visibility.Visible||((System.Windows.Controls.Button)window.FindName("SelectedDbButton")).Visibility!=Visibility.Visible)throw new Exception("Database choice cards missing");
@@ -83,6 +96,54 @@ internal static class Program
         var catalog=new FootballCatalog(doc);var player=doc.Tables.Single(t=>t.Name=="players");
         var editor=new ATLink.Views.EntityEditor(catalog,player,player.Data.Rows[0],catalog.PlayerName(player.Data.Rows[0]));
         RenderControl(editor,"player-editor",1080,720);
+        catalog.LoadNationalTeams(Path.Combine(root,"files","FC26_NATIONAL_TEAM_IDS.csv"));
+        var popupPlayerId=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).GroupBy(r=>FootballCatalog.Value(r,"playerid")).First(g=>g.Count()==1).Key;
+        var transferPopup=new ATLink.Views.PlayerTransferWindow(catalog,catalog.Entities("players").First(p=>p.Id==popupPlayerId));
+        var clubBox=(System.Windows.Controls.ComboBox)transferPopup.FindName("Clubs");
+        if(!clubBox.IsEditable || !System.Windows.Controls.VirtualizingPanel.GetIsVirtualizing(clubBox))
+            throw new Exception("Club picker must support text entry and virtualization");
+        transferPopup.Show();
+        clubBox.IsDropDownOpen=true;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        int realized=Enumerable.Range(0,clubBox.Items.Count).Count(i=>clubBox.ItemContainerGenerator.ContainerFromIndex(i) is not null);
+        if(realized>=100)throw new Exception("Club picker eagerly realized "+realized+" clubs");
+        Console.WriteLine($"PASS editable club picker: {realized} visible containers for {clubBox.Items.Count} clubs");
+        clubBox.IsDropDownOpen=false;
+        clubBox.ApplyTemplate();
+        var clubEditor=(System.Windows.Controls.TextBox)clubBox.Template.FindName("PART_EditableTextBox",clubBox);
+        clubEditor.Focus();
+        var typedClub=clubBox.Items.Cast<ATLink.Views.PlayerTransferWindow.ClubChoice>().Last();
+        clubEditor.Text=typedClub.Name;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub?.Id!=typedClub.Id)
+            throw new Exception("Typing a complete club name did not resolve that club");
+        clubEditor.Text=typedClub.Id;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub?.Id!=typedClub.Id||clubBox.Items.Count!=1)
+            throw new Exception("Typing a team ID did not filter and resolve that club");
+        clubEditor.Text="";
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub is not null||clubBox.Items.Count<100)throw new Exception("Clearing club search retained the first selection");
+        var secondClub=clubBox.Items.Cast<ATLink.Views.PlayerTransferWindow.ClubChoice>().First(c=>c.Id!=typedClub.Id);
+        clubEditor.Text=secondClub.Id;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub?.Id!=secondClub.Id||!clubBox.Items.Contains(secondClub))throw new Exception("Second club ID search failed");
+        clubBox.SelectedItem=secondClub;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        clubBox.IsDropDownOpen=false;
+        clubBox.IsDropDownOpen=true;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(clubBox.Items.Count<100)throw new Exception("Selecting a club trapped the dropdown on that club");
+        clubEditor.Text="No such club 000000";
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub is not null||clubBox.Items.Count!=0)throw new Exception("Unknown text retained stale destination");
+        clubEditor.Text=typedClub.Id;
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(transferPopup.ChosenClub?.Id!=typedClub.Id)throw new Exception("Search did not recover after no results");
+        Console.WriteLine("PASS repeated club searches, selection/reopening, clearing, unknown text and recovery by ID");
+        ((FrameworkElement)transferPopup.Content).Margin=new Thickness(0);
+        RenderControl((FrameworkElement)transferPopup.Content,"player-transfer-popup",516,310);
+        transferPopup.Close();
         typeof(MainWindow).GetMethod("OpenPlayers",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(window,null);
         if(model.Screen!="Page"||model.Page is not ATLink.Views.ModulesWindow)throw new Exception("Loaded DB must open players directly");
         Console.WriteLine("PASS direct players navigation, module and entity editor rendering");
@@ -120,6 +181,7 @@ internal static class Program
         var browser=new ATLink.Views.PlayerBrowser(squadCatalog);
         var browserSearch=(System.Windows.Controls.TextBox)typeof(ATLink.Views.PlayerBrowser).GetField("search",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(browser)!;
         var browserGrid=(System.Windows.Controls.DataGrid)typeof(ATLink.Views.PlayerBrowser).GetField("grid",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(browser)!;
+        if(browserGrid.Columns.Single(c=>Equals(c.Header,"VALUE")).SortMemberPath!="MarketValue")throw new Exception("Market values must sort by their numeric property");
         browserSearch.Text="81928";
         if(browserGrid.Items.Count!=1||browserGrid.SelectedItem is not ATLink.Views.PlayerBrowser.PlayerCard {Id:81928,Name:"Abdulla Abdullaev"})throw new Exception("Player browser Squad name/ID search");
         browserSearch.Text="no such player 99999999";
@@ -136,6 +198,34 @@ internal static class Program
         if(squadPitch is null||squadPitch.Children.OfType<System.Windows.Controls.Border>().Count()!=11)throw new Exception("Squad formation pitch must display eleven players");
         if(squadDocument.HasChanges)throw new Exception("Viewing Squad formation mutated data");
         Console.WriteLine("PASS selected Squad formations render eleven players without changing the document");
+        var chromeProbe=new Window{Width=640,Height=400,Title="ATLink Studio",Background=Brushes.Black,
+            Style=(Style)window.FindResource(typeof(Window)),ShowInTaskbar=false,
+            Content=new System.Windows.Controls.TextBlock{Text="Window controls",Foreground=Brushes.White,Margin=new Thickness(24)}};
+        chromeProbe.Show();
+        app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        if(chromeProbe.WindowStyle!=WindowStyle.None || System.Windows.Shell.WindowChrome.GetWindowChrome(chromeProbe) is null)
+            throw new Exception("Native title bar was not replaced");
+        if(!ReferenceEquals(System.Windows.Input.Mouse.OverrideCursor,ATLink.Views.WindowAppearance.Pointer))
+            throw new Exception("Custom pointer is not fixed");
+        var hwnd=new System.Windows.Interop.WindowInteropHelper(chromeProbe).Handle;
+        SendMessage(hwnd,0x20,hwnd,new IntPtr(1));
+        var pointer=GetCursor();
+        foreach(int hit in new[]{10,11,12,13,14,15,16,17})
+        {
+            SendMessage(hwnd,0x20,hwnd,new IntPtr(hit));
+            if(pointer==IntPtr.Zero || GetCursor()!=pointer)throw new Exception("Resize border changed pointer");
+        }
+        SystemCommands.MaximizeWindowCommand.Execute(null,chromeProbe);
+        if(chromeProbe.WindowState!=WindowState.Maximized)throw new Exception("Custom maximize command");
+        SystemCommands.MaximizeWindowCommand.Execute(null,chromeProbe);
+        if(chromeProbe.WindowState!=WindowState.Normal)throw new Exception("Custom restore command");
+        SystemCommands.MinimizeWindowCommand.Execute(null,chromeProbe);
+        if(chromeProbe.WindowState!=WindowState.Minimized)throw new Exception("Custom minimize command");
+        chromeProbe.WindowState=WindowState.Normal;
+        RenderControl((FrameworkElement)VisualTreeHelper.GetChild(chromeProbe,0),"custom-window-chrome",640,400);
+        SystemCommands.CloseWindowCommand.Execute(null,chromeProbe);
+        if(chromeProbe.IsVisible)throw new Exception("Custom close command");
+        Console.WriteLine("PASS custom title bar, minimize/maximize/restore/close and fixed cursor on all resize edges");
         window.Close();app.Shutdown();
     }
 }
