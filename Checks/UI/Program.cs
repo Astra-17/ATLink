@@ -114,7 +114,55 @@ internal static class Program
         RenderControl(editor,"player-editor",1080,720);
         catalog.LoadNationalTeams(Path.Combine(root,"files","FC26_NATIONAL_TEAM_IDS.csv"));
         var popupPlayerId=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).GroupBy(r=>FootballCatalog.Value(r,"playerid")).First(g=>g.Count()==1).Key;
-        var badgeCard=new ATLink.Views.PlayerBrowser.PlayerCard(catalog.Entities("players").First(),new Dictionary<string,string>());
+        foreach(var editorSource in new[]{"fifa_ng_db.db","Squads20260905195257141"})
+        {
+            var editorDoc=DatabaseDocument.Open(Path.Combine(root,"files",editorSource),Path.Combine(root,"files/fifa_ng_db-meta.xml"));
+            var editorCatalog=new FootballCatalog(editorDoc);editorCatalog.LoadNationalTeams(Path.Combine(root,"files/FC26_NATIONAL_TEAM_IDS.csv"));
+            var editorPlayer=editorCatalog.Entities("players").First();
+            var editorPage=new ATLink.Views.PlayerEditor(editorCatalog,editorPlayer);
+            var editorDraft=editorPage.Draft;
+            var before=(object[])editorPlayer.Row.ItemArray.Clone();
+            if(((System.Windows.Controls.TabControl)editorPage.FindName("EditorTabs")).SelectedIndex!=0)throw new Exception("Player editor must open on Info");
+            editorDraft.Attributes.First(a=>a.Field=="finishing").Text="invalid";
+            if(editorDraft.Valid)throw new Exception("Invalid attribute accepted");
+            try{editorDraft.Apply();throw new Exception("Invalid draft applied");}catch(InvalidOperationException){}
+            if(!before.SequenceEqual(editorPlayer.Row.ItemArray))throw new Exception("Draft mutated player before Apply");
+            foreach(var a in editorDraft.Attributes)a.Text="90";
+            if(editorDraft.Overall!=90||editorDraft.PositionRatings.Any(p=>p.Rating!=90))throw new Exception("Live weighted ratings did not update");
+            editorDraft.Potential.Text="95";editorDraft.Apply();
+            if(FootballCatalog.Value(editorPlayer.Row,"overallrating")!="90"||FootballCatalog.Value(editorPlayer.Row,"potential")!="95")throw new Exception("Ratings not applied");
+            var saved=Path.Combine(output,"attribute-edit-"+editorSource);editorDoc.SaveAs(saved);
+            var reopened=new FootballCatalog(DatabaseDocument.Open(saved,Path.Combine(root,"files/fifa_ng_db-meta.xml")));
+            if(FootballCatalog.Value(reopened.Entities("players").First(p=>p.Id==editorPlayer.Id).Row,"finishing")!="90")throw new Exception("Attribute edit did not survive reopen");
+            File.Delete(saved);
+            editorDraft.Reset();editorDraft.Apply();
+            if(!before.SequenceEqual(editorPlayer.Row.ItemArray))throw new Exception("Reset did not restore initial values");
+            ((System.Windows.Controls.TabControl)editorPage.FindName("EditorTabs")).SelectedIndex=1;
+            RenderControl(editorPage,"player-attributes-"+editorSource,1280,850);
+            var typingWindow=new Window{Content=editorPage,Width=1280,Height=900};
+            typingWindow.Show();typingWindow.Activate();editorPage.UpdateLayout();
+            void PumpTyping()
+            {
+                var frame=new DispatcherFrame();
+                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(()=>frame.Continue=false));
+                Dispatcher.PushFrame(frame);
+            }
+            foreach(string field in new[]{"finishing","potential"})
+            {
+                var input=BadgeDescendants(editorPage).OfType<System.Windows.Controls.TextBox>()
+                    .Single(t=>t.DataContext is ATLink.Views.AttributeDraft a&&a.Field==field);
+                input.Focus();System.Windows.Input.Keyboard.Focus(input);input.SelectAll();
+                input.SelectedText="8";PumpTyping();
+                if(!ReferenceEquals(System.Windows.Input.Keyboard.FocusedElement,input))throw new Exception("First digit lost keyboard focus: "+field);
+                input.CaretIndex=input.Text.Length;input.SelectionLength=0;input.SelectedText="9";PumpTyping();
+                if(input.Text!="89"||!ReferenceEquals(System.Windows.Input.Keyboard.FocusedElement,input)
+                    ||!BadgeDescendants(editorPage).Contains(input))throw new Exception("Two-digit typing rebuilt editor: "+field);
+            }
+            editorDraft.Reset();
+            typingWindow.Content=null;typingWindow.Close();
+            Console.WriteLine("PASS two-digit attribute and potential typing retains the original focused TextBox");
+            Console.WriteLine("PASS player Attributes live OVR, validation, isolation, reset and save/reopen: "+editorSource);
+        }        var badgeCard=new ATLink.Views.PlayerBrowser.PlayerCard(catalog.Entities("players").First(),new Dictionary<string,string>());
         var badgeDetails=new ATLink.Views.PlayerDetails{DataContext=badgeCard};
         RenderControl(badgeDetails,"player-details-badges",600,900);
         IEnumerable<DependencyObject> BadgeDescendants(DependencyObject parent)

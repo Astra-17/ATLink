@@ -86,7 +86,7 @@
      </Grid>
      <Border Style="{StaticResource Divider}"/>
      <DockPanel Margin="0,14,0,14">
-      <DockPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Width="38" Height="26" Margin="8,0,0,0"><TextBlock Text="{Binding Potential}" FontSize="14" FontWeight="SemiBold" Foreground="#FFBCADD9" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Potential" VerticalAlignment="Center"/></DockPanel>
+      <DockPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Width="38" Height="26" Margin="8,0,10,0"><TextBlock Text="{Binding Potential}" FontSize="14" FontWeight="SemiBold" Foreground="#FFBCADD9" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Potential" VerticalAlignment="Center"/></DockPanel>
      <Border HorizontalAlignment="Left" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0,0,0,3" Padding="14,0,14,10">
       <TextBlock Text="Overview" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
      </Border>

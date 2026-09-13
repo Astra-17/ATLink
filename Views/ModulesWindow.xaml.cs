@@ -13,7 +13,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     public event Action? DatabaseRequested;
     public event Action? TablesRequested;
     public event Action? SettingsRequested;
-    void TablesClick(object sender,RoutedEventArgs e)=>TablesRequested?.Invoke();
+    void TablesClick(object sender,RoutedEventArgs e){if(PlayerContent.Content is not PlayerEditor editor||editor.CanLeave())TablesRequested?.Invoke();}
     void SettingsClick(object sender,RoutedEventArgs e)=>SettingsRequested?.Invoke();
     private readonly DatabaseDocument document;
     private readonly FootballCatalog catalog;
@@ -29,6 +29,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     }
     private void Switch(string module)
     {
+        if(PlayerContent.Content is PlayerEditor pending&&!pending.CanLeave())return;
         kind=module=="stadiums"&&document.Tables.All(t=>t.Name!="stadiums")?"ssfstadiums":module;
         foreach(Button button in ModuleNavigation.Children)
         {
@@ -64,7 +65,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private void Refresh()=>Results.ItemsSource=items.Where(i=>i.Name.Contains(Search.Text,StringComparison.CurrentCultureIgnoreCase)||i.Id.Contains(Search.Text)).ToArray();
     private void ModuleClick(object sender,RoutedEventArgs e){try{Switch((string)((Button)sender).Tag);}catch(Exception ex){Error(ex);}}
     private void SearchChanged(object sender,TextChangedEventArgs e){if(Results is not null)Refresh();}
-    private void HomeClick(object sender,RoutedEventArgs e){if(DatabaseRequested is not null)DatabaseRequested();else Closed?.Invoke(false);}
+    private void HomeClick(object sender,RoutedEventArgs e){if(PlayerContent.Content is PlayerEditor editor&&!editor.CanLeave())return;if(DatabaseRequested is not null)DatabaseRequested();else Closed?.Invoke(false);}
     private void EditDoubleClick(object sender,MouseButtonEventArgs e)=>EditClick(sender,e);
     private UserControl EditorFor(EntityItem item,string title)
     {
@@ -76,6 +77,13 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         if(Results.SelectedItem is not EntityItem item)return;
         try
         {
+            if(kind=="players")
+            {
+                var playerEditor=new PlayerEditor(catalog,item);
+                playerEditor.BackRequested+=()=>Switch("players");
+                PlayerContent.Content=playerEditor;
+                return;
+            }
             var editor=EditorFor(item,item.Name);
             if(editor is IWorkspacePage hosted)hosted.Closed+=ok=>{if(ok){string search=Search.Text;Switch(kind=="ssfstadiums"?"stadiums":kind);Search.Text=search;Status.Text="Changes applied in memory.";}};
             WorkspaceController.Open(editor);
@@ -104,6 +112,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private void FormationClick(object sender,RoutedEventArgs e){if(Results.SelectedItem is not EntityItem team)return;try{WorkspaceController.Open(new FormationWindow(catalog,team.Id));}catch(Exception ex){Error(ex);}}
     private void SaveClick(object sender,RoutedEventArgs e)
     {
+        if(PlayerContent.Content is PlayerEditor editor&&!editor.TryApply())return;
         var dialog=new SaveFileDialog{Filter="Database (*.db)|*.db",FileName=Path.GetFileNameWithoutExtension(document.SourcePath)+"-edited.db"};if(!ShellDialogs.Open(dialog,this))return;
         try{document.SaveAs(dialog.FileName);Status.Text="Saved: "+dialog.FileName;}catch(Exception ex){Error(ex);}
     }
