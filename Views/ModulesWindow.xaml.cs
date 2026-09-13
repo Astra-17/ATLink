@@ -33,7 +33,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         foreach(Button button in ModuleNavigation.Children)
         {
             bool active=(string)button.Tag==module;
-            button.Background=StudioPalette.Get(active?"AccentBrush":"RailBrush");
+            button.Background=StudioPalette.Get(active?"AccentBrush":"InactiveNavigationBrush");
             button.BorderBrush=StudioPalette.Get(active?"AccentBrush":"LineBrush");
             button.FontWeight=active?FontWeights.SemiBold:FontWeights.Normal;
         }

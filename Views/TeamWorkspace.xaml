@@ -9,12 +9,12 @@
   </ResourceDictionary>
  </UserControl.Resources>
  <DockPanel Background="{DynamicResource BackgroundBrush}">
-  <Border DockPanel.Dock="Top" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
+  <Border DockPanel.Dock="Top" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="Apply" Click="ApplyClick" Style="{StaticResource ApplyButton}"/>
-     <Button Content="Apply and Back" Click="ApplyBackClick" Margin="0,0,8,0"/>
-     <Button Content="Apply and Save" Click="ApplySaveClick"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="Apply" Click="ApplyClick" Style="{StaticResource ApplyButton}"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="Apply and Back" Click="ApplyBackClick" Margin="0,0,8,0"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="Apply and Save" Click="ApplySaveClick"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal">
      <Button Content="Back" Click="CancelClick" VerticalAlignment="Center" Margin="0,0,14,0"/>

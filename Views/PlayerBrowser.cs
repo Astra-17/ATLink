@@ -136,6 +136,26 @@ public sealed class PlayerBrowser : UserControl
         public DateTime? Birth {get {if(!int.TryParse(Raw("birthdate"),out int days)||days<=0||days>200000)return null;return new DateTime(1582,10,14).AddDays(days);}}
         public int? Age {get {if(Birth is not DateTime b||b>DateTime.Today)return null;int age=DateTime.Today.Year-b.Year;return b>DateTime.Today.AddYears(-age)?age-1:age;}}
         public int Overall=>int.TryParse(Raw("overallrating"),out int v)?v:0;
+        public sealed record AttributeRating(string Name,int Rating);
+        static readonly (string Field,string Name)[] RatedAttributes=
+        [
+            ("acceleration","Acceleration"),("sprintspeed","Sprint speed"),("agility","Agility"),
+            ("balance","Balance"),("jumping","Jumping"),("stamina","Stamina"),("strength","Strength"),
+            ("reactions","Reactions"),("aggression","Aggression"),("composure","Composure"),
+            ("interceptions","Interceptions"),("positioning","Attacking positioning"),("vision","Vision"),
+            ("ballcontrol","Ball control"),("crossing","Crossing"),("curve","Curve"),
+            ("dribbling","Dribbling"),("finishing","Finishing"),("freekickaccuracy","Free kick accuracy"),
+            ("headingaccuracy","Heading accuracy"),("longpassing","Long passing"),("longshots","Long shots"),
+            ("marking","Defensive awareness"),("penalties","Penalties"),("shortpassing","Short passing"),
+            ("shotpower","Shot power"),("slidingtackle","Sliding tackle"),("standingtackle","Standing tackle"),
+            ("volleys","Volleys"),("gkdiving","GK diving"),("gkhandling","GK handling"),
+            ("gkkicking","GK kicking"),("gkpositioning","GK positioning"),("gkreflexes","GK reflexes")
+        ];
+        public IReadOnlyList<AttributeRating> MainAttributes=>RatedAttributes
+            .Select(a=>new AttributeRating(a.Name,int.TryParse(Raw(a.Field),out int rating)?rating:0))
+            .Where(a=>a.Rating is >=1 and <=99)
+            .OrderByDescending(a=>a.Rating).ThenBy(a=>a.Name,StringComparer.Ordinal)
+            .Take(6).ToArray();
         public int Potential=>int.TryParse(Raw("potential"),out int v)?v:0;
         public string Position=>int.TryParse(Raw("preferredposition1"),out int v)&&v>=0&&v<PlayerProfileImport.PositionCodes.Length?PlayerProfileImport.PositionCodes[v]:"—";
         static readonly string[] PositionNames=["Goalkeeper","Sweeper","Right Wing Back","Right Back","Right Centre Back","Centre Back","Left Centre Back","Left Back","Left Wing Back","Right Defensive Midfielder","Central Defensive Midfielder","Left Defensive Midfielder","Right Midfielder","Right Centre Midfielder","Central Midfielder","Left Centre Midfielder","Left Midfielder","Right Attacking Midfielder","Central Attacking Midfielder","Left Attacking Midfielder","Right Forward","Centre Forward","Left Forward","Right Winger","Right Striker","Striker","Left Striker","Left Winger"];

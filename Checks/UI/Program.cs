@@ -114,6 +114,24 @@ internal static class Program
         RenderControl(editor,"player-editor",1080,720);
         catalog.LoadNationalTeams(Path.Combine(root,"files","FC26_NATIONAL_TEAM_IDS.csv"));
         var popupPlayerId=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).GroupBy(r=>FootballCatalog.Value(r,"playerid")).First(g=>g.Count()==1).Key;
+        var badgeCard=new ATLink.Views.PlayerBrowser.PlayerCard(catalog.Entities("players").First(),new Dictionary<string,string>());
+        var badgeDetails=new ATLink.Views.PlayerDetails{DataContext=badgeCard};
+        RenderControl(badgeDetails,"player-details-badges",600,900);
+        IEnumerable<DependencyObject> BadgeDescendants(DependencyObject parent)
+        {
+            for(int i=0;i<VisualTreeHelper.GetChildrenCount(parent);i++)
+            {
+                var child=VisualTreeHelper.GetChild(parent,i);yield return child;
+                foreach(var nested in BadgeDescendants(child))yield return nested;
+            }
+        }
+        var badgeTexts=BadgeDescendants(badgeDetails).OfType<System.Windows.Controls.Border>()
+            .Where(b=>b.Width==38&&b.Height==26).Select(b=>b.Child).OfType<System.Windows.Controls.TextBlock>().ToArray();
+        if(badgeCard.MainAttributes.Count!=6||badgeTexts.Length!=7||badgeTexts.Any(t=>string.IsNullOrWhiteSpace(t.Text)||t.ActualWidth<=0||t.ActualHeight<=0||t.FontSize!=14))
+            throw new Exception("Player details ratings and potential must display centered numeric text at 14px");
+        foreach(var rating in badgeCard.MainAttributes)
+            if(!badgeTexts.Any(t=>t.Text==rating.Rating.ToString()))throw new Exception("Missing main attribute rating text");
+        Console.WriteLine("PASS six numeric attribute badges and potential text are visible at 14px");
         var transferPopup=new ATLink.Views.PlayerTransferWindow(catalog,catalog.Entities("players").First(p=>p.Id==popupPlayerId));
         var clubBox=(System.Windows.Controls.ComboBox)transferPopup.FindName("Clubs");
         if(!clubBox.IsEditable || !System.Windows.Controls.VirtualizingPanel.GetIsVirtualizing(clubBox))

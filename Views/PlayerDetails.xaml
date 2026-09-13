@@ -22,8 +22,8 @@
     <Setter Property="Template"><Setter.Value>
      <ControlTemplate TargetType="ContentControl">
       <DockPanel>
-       <Border DockPanel.Dock="Right" Background="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource RatingBrushConverter}}" CornerRadius="4" Padding="6,3">
-        <TextBlock Text="{TemplateBinding Tag}" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"/>
+       <Border DockPanel.Dock="Right" Background="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource RatingBrushConverter}}" CornerRadius="4" Width="38" Height="26" Margin="8,0,0,0">
+        <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" FontSize="14" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
        </Border>
        <TextBlock Text="{TemplateBinding Content}" TextWrapping="Wrap"/>
       </DockPanel>
@@ -33,7 +33,7 @@
   </ResourceDictionary>
  </UserControl.Resources>
  <!-- Panel frame and scrolling -->
- <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}"
+ <Border Background="{DynamicResource PlayerDetailsBrush}" BorderBrush="{DynamicResource LineBrush}"
          BorderThickness="1" CornerRadius="10" Padding="18">
   <Grid>
    <TextBlock Text="No players found" FontSize="20" FontWeight="SemiBold">
@@ -85,17 +85,20 @@
       </StackPanel>
      </Grid>
      <Border Style="{StaticResource Divider}"/>
-     <TextBlock Text="Overview" Style="{StaticResource SectionTitle}"/>
+     <DockPanel Margin="0,14,0,14">
+      <DockPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Width="38" Height="26" Margin="8,0,0,0"><TextBlock Text="{Binding Potential}" FontSize="14" FontWeight="SemiBold" Foreground="#FFBCADD9" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Potential" VerticalAlignment="Center"/></DockPanel>
+     <Border HorizontalAlignment="Left" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0,0,0,3" Padding="14,0,14,10">
+      <TextBlock Text="Overview" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+     </Border>
+     </DockPanel>
      <!-- Characteristics and preferred positions -->
      <Grid>
       <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
       <StackPanel>
        <TextBlock Text="Characteristics" FontSize="16" FontWeight="SemiBold"/>
        <TextBlock Text="{Binding [height], StringFormat=Height   {0} cm}"/>
-       <TextBlock Text="{Binding [weight], StringFormat=Weight   {0} kg}"/>
-       <TextBlock Text="{Binding Birth, StringFormat=Birth date   {0:dd MMM yyyy}, TargetNullValue=Birth date   —}" Language="en-US"/>
-       <TextBlock Text="{Binding Nationality, StringFormat=Nationality   {0}}" TextWrapping="Wrap"/>
-       <DockPanel Margin="0,3,10,0"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Padding="6,3"><TextBlock Text="{Binding Potential}" FontWeight="SemiBold" Foreground="#FFBCADD9"/></Border><TextBlock Text="Potential"/></DockPanel>
+                            <TextBlock Text="{Binding [weight], StringFormat=Weight   {0} kg}"/>
+                            
       </StackPanel>
       <StackPanel Grid.Column="1" Margin="12,0,0,0">
        <TextBlock Text="Positions" FontSize="16" FontWeight="SemiBold"/>
@@ -106,21 +109,22 @@
      </Grid>
      <Border Style="{StaticResource Divider}"/>
      <TextBlock Text="Main attributes" Style="{StaticResource SectionTitle}"/>
-     <!-- Change labels, bindings and row order here -->
-     <Grid>
-      <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <ContentControl Style="{StaticResource Attribute}" Content="Sprint speed" Tag="{Binding [sprintspeed]}"/>
-      <ContentControl Grid.Row="1" Style="{StaticResource Attribute}" Content="Acceleration" Tag="{Binding [acceleration]}"/>
-      <ContentControl Grid.Row="2" Style="{StaticResource Attribute}" Content="Finishing" Tag="{Binding [finishing]}"/>
-      <ContentControl Grid.Row="3" Style="{StaticResource Attribute}" Content="Dribbling" Tag="{Binding [dribbling]}"/>
-      <ContentControl Grid.Row="4" Style="{StaticResource Attribute}" Content="Ball control" Tag="{Binding [ballcontrol]}"/>
-      <ContentControl Grid.Column="1" Style="{StaticResource Attribute}" Content="Short passing" Tag="{Binding [shortpassing]}"/>
-      <ContentControl Grid.Column="1" Grid.Row="1" Style="{StaticResource Attribute}" Content="Vision" Tag="{Binding [vision]}"/>
-      <ContentControl Grid.Column="1" Grid.Row="2" Style="{StaticResource Attribute}" Content="Reactions" Tag="{Binding [reactions]}"/>
-      <ContentControl Grid.Column="1" Grid.Row="3" Style="{StaticResource Attribute}" Content="Stamina" Tag="{Binding [stamina]}"/>
-      <ContentControl Grid.Column="1" Grid.Row="4" Style="{StaticResource Attribute}" Content="Strength" Tag="{Binding [strength]}"/>
-     </Grid>
+     <!-- Six highest ratings, descending left to right, then top to bottom. -->
+     <ItemsControl ItemsSource="{Binding MainAttributes}" AlternationCount="4">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate><DataTemplate>
+       <Border Padding="8,3,0,3">
+        <Border.Style><Style TargetType="Border">
+         <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="2"><Setter Property="Background" Value="{DynamicResource AlternateRowBrush}"/></DataTrigger>
+          <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="3"><Setter Property="Background" Value="{DynamicResource AlternateRowBrush}"/></DataTrigger>
+         </Style.Triggers>
+        </Style></Border.Style>
+        <ContentControl Style="{StaticResource Attribute}" Content="{Binding Name}" Tag="{Binding Rating}"/>
+       </Border>
+      </DataTemplate></ItemsControl.ItemTemplate>
+     </ItemsControl>
      <TextBlock Text="Values reflect the loaded database. Missing values are shown as —." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,18,0,18" TextWrapping="Wrap"/>
      <Button Content="Edit player  →" Background="{DynamicResource AccentBrush}" Padding="16,12" Click="EditClick"/>
     </StackPanel>

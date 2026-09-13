@@ -1,0 +1,123 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <!-- MODE D'EMPLOI
+ Modifie Color="#..." pour une couleur unie, ou les Color des GradientStop pour un degrade.
+ StartPoint / EndPoint donnent la direction ; Offset indique la position de chaque couleur (0 a 1).
+ Ne renomme pas les x:Key : les vues utilisent ces noms.
+ Les valeurs sont independantes, meme si elles ont la meme couleur.
+ Enregistre, recompile puis relance l'application.
+ -->
+
+ <!-- ACCUEIL : choix Base DB / Selected DB -->
+ <LinearGradientBrush x:Key="HomeBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#21113F" Offset="0"/>
+  <GradientStop Color="#121021" Offset="0.55"/>
+  <GradientStop Color="#100D20" Offset="1"/>
+ </LinearGradientBrush>
+ <LinearGradientBrush x:Key="HomeCardBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#242038" Offset="0"/>
+  <GradientStop Color="#211D33" Offset="1"/>
+ </LinearGradientBrush>
+ <SolidColorBrush x:Key="HomeCardBorderBrush" Color="#6532A3"/>
+
+ <!-- ZONES SPECIFIQUES DANS L'APP -->
+ <!-- Barre de titre avec reduire / agrandir / fermer -->
+ <LinearGradientBrush x:Key="TitleBarBrush" StartPoint="0,0" EndPoint="1,0">
+  <GradientStop Color="#301264" Offset="0"/>
+  <GradientStop Color="#391775" Offset="0.48"/>
+  <GradientStop Color="#26134F" Offset="1"/>
+ </LinearGradientBrush>
+ <!-- Bandeau de statut en bas -->
+ <SolidColorBrush x:Key="StatusBarBrush" Color="#141121"/>
+ <!-- Fond de la fiche de details du joueur -->
+    <LinearGradientBrush x:Key="PlayerDetailsBrush" StartPoint="0,0" EndPoint="0.8,1">
+  <GradientStop Color="#281744" Offset="0"/>
+  <GradientStop Color="#1B152E" Offset="0.25"/>
+  <GradientStop Color="#141222" Offset="0.6"/>
+  <GradientStop Color="#141121" Offset="1"/>
+ </LinearGradientBrush>
+ <!-- Fond derriere la boite de chargement (DD = opacite) -->
+ <SolidColorBrush x:Key="LoadingOverlayBrush" Color="#DD100D20"/>
+
+ <!-- COULEURS PARTAGEES : pages XAML et pages construites en C# -->
+ <!-- Fond principal des pages dans l application -->
+ <LinearGradientBrush x:Key="BackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#151027" Offset="0"/>
+  <GradientStop Color="#100E1E" Offset="0.55"/>
+  <GradientStop Color="#100D20" Offset="1"/>
+ </LinearGradientBrush>
+
+ <!-- Menu lateral -->
+ <LinearGradientBrush x:Key="RailBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#21103F" Offset="0"/>
+  <GradientStop Color="#19112F" Offset="0.5"/>
+  <GradientStop Color="#170F2C" Offset="1"/>
+ </LinearGradientBrush>
+
+ <!-- En-tetes des pages -->
+ <LinearGradientBrush x:Key="HeaderBrush" StartPoint="0,0" EndPoint="1,0">
+  <GradientStop Color="#301264" Offset="0"/>
+  <GradientStop Color="#391775" Offset="0.48"/>
+  <GradientStop Color="#26134F" Offset="1"/>
+ </LinearGradientBrush>
+<!-- Boutons standards au repos -->
+ <LinearGradientBrush x:Key="InactiveButtonBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#242038" Offset="0"/>
+  <GradientStop Color="#211D33" Offset="1"/>
+ </LinearGradientBrush>
+<!-- Boutons du menu non selectionnes -->
+ <SolidColorBrush x:Key="InactiveNavigationBrush" Color="#001A112F"/>
+
+ <!-- Contours et separateurs -->
+ <SolidColorBrush x:Key="LineBrush" Color="#35284F"/>
+
+ <!-- Texte principal -->
+ <SolidColorBrush x:Key="TextBrush" Color="#F3EEFF"/>
+
+ <!-- Texte secondaire -->
+ <SolidColorBrush x:Key="MutedBrush" Color="#C3B5E3"/>
+
+ <!-- Boutons actifs et validation -->
+ <LinearGradientBrush x:Key="AccentBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#7927EF" Offset="0"/>
+  <GradientStop Color="#641BDD" Offset="0.55"/>
+  <GradientStop Color="#611AD4" Offset="1"/>
+ </LinearGradientBrush>
+
+ <!-- Panneaux, cartes et fiches -->
+ <SolidColorBrush x:Key="PanelBrush" Color="#171425"/>
+
+ <!-- Champs de saisie et listes deroulantes -->
+ <LinearGradientBrush x:Key="InputBrush" StartPoint="0,0" EndPoint="1,1">
+  <GradientStop Color="#242038" Offset="0"/>
+  <GradientStop Color="#211D33" Offset="1"/>
+ </LinearGradientBrush>
+
+ <!-- Survol -->
+ <SolidColorBrush x:Key="HoverBrush" Color="#2B1C43"/>
+
+ <!-- Lignes selectionnees dans les listes -->
+ <LinearGradientBrush x:Key="SelectionBrush" StartPoint="0,0" EndPoint="1,0">
+  <GradientStop Color="#3B1D68" Offset="0"/>
+  <GradientStop Color="#3B2064" Offset="0.5"/>
+  <GradientStop Color="#351B60" Offset="1"/>
+ </LinearGradientBrush>
+
+ <!-- Texte accentue -->
+ <SolidColorBrush x:Key="AccentTextBrush" Color="#CA83FF"/>
+
+ <!-- Messages d erreur -->
+ <SolidColorBrush x:Key="ErrorBrush" Color="#FF929F"/>
+
+ <!-- Fond du terrain -->
+ <SolidColorBrush x:Key="PitchBrush" Color="#181427"/>
+
+ <!-- Lignes du terrain -->
+ <SolidColorBrush x:Key="PitchLineBrush" Color="#645078"/>
+
+ <!-- Tableau : en-tete et alternance des lignes -->
+ <LinearGradientBrush x:Key="TableHeaderBrush" StartPoint="0,0" EndPoint="0,1">
+  <GradientStop Color="#241B37" Offset="0"/><GradientStop Color="#1C172E" Offset="1"/>
+ </LinearGradientBrush>
+ <SolidColorBrush x:Key="AlternateRowBrush" Color="#1B172B"/>
+</ResourceDictionary>
