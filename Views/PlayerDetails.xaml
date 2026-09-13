@@ -61,28 +61,28 @@
       </StackPanel>
       <StackPanel Grid.Column="1" Margin="0,2,12,0">
        <WrapPanel>
-        <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
        </WrapPanel>
-       <StackPanel Orientation="Horizontal" Margin="0,8,0,3" Visibility="{Binding HasClub, Converter={StaticResource BoolVisibility}}">
-        <Border Width="27.5" Height="25" Margin="0,0,8,0">
-         <Image Source="{Binding ClubCrest}" Stretch="Uniform"/>
-        </Border>
-        <TextBlock Text="{Binding ClubName}" FontSize="16.25" VerticalAlignment="Center" TextWrapping="Wrap"/>
+       <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+        <views:FlagImage Source="{Binding Flag}" Width="22" Height="20"  Margin="0,0,8,0"/>
+        <TextBlock Text="{Binding Nationality}" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" />
        </StackPanel>
-       <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
-        <views:FlagImage Source="{Binding Flag}" Width="22" Height="20" Margin="0,0,8,0"/>
-        <TextBlock Text="{Binding Nationality}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-       </StackPanel>
-       <TextBlock Text="{Binding PositionDescription}" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding AgeAndBirthDate}" Margin="0,2,0,8"/>
-       <TextBlock Text="{Binding Value}" FontSize="16" FontWeight="SemiBold"/>
-       <TextBlock Text="Market value" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
-       <TextBlock Text="{Binding ContractText}" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding PositionDescription}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+       <TextBlock Text="{Binding AgeAndBirthDate}" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+       <TextBlock Text="{Binding Value}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4"/>
+       <TextBlock Text="Market value" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+       <TextBlock Text="{Binding ContractText}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
       </StackPanel>
-      <Border Grid.Column="2" MinWidth="48" MinHeight="48" Padding="10,4" VerticalAlignment="Top"
+      <StackPanel Grid.Column="2" VerticalAlignment="Top">
+      <Border MinWidth="48" MinHeight="48" Padding="10,4" VerticalAlignment="Top"
               Background="{Binding Overall, Converter={StaticResource RatingBrushConverter}}" CornerRadius="8" Margin="10">
        <TextBlock Text="{Binding Overall}" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
       </Border>
+       <Border Width="45" Height="40" HorizontalAlignment="Center" Background="Transparent"
+               Visibility="{Binding HasClub, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding ClubName}">
+        <Image Source="{Binding ClubCrest}" Stretch="Uniform"/>
+       </Border>
+      </StackPanel>
      </Grid>
      <Border Style="{StaticResource Divider}"/>
      <TextBlock Text="Overview" Style="{StaticResource SectionTitle}"/>
