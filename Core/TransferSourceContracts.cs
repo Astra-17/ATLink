@@ -7,6 +7,11 @@ public sealed class SourceTransfer
     public string FromClub {get;init;} = "";
     public string ToClub {get;init;} = "";
     public string Phase {get;init;} = "";
+    public string PlayerProfileUrl {get;init;} = "";
+    public bool IsLoan {get;init;}
+    public bool IsLoanToBuy {get;init;}
+    public DateOnly? LoanEndDate {get;init;}
+    public string LoanError {get;init;} = "";
 }
 public sealed class SourceFetchResult
 {
@@ -25,15 +30,16 @@ public sealed class TransferLog : ITransferLog
         => System.Diagnostics.Trace.TraceError($"{message} {exception}");
 }
 
+public sealed record TransferProgress(string Message,int Completed=0,int Total=0);
 public static class TransferImport
 {
     public static IReadOnlyList<MarketTransfer> Combine(IEnumerable<IReadOnlyList<SourceTransfer>> leagues)
     {
         // Do not deduplicate players: A -> B -> C is two distinct ordered movements.
         return leagues.SelectMany(l => l.OrderBy(t => t.Sequence))
-            .Select((t,i) => new MarketTransfer(i+1,t.PlayerName,t.FromClub,t.ToClub,t.Phase)).ToArray();
+            .Select((t,i) => new MarketTransfer(i+1,t.PlayerName,t.FromClub,t.ToClub,t.Phase,t.IsLoan,t.IsLoanToBuy,t.LoanEndDate,t.LoanError)).ToArray();
     }
-    public static async Task<IReadOnlyList<MarketTransfer>> FetchAsync(IEnumerable<string> urls, CancellationToken token=default)
+    public static async Task<IReadOnlyList<MarketTransfer>> FetchAsync(IEnumerable<string> urls, CancellationToken token=default,IProgress<TransferProgress>? progress=null)
     {
         using var source = new TransfermarktSource(new TransferLog(),new NameNormalizer());
         var batches = new List<IReadOnlyList<SourceTransfer>>();
@@ -41,7 +47,7 @@ public static class TransferImport
         {
             if(!CompetitionCatalog.All.Any(c=>c.TransfermarktUrl==url))
                 throw new InvalidDataException("Choose a supported Transfermarkt competition.");
-            var result=await source.FetchTransfersAsync(url,token).ConfigureAwait(false);
+            var result=await source.FetchTransfersAsync(url,token,progress).ConfigureAwait(false);
             if(!result.Success)throw new InvalidDataException(result.UserMessage);
             batches.Add(result.Transfers);
         }

@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 namespace ATLink.Core;
-public sealed record MarketTransfer(int Sequence,string Player,string OldClub,string NewClub,string Phase);
+public sealed record MarketTransfer(int Sequence,string Player,string OldClub,string NewClub,string Phase,bool IsLoan=false,bool IsLoanToBuy=false,DateOnly? LoanEndDate=null,string LoanError="");
 public sealed class ResolvedTransfer
 {
     public int Sequence {get;init;}

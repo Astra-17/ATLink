@@ -7,10 +7,12 @@ public static class UnresolvedReasons
     public const string DestinationTeamNotFound="destination_team_not_found";
     public const string AmbiguousDestinationTeam="ambiguous_destination_team";
     public const string InvalidTransferData="invalid_transfer_data";
+    public const string SourceTeamNotFound="source_team_not_found";
+    public const string AmbiguousSourceTeam="ambiguous_source_team";
     public const string Retirement="retirement";
 }
 
-public sealed record LiveResolvedTransfer(int Sequence,string PlayerName,string PlayerId,string FromClub,string ToClub,string ToTeamId,string ToTeamName,string ShirtNumber,string PlayerMatchMethod,string TeamMatchMethod,string Phase="");
+public sealed record LiveResolvedTransfer(int Sequence,string PlayerName,string PlayerId,string FromClub,string ToClub,string ToTeamId,string ToTeamName,string ShirtNumber,string PlayerMatchMethod,string TeamMatchMethod,string Phase="",bool IsLoan=false,bool IsLoanToBuy=false,DateOnly? LoanEndDate=null,string LoanError="",string LoanSourceTeamId="",string LoanSourceError="");
 public sealed record LiveUnresolvedTransfer(int Sequence,string PlayerName,string FromClub,string ToClub,string Reason,string Details);
 public sealed record LiveResolveResult(IReadOnlyList<LiveResolvedTransfer> Resolved,IReadOnlyList<LiveUnresolvedTransfer> Unresolved);
 
@@ -59,7 +61,6 @@ public sealed class TransferLiveResolver
             return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,UnresolvedReasons.Retirement,"Fin de carrière"));
         if(toClub.Length==0)
             return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,UnresolvedReasons.InvalidTransferData,"Club de destination manquant"));
-
         var player=ResolvePlayer(playerName,fromClub,out var playerMethod,out var playerDetails);
         if(player is null)
             return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,playerMethod,playerDetails));
@@ -76,7 +77,14 @@ public sealed class TransferLiveResolver
             return (null,new LiveUnresolvedTransfer(sequence,playerName,fromClub,toClub,reason,clubResult.Diagnostic is null ? details : System.Text.Json.JsonSerializer.Serialize(clubResult.Diagnostic)));
         }
 
-        return (new LiveResolvedTransfer(sequence,playerName,player.PlayerId,fromClub,toClub,clubResult.Team.TeamId.ToString(),clubResult.Team.TeamName,player.ShirtNumber,playerMethod,clubResult.MatchMethod,transfer.Phase),null);
+        string loanSourceId="",loanSourceError="";
+        if(transfer.IsLoan)
+        {
+            var sourceResult=clubs.ResolveClub(fromClub);
+            if(sourceResult.Team is not null)loanSourceId=sourceResult.Team.TeamId.ToString();
+            else loanSourceError=sourceResult.MatchMethod=="ambiguous"?UnresolvedReasons.AmbiguousSourceTeam:UnresolvedReasons.SourceTeamNotFound;
+        }
+        return (new LiveResolvedTransfer(sequence,playerName,player.PlayerId,fromClub,toClub,clubResult.Team.TeamId.ToString(),clubResult.Team.TeamName,player.ShirtNumber,playerMethod,clubResult.MatchMethod,transfer.Phase,transfer.IsLoan,transfer.IsLoanToBuy,transfer.LoanEndDate,transfer.LoanError,loanSourceId,loanSourceError),null);
     }
 
     public bool MatchesSourceClub(string transfermarktFromClub,string fc26TeamId,string fc26TeamName)

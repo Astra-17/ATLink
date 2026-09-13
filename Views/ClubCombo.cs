@@ -26,7 +26,9 @@ internal static class ClubCombo
 
     public static ICollectionView Attach(ComboBox box,ClubOption[] choices)
     {
-        var view=CollectionViewSource.GetDefaultView(choices);
+        // A filtered default view is shared by every ItemsControl bound to this array.
+        // Keep popup searches isolated so they cannot hide destinations in the Transfers grid.
+        var view=new ListCollectionView(choices.ToList());
         box.ItemsSource=view;
         box.IsEditable=true;box.IsTextSearchEnabled=false;box.StaysOpenOnEdit=true;
         TextSearch.SetTextPath(box,"Label");
@@ -115,7 +117,7 @@ public sealed class TransferDraft:INotifyPropertyChanged
     public string TeamMatchMethod {get;init;} = "";
 
     ClubOption? destination;
-    string number="",contract="";
+    string number="",contract="",loanEnd="";
     public event PropertyChangedEventHandler? PropertyChanged;
     public required string PlayerId {get;init;}
     public required string PlayerName {get;init;}
@@ -145,5 +147,19 @@ public sealed class TransferDraft:INotifyPropertyChanged
     {
         get=>contract;
         set{contract=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Contract)));}
+    }
+    public bool IsLoan {get;init;}
+    public string LoanSourceTeamId {get;init;}="";
+    public bool IsLoanToBuy {get;set;}
+    public string MovementType=>IsLoan?"Loan":"Transfer";
+    public string LoanEnd
+    {
+        get=>loanEnd;
+        set{loanEnd=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(LoanEnd)));PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Terms)));}
+    }
+    public string Terms
+    {
+        get=>IsLoan?LoanEnd:Contract;
+        set{if(IsLoan)LoanEnd=value;else Contract=value;PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Terms)));}
     }
 }

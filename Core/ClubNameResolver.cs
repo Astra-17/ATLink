@@ -89,7 +89,7 @@ public sealed class ClubNameResolver
         return resolver;
     }
 
-    public const double FuzzyThreshold = 0.92;
+    public const double FuzzyThreshold = 0.83;
     public const double FuzzyMargin = 0.05;
     private readonly NameNormalizer _normalizer;
     private readonly List<Entry> _teams;
@@ -114,7 +114,11 @@ public sealed class ClubNameResolver
         // Small semantic groups, deliberately bidirectional; not a generated acronym dictionary.
         string[][] groups = [
             ["PSV", "PSV Eindhoven"], ["PSG", "Paris Saint-Germain"],
-            ["OM", "Olympique de Marseille"], ["OL", "Olympique Lyonnais"],
+            ["OM", "Olympique de Marseille", "Olympique Marseille"], ["OL", "Olympique Lyonnais", "Olympique Lyon"],
+            ["QPR", "Queens Park Rangers"], ["LASK", "LASK Linz"],
+            ["AIK", "AIK Solna"], ["STVV", "Sint-Truidense VV"],
+            ["FCSB", "FC FCSB"], ["GAIS", "GAIS Göteborg"],
+            ["IDV", "Independiente del Valle"],
             ["LOSC", "LOSC Lille", "Lille OSC"],
             ["RB Salzburg", "Red Bull Salzburg", "Red Bull Salzbourg", "FC Red Bull Salzburg"],
             ["Man Utd", "Man United", "Manchester United"], ["Spurs", "Tottenham", "Tottenham Hotspur"],
@@ -165,6 +169,8 @@ public sealed class ClubNameResolver
             ["SCR Altach", "SC Rheindorf Altach"],
             ["Red Bull New York", "New York Red Bulls"],
             ["CS Universitatea Craiova", "U Craiova 1948 Club Sportiv"]
+            ,["Cercle Bruges", "Cercle Brugge"]
+            ,["Union Saint-Gilloise", "Union Saint Gilloise", "Royale Union Saint-Gilloise", "Union SG", "R. Union St.-G."]
         ];
         foreach (var group in groups)
             foreach (var name in group)
@@ -320,6 +326,9 @@ public sealed class ClubNameResolver
             if (scores.Count > 0 && scores[0].Score > FuzzyThreshold)
             {
                 var second = scores.Count > 1 ? scores[1].Score : 0;
+                var tied=scores.Where(s=>Math.Abs(s.Score-scores[0].Score)<1e-12).SelectMany(s=>s.Entries)
+                    .OrderBy(entry=>entry.Team.TeamId).ToArray();
+                if(tied.Length>1)return Success(tied[0].Team,"fuzzy",scores[0].Score);
                 if (scores[0].Score - second < FuzzyMargin) return Failure(query, "ambiguous");
                 return Select(scores[0].Entries, query, "fuzzy", scores[0].Score)!;
             }

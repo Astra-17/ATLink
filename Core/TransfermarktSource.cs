@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 
@@ -14,7 +15,7 @@ public sealed class TransfermarktSource : IDisposable
     private static readonly Regex ClubPath = new(@"/(startseite|kader|plan|news)/verein/", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly HashSet<string> LoanEndTokens =
     [
-        "end of loan", "fin de pret", "fin de prêt", "leih-ende", "retour de pret", "retour de prêt",
+        "end of loan", "fin de pret", "fin de prêt", "fin du pret", "fin du prêt", "leih-ende", "retour de pret", "retour de prêt", "retour du pret", "retour du prêt",
         "leiheende", "loan end"
     ];
 
@@ -54,7 +55,7 @@ public sealed class TransfermarktSource : IDisposable
         return TryNormalizeUrl(url, out _);
     }
 
-    public async Task<SourceFetchResult> FetchTransfersAsync(string url, CancellationToken cancellationToken = default)
+    public async Task<SourceFetchResult> FetchTransfersAsync(string url, CancellationToken cancellationToken = default,IProgress<TransferProgress>? progress=null)
     {
         if (!TryNormalizeUrl(url, out var normalized))
         {
@@ -63,6 +64,7 @@ public sealed class TransfermarktSource : IDisposable
 
         try
         {
+            progress?.Report(new("Downloading competition transfers…"));
             using var response = await SendWithRetryAsync(normalized, cancellationToken).ConfigureAwait(false);
             var status = (int)response.StatusCode;
 
@@ -103,6 +105,7 @@ public sealed class TransfermarktSource : IDisposable
                 return Fail("Aucun transfert détecté sur cette page.", normalized, status);
             }
 
+            transfers = await EnrichLoansAsync(transfers,normalized,cancellationToken,progress).ConfigureAwait(false);
             return new SourceFetchResult
             {
                 Success = true,
@@ -184,7 +187,7 @@ public sealed class TransfermarktSource : IDisposable
                 continue;
             }
 
-            var feeText = _normalizer.Normalize(row.InnerText);
+            var feeText = _normalizer.Normalize(ExtractFeeText(row));
             if (LoanEndTokens.Any(token => feeText.Contains(_normalizer.Normalize(token))))
             {
                 continue;
@@ -198,6 +201,10 @@ public sealed class TransfermarktSource : IDisposable
 
             var fromClub = isArrival ? otherClub : boxClub;
             var toClub = isArrival ? boxClub : otherClub;
+            var normalizedFee=_normalizer.Normalize(ExtractFeeText(row));
+            bool loanToBuy=normalizedFee.Contains("montant du pret",StringComparison.Ordinal)||normalizedFee.Contains("loan fee",StringComparison.Ordinal);
+            bool isLoan=loanToBuy||normalizedFee=="pret"||normalizedFee.Contains(" prêt",StringComparison.Ordinal)||
+                normalizedFee.Contains("loan",StringComparison.Ordinal)||normalizedFee.Contains("leihe",StringComparison.Ordinal);
 
             results.Add(new SourceTransfer
             {
@@ -205,7 +212,8 @@ public sealed class TransfermarktSource : IDisposable
                 PlayerName = _normalizer.Clean(playerName),
                 FromClub = _normalizer.Clean(fromClub),
                 ToClub = _normalizer.Clean(toClub),
-                Phase = isArrival ? "arrival" : "departure"
+                Phase = isArrival ? "arrival" : "departure",
+                PlayerProfileUrl=ExtractPlayerProfileUrl(row),IsLoan=isLoan,IsLoanToBuy=loanToBuy
             });
         }
     }
@@ -273,6 +281,171 @@ public sealed class TransfermarktSource : IDisposable
         }
 
         return HtmlEntity.DeEntitize(link.InnerText ?? string.Empty).Trim();
+    }
+
+    private static string ExtractPlayerProfileUrl(HtmlNode row)=>row.SelectSingleNode(".//a[contains(@href,'/profil/spieler/')]")?.GetAttributeValue("href","")??"";
+
+    private static string ExtractFeeText(HtmlNode row)
+    {
+        var cell=row.SelectSingleNode(".//td[contains(@class,'abloese') or contains(@class,'fee')]")??row.SelectNodes("./td")?.LastOrDefault();
+        return HtmlEntity.DeEntitize(cell?.InnerText??string.Empty).Trim();
+    }
+
+    private async Task<IReadOnlyList<SourceTransfer>> EnrichLoansAsync(IReadOnlyList<SourceTransfer> transfers,string sourceUrl,CancellationToken token,IProgress<TransferProgress>? progress)
+    {
+        var output=new List<SourceTransfer>(transfers.Count);
+        var cache=new Dictionary<string,(DateOnly? Date,string Error)>(StringComparer.OrdinalIgnoreCase);
+        var origin=new Uri(sourceUrl); int completed=0,total=transfers.Count(t=>t.IsLoan);
+        foreach(var transfer in transfers)
+        {
+            if(!transfer.IsLoan){output.Add(transfer);continue;}
+            token.ThrowIfCancellationRequested();
+            progress?.Report(new($"Downloading loan profiles: {completed}/{total} · {transfer.PlayerName}",completed++,total));
+            string profile=Uri.TryCreate(origin,transfer.PlayerProfileUrl,out var uri)?uri.ToString():"";
+            if(profile.Length==0)
+            {
+                output.Add(CopyLoan(transfer,null,"Profil Transfermarkt du joueur introuvable."));continue;
+            }
+            string cacheKey=profile+'\u001f'+_normalizer.NormalizeTeamName(transfer.FromClub)+'\u001f'+_normalizer.NormalizeTeamName(transfer.ToClub);
+            if(!cache.TryGetValue(cacheKey,out var found))
+            {
+                try
+                {
+                    string playerId=Regex.Match(transfer.PlayerProfileUrl,@"/spieler/(\d+)",RegexOptions.IgnoreCase).Groups[1].Value;
+                    if(playerId.Length==0)found=(null,"Identifiant Transfermarkt du joueur introuvable.");
+                    else
+                    {
+                        using var historyResponse=await GetApiAsync($"https://tmapi.transfermarkt.technology/transfer/history/player/{playerId}",token).ConfigureAwait(false);
+                        if(!historyResponse.IsSuccessStatusCode)found=(null,$"Historique Transfermarkt indisponible ({(int)historyResponse.StatusCode}).");
+                        else
+                        {
+                            string historyJson=await historyResponse.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+                            var clubIds=ApiClubIds(historyJson);
+                            string query=string.Join('&',clubIds.Select(id=>$"ids%5B%5D={Uri.EscapeDataString(id)}"));
+                            using var clubsResponse=await GetApiAsync("https://tmapi.transfermarkt.technology/clubs?"+query,token).ConfigureAwait(false);
+                            found=clubsResponse.IsSuccessStatusCode
+                                ?(ParseApiLoanEndDate(historyJson,await clubsResponse.Content.ReadAsStringAsync(token).ConfigureAwait(false),transfer.FromClub,transfer.ToClub),"")
+                                :(null,$"Clubs Transfermarkt indisponibles ({(int)clubsResponse.StatusCode}).");
+                        }
+                    }
+                    if(found.Date is null&&found.Error.Length==0)found=(null,"Date de fin du prêt introuvable dans l'historique Transfermarkt.");
+                }
+                catch(Exception ex) when(ex is not OperationCanceledException)
+                {
+                    _logger.Error("Impossible de lire la fin du prêt Transfermarkt.",ex,new Dictionary<string,object?>{{"url",profile}});
+                    found=(null,"Impossible de lire la date de fin du prêt Transfermarkt.");
+                }
+                cache[cacheKey]=found;
+            }
+            output.Add(CopyLoan(transfer,found.Date,found.Error));
+        }
+        progress?.Report(new("Download complete",total,total));
+        return output;
+    }
+
+    async Task<HttpResponseMessage> GetApiAsync(string url,CancellationToken token)
+    {
+        async Task<HttpResponseMessage> Send()
+        {
+            var request=new HttpRequestMessage(HttpMethod.Get,url);
+            request.Headers.TryAddWithoutValidation("Accept","application/json");
+            return await _http.SendAsync(request,token).ConfigureAwait(false);
+        }
+        var response=await Send().ConfigureAwait(false);
+        if((int)response.StatusCode!=429)return response;
+        response.Dispose();await Task.Delay(TimeSpan.FromSeconds(2),token).ConfigureAwait(false);
+        return await Send().ConfigureAwait(false);
+    }
+
+    static string[] ApiClubIds(string json)
+    {
+        using var document=System.Text.Json.JsonDocument.Parse(json);
+        return document.RootElement.GetProperty("data").GetProperty("clubIds").EnumerateArray()
+            .Select(id=>id.GetString()??"").Where(id=>id.Length>0).Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    public DateOnly? ParseApiLoanEndDate(string historyJson,string clubsJson,string fromClub,string toClub)
+    {
+        using var history=System.Text.Json.JsonDocument.Parse(historyJson);
+        using var clubsDocument=System.Text.Json.JsonDocument.Parse(clubsJson);
+        var clubs=clubsDocument.RootElement.GetProperty("data").EnumerateArray().ToDictionary(
+            c=>c.GetProperty("id").GetString()??"",c=>new[]{
+                c.TryGetProperty("name",out var name)?name.GetString()??"":"",
+                c.TryGetProperty("baseDetails",out var details)&&details.TryGetProperty("shortName",out var shortName)?shortName.GetString()??"":"",
+                c.TryGetProperty("baseDetails",out details)&&details.TryGetProperty("abbreviation",out var abbreviation)?abbreviation.GetString()??"":""});
+        var root=history.RootElement.GetProperty("data").GetProperty("history");
+        var terminated=root.GetProperty("terminated").EnumerateArray().ToArray();
+        var pending=root.TryGetProperty("pending",out var pendingElement)?pendingElement.EnumerateArray().ToArray():[];
+        var active=terminated.Where(t=>TransferType(t)=="ACTIVE_LOAN_TRANSFER"&&ClubIdMatches(SourceId(t),fromClub)&&ClubIdMatches(DestinationId(t),toClub))
+            .OrderByDescending(TransferDate).FirstOrDefault();
+        if(active.ValueKind==System.Text.Json.JsonValueKind.Undefined)return null;
+        string returnFrom=DestinationId(active),returnTo=SourceId(active);var start=TransferDate(active);
+        return pending.Concat(terminated).Where(t=>TransferType(t)=="RETURNED_FROM_PREVIOUS_LOAN"&&SourceId(t)==returnFrom&&DestinationId(t)==returnTo&&TransferDate(t)>=start)
+            .Select(TransferDate).OrderBy(date=>date).Cast<DateOnly?>().FirstOrDefault();
+
+        bool ClubIdMatches(string id,string expected)=>clubs.TryGetValue(id,out var labels)&&labels.Any(label=>label.Length>0&&ClubMatches(label,expected));
+        static string SourceId(System.Text.Json.JsonElement t)=>t.GetProperty("transferSource").GetProperty("clubId").GetString()??"";
+        static string DestinationId(System.Text.Json.JsonElement t)=>t.GetProperty("transferDestination").GetProperty("clubId").GetString()??"";
+        static string TransferType(System.Text.Json.JsonElement t)=>t.GetProperty("typeDetails").GetProperty("type").GetString()??"";
+        static DateOnly TransferDate(System.Text.Json.JsonElement t)=>DateOnly.FromDateTime(DateTimeOffset.Parse(t.GetProperty("details").GetProperty("date").GetString()!,CultureInfo.InvariantCulture).Date);
+    }
+
+    static SourceTransfer CopyLoan(SourceTransfer value,DateOnly? date,string error)=>new()
+    {
+        Sequence=value.Sequence,PlayerName=value.PlayerName,FromClub=value.FromClub,ToClub=value.ToClub,Phase=value.Phase,
+        PlayerProfileUrl=value.PlayerProfileUrl,IsLoan=value.IsLoan,IsLoanToBuy=value.IsLoanToBuy,LoanEndDate=date,LoanError=error
+    };
+
+    public DateOnly? ParseLoanEndDate(string html,string fromClub,string toClub)
+    {
+        var doc=new HtmlDocument();doc.LoadHtml(html);
+        foreach(var row in doc.DocumentNode.SelectNodes("//tr")??Enumerable.Empty<HtmlNode>())
+        {
+            if(TryHistoryNodes(row.SelectNodes("./td")??Enumerable.Empty<HtmlNode>(),fromClub,toClub,out var date))return date;
+        }
+        foreach(var dateCell in doc.DocumentNode.SelectNodes("//*[contains(@class,'transfer-history-grid__date')]")??Enumerable.Empty<HtmlNode>())
+        {
+            var parent=dateCell.ParentNode;
+            var nodes=parent.DescendantsAndSelf().ToArray();
+            if((parent.SelectNodes(".//a[contains(@href,'/verein/')]")?.Count??0)<2&&parent.ParentNode is HtmlNode grid)
+            {
+                var siblings=grid.ChildNodes.Where(n=>n.NodeType==HtmlNodeType.Element).ToArray();
+                int index=Array.IndexOf(siblings,dateCell);
+                if(index<0)index=Array.IndexOf(siblings,parent);
+                if(index>=0)nodes=siblings.Skip(Math.Max(0,index-1)).Take(7).ToArray();
+            }
+            if(TryHistoryNodes(nodes,fromClub,toClub,out var date))return date;
+        }
+        return null;
+    }
+
+    bool TryHistoryNodes(IEnumerable<HtmlNode> nodes,string fromClub,string toClub,out DateOnly date)
+    {
+        var array=nodes.ToArray();
+        var normalized=array.Select(c=>_normalizer.Normalize(c.InnerText)).ToArray();
+        if(!LoanEndTokens.Any(t=>normalized.Any(c=>c.Contains(_normalizer.Normalize(t),StringComparison.Ordinal)))){date=default;return false;}
+        var clubNames=array.SelectMany(n=>n.SelectNodes(".//a[contains(@href,'/verein/')]")??Enumerable.Empty<HtmlNode>())
+            .Distinct().Select(a=>CleanClubTitle(a.GetAttributeValue("title",a.InnerText))).Where(s=>s.Length>0).ToArray();
+        bool clubsMatch=clubNames.Length<2||(ClubMatches(clubNames[0],fromClub)&&ClubMatches(clubNames[1],toClub))||
+            (ClubMatches(clubNames[0],toClub)&&ClubMatches(clubNames[1],fromClub));
+        if(!clubsMatch){date=default;return false;}
+        foreach(var node in array)if(TryDate(HtmlEntity.DeEntitize(node.InnerText).Trim(),out date))return true;
+        date=default;return false;
+    }
+
+    bool ClubMatches(string left,string right)
+    {
+        var leftName=_normalizer.NormalizeTeamName(left);var rightName=_normalizer.NormalizeTeamName(right);
+        if(leftName==rightName)return true;
+        var leftKey=_normalizer.TeamKey(left);var rightKey=_normalizer.TeamKey(right);
+        return leftKey.Length>0&&leftKey==rightKey;
+    }
+    static bool TryDate(string text,out DateOnly date)
+    {
+        string[] formats=["dd/MM/yyyy","d/M/yyyy","dd.MM.yyyy","d.M.yyyy","dd/MM/yy","d/M/yy","MMM d, yyyy","d MMM yyyy"];
+        foreach(var culture in new[]{CultureInfo.GetCultureInfo("fr-FR"),CultureInfo.GetCultureInfo("en-US"),CultureInfo.GetCultureInfo("de-DE")})
+            if(DateOnly.TryParseExact(text,formats,culture,DateTimeStyles.AllowWhiteSpaces,out date)||DateOnly.TryParse(text,culture,DateTimeStyles.AllowWhiteSpaces,out date))return true;
+        date=default;return false;
     }
 
     private static string ExtractOtherClub(HtmlNode row)

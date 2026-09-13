@@ -2,7 +2,7 @@ namespace ATLink.Core;
 
 public sealed record TransfermarktCompetition(string Country,string Name,string TransfermarktCode,string Slug)
 {
-    public string TransfermarktUrl=>$"https://www.transfermarkt.fr/{Slug}/transfers/wettbewerb/{TransfermarktCode}";
+    public string TransfermarktUrl=>$"https://www.transfermarkt.com/{Slug}/transfers/wettbewerb/{TransfermarktCode}";
 }
 
 public sealed record LeagueTransferOption(string LeagueId,string LeagueName,string CountryId,string CountryName,string Iso,string? TransfermarktUrl)

@@ -65,6 +65,29 @@ internal static class DbmParityChecks
             Check(FootballCatalog.Value(savedPlayer,"birthdate")==FifaDate.FromIso("2000-02-29"),"Birth date save/reopen");
             Check(reopened.Rows("editedplayernames").Any(r=>FootballCatalog.Value(r,"playerid")==playerId&&FootballCatalog.Value(r,"commonname")=="DBM Parity"),"Custom name save/reopen");
             Check(reopened.Rows("teamplayerlinks").Any(r=>FootballCatalog.Value(r,"playerid")==playerId&&FootballCatalog.Value(r,"teamid")==oldTeam&&FootballCatalog.Value(r,"jerseynumber")=="99"),"Roster save/reopen");
+            string target=catalog.Rows("formations").Select(r=>FootballCatalog.Value(r,"teamid"))
+                .First(id=>id!="-1"&&id!=oldTeam&&!catalog.NationalTeamIds.Contains(id)
+                    &&catalog.Rows("default_mentalities").Any(r=>FootballCatalog.Value(r,"teamid")==id)
+                    &&catalog.Rows("default_teamsheets").Any(r=>FootballCatalog.Value(r,"teamid")==id&&!r.ItemArray.Contains(playerId)));
+            catalog.ApplyTransfer(catalog.PreviewTransfer(playerId,target));
+            var targetFormation=new FormationEditor(catalog,target);
+            var originalSheet=(object[])targetFormation.Sheet.ItemArray.Clone();
+            var available=targetFormation.BenchSlots.ToArray();
+            Check(available.Count(s=>s.PlayerId==playerId)==1,"Incoming transfer missing or duplicated in formation bench");
+            Check(available.Single(s=>s.PlayerId==playerId).Index==-1,"New signing incorrectly assigned to a sheet slot");
+            Check(targetFormation.Sheet.ItemArray.SequenceEqual(originalSheet),"Viewing available players changed the sheet");
+            targetFormation.SyncSquad(targetFormation.Players.Select(p=>p.Id));
+            targetFormation.Slots[0].PlayerId=playerId;
+            Check(!targetFormation.BenchSlots.Any(s=>s.PlayerId==playerId),"Starter also appears on bench");
+            targetFormation.Apply();
+            var newBench=targetFormation.BenchSlots.Select(s=>s.PlayerId).ToArray();
+            Check(newBench.Distinct().Count()==newBench.Length,"Duplicate players on bench");
+            string formationOutput=output+"-formation";
+            doc.SaveAs(formationOutput);
+            var savedFormation=new FormationEditor(new FootballCatalog(DatabaseDocument.Open(formationOutput,meta)),target);
+            Check(savedFormation.Slots[0].PlayerId==playerId,"New signing formation placement did not survive save/reopen");
+            File.Delete(formationOutput);
+            Console.WriteLine("PASS incoming transfer available in formation, starting XI placement and save/reopen: "+file);
             File.Delete(output);
             Console.WriteLine("PASS DBM transfers, roster drafts/defaults, national links, names/flags, dates, formation synchronization, save/reopen: "+file);
         }

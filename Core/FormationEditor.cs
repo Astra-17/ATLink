@@ -44,6 +44,19 @@ public sealed class FormationEditor
         for(int i=0;i<52;i++)if(Sheet.Table.Columns.Contains($"playerid{i}"))Slots.Add(new(){Index=i,PlayerId=FootballCatalog.Value(Sheet,$"playerid{i}"),Position=FootballCatalog.Value(Formation,$"position{i}"),Role=FootballCatalog.Value(Formation,$"pos{i}role"),X=Number(Formation,$"offset{i}x"),Y=Number(Formation,$"offset{i}y")});
         foreach(DataColumn c in Sheet.Table.Columns)if(c.ColumnName=="captainid"||c.ColumnName.EndsWith("takerid"))Takers[c.ColumnName]=FootballCatalog.Value(Sheet,c.ColumnName);
     }
+    // The roster may contain new signings not yet assigned to a teamsheet slot.
+    public IEnumerable<FormationSlot> BenchSlots
+    {
+        get
+        {
+            var allowed=Players.Select(p=>p.Id).ToHashSet();
+            var shown=Slots.Take(11).Select(s=>s.PlayerId).Where(allowed.Contains).ToHashSet();
+            foreach(var slot in Slots.Skip(11))
+                if(allowed.Contains(slot.PlayerId)&&shown.Add(slot.PlayerId))yield return slot;
+            foreach(var player in Players)
+                if(shown.Add(player.Id))yield return new FormationSlot{Index=-1,PlayerId=player.Id};
+        }
+    }
     // DBM team-formation-editor.service.ts::syncSquadPlayers.
     public void SyncSquad(IEnumerable<string> playerIds)
     {

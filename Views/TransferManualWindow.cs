@@ -19,6 +19,10 @@ public sealed class TransferManualWindow:Window
     readonly ComboBox destinations=new(){MinHeight=48,MaxDropDownHeight=280};
     readonly TextBox number=new(){MinHeight=36};
     readonly TextBox contract=new(){MinHeight=36};
+    readonly ComboBox loanEnd=new(){MinHeight=36};
+    readonly CheckBox loanToBuy=new(){Content="Loan with purchase option",Margin=new Thickness(0,10,0,0)};
+    readonly StackPanel contractPanel=new(),loanPanel=new(){Visibility=Visibility.Collapsed};
+    bool isLoan;
     readonly TextBlock error=new(){Foreground=new SolidColorBrush(Color.FromRgb(0xFF,0x8E,0x8E)),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,0)};
     readonly PlayerPick[] choices;
     readonly ICollectionView playerView;
@@ -44,16 +48,26 @@ public sealed class TransferManualWindow:Window
         AttachPlayers();
         ClubCombo.Attach(destinations,clubs);
 
+        loanEnd.ItemsSource=Fc26Date.LoanEndChoices().Select(Fc26Date.Display).ToArray();
+        loanEnd.SelectedItem=Fc26Date.Display(Fc26Date.LoanEndChoices().First(d=>d>=DateOnly.FromDateTime(DateTime.Today)));
         var root=new StackPanel{Margin=new Thickness(24)};
-        root.Children.Add(new TextBlock{Text="Add player",FontSize=23,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,18)});
+        var heading=new DockPanel{Margin=new Thickness(0,0,0,18)};
+        var modes=new StackPanel{Orientation=Orientation.Horizontal};DockPanel.SetDock(modes,Dock.Right);
+        var transferMode=new ToggleButton{Content="Transfer",IsChecked=true,MinWidth=86,Padding=new Thickness(12,7,12,7)};
+        var loanMode=new ToggleButton{Content="Loan",MinWidth=72,Padding=new Thickness(12,7,12,7),Margin=new Thickness(6,0,0,0)};
+        void SetMode(bool loan){isLoan=loan;transferMode.IsChecked=!loan;loanMode.IsChecked=loan;contractPanel.Visibility=loan?Visibility.Collapsed:Visibility.Visible;loanPanel.Visibility=loan?Visibility.Visible:Visibility.Collapsed;}
+        transferMode.Click+=(_,_)=>SetMode(false);loanMode.Click+=(_,_)=>SetMode(true);modes.Children.Add(transferMode);modes.Children.Add(loanMode);heading.Children.Add(modes);
+        heading.Children.Add(new TextBlock{Text="Add player",FontSize=23,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});root.Children.Add(heading);
         root.Children.Add(new TextBlock{Text="Player",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,0,0,7)});
         root.Children.Add(players);
         root.Children.Add(new TextBlock{Text="New club",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         root.Children.Add(destinations);
         root.Children.Add(new TextBlock{Text="Number",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         root.Children.Add(number);
-        root.Children.Add(new TextBlock{Text="Contract",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
-        root.Children.Add(contract);
+        contractPanel.Children.Add(new TextBlock{Text="Contract",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        contractPanel.Children.Add(contract);root.Children.Add(contractPanel);
+        loanPanel.Children.Add(new TextBlock{Text="Loan end date",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        loanPanel.Children.Add(loanEnd);loanPanel.Children.Add(loanToBuy);root.Children.Add(loanPanel);
         root.Children.Add(error);
         var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,20,0,0)};
         var cancel=new Button{Content="Cancel",IsCancel=true,MinWidth=95,Margin=new Thickness(0,0,10,0),Padding=new Thickness(14,9,14,9)};
@@ -135,6 +149,8 @@ public sealed class TransferManualWindow:Window
     {
         if(ChosenPlayer() is not PlayerPick player){error.Text="Choose a player.";return;}
         if(ClubCombo.Chosen(destinations,clubs) is not ClubOption club){error.Text="Choose a destination club.";return;}
+        if(isLoan&&!DateOnly.TryParseExact(loanEnd.Text,"dd/MM/yyyy",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out _))
+        {error.Text="Choose a valid loan end date.";return;}
         var names=catalog.Rows("teams").GroupBy(r=>FootballCatalog.Value(r,"teamid")).ToDictionary(g=>g.Key,g=>FootballCatalog.Value(g.First(),"teamname"));
         var links=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"playerid")==player.Id&&!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToArray();
         string? oldId=links.Length==0?null:FootballCatalog.Value(links[0],"teamid");
@@ -143,7 +159,8 @@ public sealed class TransferManualWindow:Window
         {
             PlayerId=player.Id,PlayerName=player.Name,OldClubId=oldId,OldClubName=oldId is null?"":names.GetValueOrDefault(oldId,oldId),
             Destination=club,Number=string.IsNullOrWhiteSpace(number.Text)&&shirt is not null?shirt.ShirtNumber:number.Text.Trim(),
-            Contract=contract.Text.Trim()
+            Contract=contract.Text.Trim(),IsLoan=isLoan,IsLoanToBuy=loanToBuy.IsChecked==true,
+            LoanEnd=isLoan?loanEnd.Text.Trim():""
         };
         DialogResult=true;
     }

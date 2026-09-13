@@ -20,13 +20,15 @@ public partial class PlayerTransferWindow : Window
     readonly ICollectionView clubView;
     int queryVersion;
     bool filteringClubs;
+    bool isLoan;
     public string? DestinationId {get;private set;}
+    public bool IsLoan=>isLoan;
     public sealed record ClubChoice(string Id,string Name)
     {
         private ImageSource? crest;
         public ImageSource Crest=>crest??=EntityImages.Crest(Id);
     }
-    public PlayerTransferWindow(FootballCatalog catalog,EntityItem player)
+    public PlayerTransferWindow(FootballCatalog catalog,EntityItem player,bool resolveUnmatched=false,bool loan=false,bool loanToBuy=false,DateOnly? loanEnd=null)
     {
         InitializeComponent();this.catalog=catalog;this.player=player;
         Portrait.Source=EntityImages.Player(player.Id);PlayerName.Text=player.Name;
@@ -45,6 +47,28 @@ public partial class PlayerTransferWindow : Window
         int first=(int)Math.Max(DateTime.Today.Year,field.Minimum),last=(int)Math.Min(DateTime.Today.Year+15,field.Maximum);
         ContractYear.ItemsSource=Enumerable.Range(first,Math.Max(0,last-first+1)).Select(y=>y.ToString(CultureInfo.InvariantCulture)).ToArray();
         ContractYear.Text=FootballCatalog.Value(player.Row,"contractvaliduntil");
+        LoanEndDate.ItemsSource=Fc26Date.LoanEndChoices().Select(Fc26Date.Display).ToArray();
+        LoanEndDate.SelectedItem=Fc26Date.Display(Fc26Date.LoanEndChoices().First(d=>d>=DateOnly.FromDateTime(DateTime.Today))); if(resolveUnmatched)ConfigureResolution(loan,loanToBuy,loanEnd);
+    }
+    public void ConfigureResolution(bool loan,bool loanToBuy,DateOnly? loanEnd)
+    {
+        CurrentClubPanel.Visibility=Visibility.Visible;
+        CurrentClubCrest.Source=sourceClub is null?null:EntityImages.Crest(sourceClub);
+        CurrentClubName.Text=choices.FirstOrDefault(c=>c.Id==sourceClub)?.Name??"No unique club in the loaded database";
+        DestinationLabel.Text="New club";
+        Clubs.SelectedItem=null;Clubs.Text="";
+        SetMode(loan);
+        LoanToBuy.IsChecked=loanToBuy;
+        if(loanEnd is DateOnly end)LoanEndDate.SelectedItem=Fc26Date.Display(end); else if(loan)LoanEndDate.SelectedIndex=-1;
+    }
+    void TransferModeClick(object sender,RoutedEventArgs e)=>SetMode(false);
+    void LoanModeClick(object sender,RoutedEventArgs e)=>SetMode(true);
+    void SetMode(bool loan)
+    {
+        isLoan=loan;TransferMode.IsChecked=!loan;LoanMode.IsChecked=loan;
+        ContractPanel.Visibility=loan?Visibility.Collapsed:Visibility.Visible;
+        LoanPanel.Visibility=loan?Visibility.Visible:Visibility.Collapsed;
+        Heading.Text=loan?"Loan player":"Transfer player";
     }
     void ClubTextChanged(object sender,TextChangedEventArgs e)
     {
@@ -129,14 +153,23 @@ public partial class PlayerTransferWindow : Window
         if(sourceClub is null){ErrorText.Text="This player must have exactly one club link to transfer.";return;}
         if(ChosenClub is not ClubChoice club){ErrorText.Text="Choose a destination club.";return;}
         if(club.Id==sourceClub){ErrorText.Text="Choose a club different from the current club.";return;}
-        string year=ContractYear.Text.Trim();
-        var field=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
-        if(!int.TryParse(year,out int numeric)||numeric<Math.Max(1900,field.Minimum)||numeric>Math.Min(9999,field.Maximum))
-        {ErrorText.Text="Enter a valid contract expiry year.";return;}
         string? jersey=string.IsNullOrWhiteSpace(JerseyNumber.Text)?null:JerseyNumber.Text.Trim();
         try
         {
-            PlayerTransfer.Apply(catalog,player.Id,club.Id,year,jersey);
+            if(isLoan)
+            {
+                if(!DateOnly.TryParseExact(LoanEndDate.Text,"dd/MM/yyyy",CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out var end))
+                {ErrorText.Text="Choose a valid loan end date.";return;}
+                PlayerTransfer.ApplyLoan(catalog,player.Id,club.Id,end,LoanToBuy.IsChecked==true,jersey);
+            }
+            else
+            {
+                string year=ContractYear.Text.Trim();
+                var field=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
+                if(!int.TryParse(year,out int numeric)||numeric<Math.Max(1900,field.Minimum)||numeric>Math.Min(9999,field.Maximum))
+                {ErrorText.Text="Enter a valid contract expiry year.";return;}
+                PlayerTransfer.Apply(catalog,player.Id,club.Id,year,jersey);
+            }
             DestinationId=club.Id;DialogResult=true;
         }
         catch(Exception){ErrorText.Text="The transfer could not be applied. Check the player and club links, then try again.";}

@@ -105,7 +105,7 @@ if(jesse?.PlayerId!="9009"||jesse.ShirtNumber!="27")throw new Exception("ATLink 
 if(CompetitionCatalog.Match("Premier League","England")?.TransfermarktCode!="GB1")throw new Exception("Premier League Transfermarkt URL mapping failed");
 if(CompetitionCatalog.Match("Belgium Pro League (1)","Belgium")?.TransfermarktCode!="BE1")throw new Exception("Belgium Pro League Transfermarkt URL mapping failed");
 if(!CompetitionCatalog.ForCatalog(realCatalog).Any(l=>l.TransfermarktUrl?.Contains("/wettbewerb/GB1",StringComparison.Ordinal)==true))throw new Exception("FC26 leagues were not linked to Transfermarkt URLs");
-if(!CompetitionCatalog.ForCatalog(realCatalog).Any(l=>l.TransfermarktUrl=="https://www.transfermarkt.fr/jupiler-pro-league/transfers/wettbewerb/BE1"))throw new Exception("Belgium FC26 league was not linked to Transfermarkt BE1");
+if(!CompetitionCatalog.ForCatalog(realCatalog).Any(l=>l.TransfermarktUrl=="https://www.transfermarkt.com/jupiler-pro-league/transfers/wettbewerb/BE1"))throw new Exception("Belgium FC26 league was not linked to Transfermarkt.com BE1");
 Console.WriteLine("PASS ATLink enrich matching and league Transfermarkt URLs");
 var liveNames=new NameNormalizer();
 var live=new TransferLiveResolver(realCatalog,enrich,liveNames);

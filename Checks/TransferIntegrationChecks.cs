@@ -16,7 +16,21 @@ internal static class TransferIntegrationChecks
         var teams=fixture.RootElement.GetProperty("teams").EnumerateArray().Select(t=>new LiveTeam(t.GetProperty("teamId").GetInt32(),t.GetProperty("teamName").GetString()!,false)).ToArray();
         var names=new NameNormalizer();
         var clubs=new ClubNameResolver(teams,names,LiveClubAliases.Load(names));
+        var belgianClubs=new ClubNameResolver([new LiveTeam(1,"Cercle Brugge",false),new LiveTeam(2,"R. Union St.-G.",false)],names,LiveClubAliases.Load(names));
+        Require(belgianClubs.ResolveClub("Cercle Bruges").TeamId==1,"Cercle Bruges alias");
+        Require(belgianClubs.ResolveClub("Union Saint-Gilloise").TeamId==2,"Union Saint-Gilloise alias");
+        var abbreviationClubs=new ClubNameResolver([
+            new LiveTeam(20,"Queens Park Rangers",false),new LiveTeam(21,"Olympique Lyon",false),new LiveTeam(22,"Olympique Marseille",false),
+            new LiveTeam(23,"PSV Eindhoven",false),new LiveTeam(24,"Aarhus GF",false),new LiveTeam(25,"Sint-Truidense VV",false),
+            new LiveTeam(26,"AZ Alkmaar",false),new LiveTeam(27,"Independiente del Valle",false),new LiveTeam(28,"Los Angeles FC",false)],names,LiveClubAliases.Load(names));
+        foreach(var pair in new Dictionary<string,int>{{"QPR",20},{"OL",21},{"OM",22},{"PSV",23},{"AGF",24},{"STVV",25},{"AZ",26},{"IDV",27},{"LAFC",28}})
+            Require(abbreviationClubs.ResolveClub(pair.Key).TeamId==pair.Value,$"Club abbreviation {pair.Key}");
+        var fuzzyTie=new ClubNameResolver([new LiveTeam(800,"Test Cluba",false),new LiveTeam(120,"Test Clubb",false)],names);
+        var fuzzyTieResult=fuzzyTie.ResolveClub("Test Clubx");
+        Require(fuzzyTieResult.TeamId==120&&fuzzyTieResult.MatchMethod=="fuzzy"&&fuzzyTieResult.Confidence>0.83,"Equal fuzzy score chooses lowest team ID");
         var resolver=new TransferLiveResolver(EnrichedPlayers.FromPlayers(players),clubs,names);
+        var missingLoanPlayer=resolver.Resolve([new MarketTransfer(999999,"Definitely Missing Player","Club A","PSG","",true,false,null,"Date de fin du prêt introuvable")]);
+        Require(missingLoanPlayer.Unresolved.Single().Reason==UnresolvedReasons.PlayerNotFound,"Missing player reason must take priority over missing loan date");
         int count=0;
         foreach(var group in fixture.RootElement.GetProperty("groups").EnumerateArray())
         foreach(var row in group.GetProperty("cases").EnumerateArray())
@@ -36,13 +50,28 @@ internal static class TransferIntegrationChecks
         Console.WriteLine($"PASS exact TTLive parity: {count} transfers, player/team IDs, methods, unresolved reasons");
         Require(CompetitionCatalog.TransferChoices().Count==33,"33 competitions");
         Require(CompetitionCatalog.TransferChoices().Select(c=>c.TransfermarktUrl).Distinct().Count()==33,"Distinct URLs");
+        Require(CompetitionCatalog.TransferChoices().All(c=>new Uri(c.TransfermarktUrl!).Host=="www.transfermarkt.com"),"All backend competition URLs use transfermarkt.com");
         using var source=new TransfermarktSource(new TransferLog(),names);
+        var dateCases=new Dictionary<int,DateOnly>{{161962,new(2026,3,22)},{162032,new(2026,5,31)},{162062,new(2026,6,30)},{162069,new(2026,7,7)},{162427,new(2027,6,30)}};
+        foreach(var pair in dateCases)Require(Fc26Date.Decode(pair.Key)==pair.Value&&Fc26Date.Encode(pair.Value)==pair.Key,$"FC26 date conversion {pair.Key}");
+        Require(Fc26Date.Decode(161963)==new DateOnly(2026,3,23)&&Fc26Date.LoanEndChoices().Last()==new DateOnly(2035,7,1),"FC26 dates advance one day and choices reach 2035");
         var parsed=source.ParseHtml(File.ReadAllText(Path.Combine(root,"Checks/Fixtures/ttlive-sample.html")));
         Require(parsed.Count>0&&parsed.First().PlayerName=="Kevin De Bruyne","TTLive parser names");
         var combined=TransferImport.Combine([parsed,parsed]);
         Require(combined.Count==parsed.Count*2&&combined.Select(t=>t.Sequence).SequenceEqual(Enumerable.Range(1,combined.Count)),"Preserve movements and number multiple leagues");
         Require(!source.IsTransfermarktUrl("https://transfermarkt.evil.test/"),"Host allowlist");
-        Console.WriteLine("PASS 33 URLs, parser, multi-league sequence preservation");
+        string loanHtml="""<div class='box'><h2><a href='/club/transfers/verein/1'>Club A</a></h2><div class='responsive-table'><table><thead><tr><th class='spieler-transfer-cell'>Arrivées</th></tr></thead><tbody><tr><td><a title='Player Loan' href='/player/profil/spieler/7'>Player Loan</a></td><td class='verein-flagge-transfer-cell'><a title='Club B' href='/club/verein/2'>Club B</a></td><td class='abloese'>Montant du prêt: 2m</td></tr><tr><td><a title='Player Loan 2' href='/player2/profil/spieler/8'>Player Loan 2</a></td><td class='verein-flagge-transfer-cell'><a title='Club C' href='/club/verein/3'>Club C</a></td><td class='abloese'>Prêt</td></tr></tbody></table></div></div>""";
+        var loanParsed=source.ParseHtml(loanHtml);
+        Require(loanParsed.Count==2&&loanParsed[0].IsLoan&&loanParsed[0].IsLoanToBuy&&loanParsed[1].IsLoan&&!loanParsed[1].IsLoanToBuy,"Transfermarkt loan fee detection");
+        string history="""<table><tbody><tr><td>30/06/2027</td><td><a title='Club A' href='/a/verein/1'>A</a></td><td><a title='Club B' href='/b/verein/2'>B</a></td><td>Fin du prêt</td></tr></tbody></table>""";
+        Require(source.ParseLoanEndDate(history,"Club B","Club A")==new DateOnly(2027,6,30),"Transfermarkt loan end history and reverse clubs");
+        string gridHistory="""<div class='tm-player-transfer-history-grid'><div class='tm-player-transfer-history-grid__season'>26/27</div><div class='tm-player-transfer-history-grid__date'>01/07/2027</div><div><a title='Club B' href='/b/verein/2'>B</a></div><div><a title='Club A' href='/a/verein/1'>A</a></div><div>Fin du prêt</div></div>""";
+        Require(source.ParseLoanEndDate(gridHistory,"Club A","Club B")==new DateOnly(2027,7,1),"Transfermarkt CSS grid loan history");
+        string apiHistory="""{"data":{"clubIds":["273","1164"],"history":{"terminated":[{"transferSource":{"clubId":"273"},"transferDestination":{"clubId":"1164"},"details":{"date":"2026-07-30T00:00:00+02:00"},"typeDetails":{"type":"ACTIVE_LOAN_TRANSFER"}}],"pending":[{"transferSource":{"clubId":"1164"},"transferDestination":{"clubId":"273"},"details":{"date":"2027-06-30T00:00:00+02:00"},"typeDetails":{"type":"RETURNED_FROM_PREVIOUS_LOAN"}}]}}} """;
+        string apiClubs="""{"data":[{"id":"273","name":"Stade Rennais FC","baseDetails":{"shortName":"Stade Rennais","abbreviation":"SRFC"}},{"id":"1164","name":"Le Mans FC","baseDetails":{"shortName":"Le Mans FC","abbreviation":"LMFC"}}]}""";
+        Require(source.ParseApiLoanEndDate(apiHistory,apiClubs,"Stade Rennais","Le Mans FC")==new DateOnly(2027,6,30),"Transfermarkt API pairs active loan with reversed pending return");
+        Require(source.ParseApiLoanEndDate(apiHistory,apiClubs,"Le Mans FC","Stade Rennais") is null,"Transfermarkt API rejects the wrong initial direction");
+        Console.WriteLine("PASS FC26 date conversion, 33 URLs, parser, loan detection/history, multi-league sequence preservation");
 
         var doc=DatabaseDocument.Open(Path.Combine(root,"files/fifa_ng_db.db"),Path.Combine(root,"files/fifa_ng_db-meta.xml"));
         var catalog=new FootballCatalog(doc);
@@ -143,6 +172,15 @@ internal static class TransferIntegrationChecks
         string transferred=FootballCatalog.Value(link,"jerseynumber");
         Require(int.TryParse(transferred,out int shirt)&&shirt is >=1 and <=99&&SquadJerseys(catalog,destinations[0]).Count(n=>n==transferred)==1,
             "PlayerTransfer without a number assigns a free shirt");
+        string loanSource=FootballCatalog.Value(link,"teamid"),contractBeforeLoan=FootballCatalog.Value(playerRow,"contractvaliduntil");
+        string transfermarktLoanSource=destinations[1];
+        NativeTransferBatch.Preview(catalog,[new NativeTransferEdit(1,id,original,null,null,true,true,new DateOnly(2027,6,30),transfermarktLoanSource)]).Apply();
+        var createdLoan=catalog.Rows("playerloans").Single(r=>FootballCatalog.Value(r,"playerid")==id);
+        Require(FootballCatalog.Value(link,"teamid")==original&&loanSource!=transfermarktLoanSource&&FootballCatalog.Value(createdLoan,"teamidloanedfrom")==transfermarktLoanSource&&
+            FootballCatalog.Value(createdLoan,"loandateend")=="162427"&&FootballCatalog.Value(createdLoan,"isloantobuy")=="1","Native loan fields");
+        Require(FootballCatalog.Value(playerRow,"contractvaliduntil")==contractBeforeLoan,"Loan preserves player contract");
+        PlayerTransfer.Apply(catalog,id,destinations[0],"2031");
+        Require(!catalog.Rows("playerloans").Any(r=>FootballCatalog.Value(r,"playerid")==id),"Definitive transfer cancels the loan");
         Console.WriteLine("PASS native ordered apply, already-there, default contract/jersey, number displacement, national protection, atomic validation, stale preview and DB save/reopen");
 
         var cancelledFile=Path.Combine(output,"cancelled-relations-"+Guid.NewGuid().ToString("N")+".db");

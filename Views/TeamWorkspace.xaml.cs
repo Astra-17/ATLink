@@ -435,6 +435,8 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         if(formation is null)return;
         if(selectedSlot is null||selectedSlot==slot){selectedSlot=slot;DrawPitch();return;}
+        if(selectedSlot.Index<0&&slot.Index<0){selectedSlot=slot;DrawPitch();return;}
+        formation.SyncSquad(formation.Players.Select(p=>p.Id));
         (selectedSlot.PlayerId,slot.PlayerId)=(slot.PlayerId,selectedSlot.PlayerId);selectedSlot=null;formationTouched=true;DrawPitch();
     }
     void RefreshBench()
@@ -442,7 +444,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         if(benchList is null||formation is null)return;benchList.Items.Clear();
         string filter=benchSearch?.Text??"";
         if(filter=="Search player or position")filter="";
-        foreach(var slot in formation.Slots.Skip(11))
+        foreach(var slot in formation.BenchSlots)
         {
             if(slot.PlayerId is "-1" or "0" or "")continue;
             var player=formation.FindPlayer(slot.PlayerId);
@@ -458,7 +460,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             left.Children.Add(Portrait(slot.PlayerId,55));
             var names=new StackPanel{VerticalAlignment=VerticalAlignment.Center};
             names.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold});
-            names.Children.Add(new TextBlock{Text=pos+" · Slot "+slot.Index,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
+            names.Children.Add(new TextBlock{Text=pos+(slot.Index<0?" · Available":" · Slot "+slot.Index),Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             left.Children.Add(names);dock.Children.Add(left);card.Child=dock;card.Tag=slot;card.Cursor=Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>Swap(slot);
             benchList.Items.Add(card);
         }
