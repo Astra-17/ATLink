@@ -9,11 +9,23 @@
      <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="{DynamicResource AccentBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value></Setter>
    </Style>
+   <!-- Dimensions of player rating inputs only; keep the shared TextBox template flexible. -->
+   <Style x:Key="PlayerRatingInput" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter Property="Width" Value="30"/><Setter Property="Height" Value="20"/>
+    <Setter Property="MinHeight" Value="0"/><Setter Property="MinWidth" Value="0"/>
+    <Setter Property="Padding" Value="0"/><Setter Property="FontSize" Value="13"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="4">
+      <ScrollViewer x:Name="PART_ContentHost"/>
+     </Border>
+    </ControlTemplate></Setter.Value></Setter>
+    <Style.Triggers><DataTrigger Binding="{Binding IsValid}" Value="False"><Setter Property="BorderBrush" Value="#FF929F"/></DataTrigger></Style.Triggers>
+   </Style>
    <DataTemplate x:Key="NumberEditor">
-    <Grid Width="86" Height="30">
-     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="22"/></Grid.ColumnDefinitions>
-     <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Background="{Binding Brush}" Foreground="White" FontSize="14" FontWeight="SemiBold" TextAlignment="Center" Padding="2" VerticalContentAlignment="Center" KeyDown="NumberKeyDown" ToolTip="Type 1–99, or use the up/down keys">
-      <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Style.Triggers><DataTrigger Binding="{Binding IsValid}" Value="False"><Setter Property="BorderBrush" Value="#FF929F"/></DataTrigger></Style.Triggers></Style></TextBox.Style>
+    <Grid Width="54" Height="24">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="24"/></Grid.ColumnDefinitions>
+     <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Background="{Binding Brush}" Foreground="White" Style="{StaticResource PlayerRatingInput}" FontWeight="SemiBold" TextAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" KeyDown="NumberKeyDown" ToolTip="Type 1–99, or use the up/down keys">
+
      </TextBox>
      <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
       <Button Content="⌃" Tag="1" Click="StepClick" MinHeight="0" Padding="0" FontSize="10"/>
@@ -33,7 +45,7 @@
          <GradientStop Color="Transparent" Offset="1"/>
         </LinearGradientBrush>
        </Border.Background>
-       <DockPanel><Border DockPanel.Dock="Right" Background="{Binding Brush}" CornerRadius="4" Width="38"><TextBlock Text="{Binding Rating}" FontWeight="Bold" HorizontalAlignment="Center"/></Border><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" ToolTip="Average of the attributes in this group"/></DockPanel>
+       <DockPanel><Border DockPanel.Dock="Right" Background="{Binding Brush}" CornerRadius="4" Width="30" Height="20"><TextBlock Text="{Binding Rating}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" ToolTip="Average of the attributes in this group"/></DockPanel>
       </Border>
       <ItemsControl ItemsSource="{Binding Attributes}" AlternationCount="2">
        <ItemsControl.ItemTemplate><DataTemplate>

@@ -10,6 +10,9 @@
   <ResourceDictionary>
    <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="../Themes/Studio.xaml"/></ResourceDictionary.MergedDictionaries>
    <views:RatingBrushConverter x:Key="RatingBrushConverter"/>
+   <LinearGradientBrush x:Key="StarBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#D9A7FF" Offset="0"/><GradientStop Color="#A64DFF" Offset="0.48"/><GradientStop Color="#7332C3" Offset="1"/></LinearGradientBrush>
+   <LinearGradientBrush x:Key="PositionBadgeBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#8D42E8" Offset="0"/><GradientStop Color="#5E24D6" Offset="0.55"/><GradientStop Color="#331572" Offset="1"/></LinearGradientBrush>
+   <DataTemplate x:Key="StarsTemplate"><ItemsControl ItemsSource="{Binding}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource StarBrush}" FontSize="20" Margin="0,0,2,0"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></DataTemplate>
    <Style x:Key="SectionTitle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="17"/><Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Margin" Value="0,14,0,14"/>
@@ -97,14 +100,20 @@
       <StackPanel>
        <TextBlock Text="Characteristics" FontSize="16" FontWeight="SemiBold"/>
        <TextBlock Text="{Binding [height], StringFormat=Height   {0} cm}"/>
-                            <TextBlock Text="{Binding [weight], StringFormat=Weight   {0} kg}"/>
+       <TextBlock Text="{Binding [weight], StringFormat=Weight   {0} kg}"/>
+       <DockPanel><TextBlock Text="{Binding StrongFoot}" DockPanel.Dock="Right"/><TextBlock Text="Strong foot"/></DockPanel>
+       <DockPanel><ContentControl Content="{Binding SkillMoveStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="Skill moves" VerticalAlignment="Center"/></DockPanel>
+       <DockPanel><ContentControl Content="{Binding WeakFootStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="Weak foot" VerticalAlignment="Center"/></DockPanel>
+       <DockPanel ToolTip="International reputation"><ContentControl Content="{Binding InternationalReputationStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="International rep." TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/></DockPanel>
                             
       </StackPanel>
       <StackPanel Grid.Column="1" Margin="12,0,0,0">
        <TextBlock Text="Positions" FontSize="16" FontWeight="SemiBold"/>
-       <ItemsControl ItemsSource="{Binding Positions}">
-        <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontSize="16"/></DataTemplate></ItemsControl.ItemTemplate>
+       <ItemsControl ItemsSource="{Binding Positions}" Margin="0,6,0,12">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate><DataTemplate><Border Background="{StaticResource PositionBadgeBrush}" CornerRadius="4" Padding="10,5" Margin="0,0,6,6"><TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold" Foreground="White"/></Border></DataTemplate></ItemsControl.ItemTemplate>
        </ItemsControl>
+       <TextBlock Text="Playstyles" FontSize="16" FontWeight="SemiBold"/>
       </StackPanel>
      </Grid>
      <Border Style="{StaticResource Divider}"/>

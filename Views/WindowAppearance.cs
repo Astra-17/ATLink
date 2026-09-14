@@ -34,6 +34,14 @@ public static class WindowAppearance
                 window.WindowState=window.WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
         }));
         window.CommandBindings.Add(new CommandBinding(SystemCommands.CloseWindowCommand,(_,_)=>window.Close()));
+        window.StateChanged+=(_,_)=>
+        {
+            if(window.WindowState==WindowState.Maximized)
+            {
+                var work=SystemParameters.WorkArea;window.MaxWidth=work.Width;window.MaxHeight=work.Height;
+            }
+            else {window.MaxWidth=double.PositiveInfinity;window.MaxHeight=double.PositiveInfinity;}
+        };
         void Hook()
         {
             if(PresentationSource.FromVisual(window) is HwndSource source)source.AddHook(CursorMessage);

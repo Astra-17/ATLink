@@ -45,7 +45,7 @@ public sealed class PlayerBrowser : UserControl
         actions.Children.Add(add);DockPanel.SetDock(actions,Dock.Right);header.Children.Add(actions);
         var titles=new StackPanel();titles.Children.Add(Text("Players",30,true));var sub=Text("Explore your players, attributes and potential.",13);sub.Foreground=B("MutedBrush");sub.Margin=new Thickness(0,6,12,0);titles.Children.Add(sub);header.Children.Add(titles);
         DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
-        var body=new Grid();body.ColumnDefinitions.Add(new(){Width=new GridLength(1.35,GridUnitType.Star)});body.ColumnDefinitions.Add(new(){Width=new GridLength(1,GridUnitType.Star),MinWidth=290});
+        var body=new Grid();body.ColumnDefinitions.Add(new(){Width=new GridLength(1.55,GridUnitType.Star),MinWidth=560});body.ColumnDefinitions.Add(new(){Width=new GridLength(1,GridUnitType.Star),MinWidth=290});
         var left=new DockPanel{Margin=new Thickness(0,0,18,0)};
         var searchBox=new Grid{Margin=new Thickness(0,0,0,12)};searchBox.Children.Add(search);
         var placeholder=Text("Search a player...",13);placeholder.Foreground=B("MutedBrush");placeholder.Margin=new Thickness(10,0,0,0);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;
@@ -169,6 +169,11 @@ public sealed class PlayerBrowser : UserControl
         public string Group=>Position=="GK"?"Goalkeepers":new[]{"RB","RWB","CB","LCB","RCB","LB","LWB","SW"}.Contains(Position)?"Defenders":new[]{"ST","LS","RS","CF","LF","RF","LW","RW"}.Contains(Position)?"Forwards":"Midfielders";
         public ImageSource? Flag=>NationFlags.Load(codes?.GetValueOrDefault(Raw("nationality")),Nationality);
         public string Nationality=>nations.GetValueOrDefault(Raw("nationality"),"Nation "+Raw("nationality"));
+        public string StrongFoot=>Raw("preferredfoot") switch{"1"=>"Left","2"=>"Right",_=>"—"};
+        static IReadOnlyList<string> Stars(string raw,int offset=0)=>int.TryParse(raw,out int value)?Enumerable.Repeat("★",Math.Clamp(value+offset,0,5)).ToArray():["—"];
+        public IReadOnlyList<string> SkillMoveStars=>Stars(Raw("skillmoves"),1);
+        public IReadOnlyList<string> WeakFootStars=>Stars(Raw("weakfootabilitytypecode"));
+        public IReadOnlyList<string> InternationalReputationStars=>Stars(Raw("internationalrep"));
         public decimal? MarketValue=>PlayerMarketValues.For(item.Id);
         public string Value=>PlayerMarketValues.Format(MarketValue);
     }
