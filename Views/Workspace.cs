@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ATLink.Core;
 using ATLink.ViewModels;
 using Microsoft.Win32;
 
@@ -56,6 +57,20 @@ public sealed class WorkspaceController
 
 internal static class ShellDialogs
 {
+    public static SaveFileDialog ForDatabase(DatabaseDocument document,string? title=null)
+    {
+        var target=document.SaveTarget();
+        var dialog=new SaveFileDialog
+        {
+            Title=title??"Enregistrer dans un nouveau fichier",
+            Filter=target.Filter,
+            FileName=target.FileName,
+            AddExtension=target.AddExtension,
+            DefaultExt=target.AddExtension?"db":""
+        };
+        if(!string.IsNullOrEmpty(target.InitialDirectory))dialog.InitialDirectory=target.InitialDirectory;
+        return dialog;
+    }
     public static bool Open(FileDialog dialog,DependencyObject? host)
     {
         var window=host is null?null:Window.GetWindow(host);

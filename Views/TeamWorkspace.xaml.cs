@@ -7,7 +7,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using ATLink.Core;
-using Microsoft.Win32;
 
 namespace ATLink.Views;
 public partial class TeamWorkspace : UserControl, IWorkspacePage
@@ -550,7 +549,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     void ApplySaveClick(object sender,RoutedEventArgs e)
     {
         if(!ApplyEdits())return;
-        var dialog=new SaveFileDialog{Filter="Database (*.db)|*.db",FileName=System.IO.Path.GetFileNameWithoutExtension(catalog.Document.SourcePath)+"-edited.db"};
+        var dialog=ShellDialogs.ForDatabase(catalog.Document);
         if(!ShellDialogs.Open(dialog,this))return;
         try{catalog.Document.SaveAs(dialog.FileName);ErrorText.Text="Saved: "+dialog.FileName;}catch(Exception ex){ErrorText.Text=ex.Message;}
     }

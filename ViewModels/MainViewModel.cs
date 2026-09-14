@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using ATLink.Core;
@@ -165,21 +166,39 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string status = "Select an editor to open your database.";
     public string Status { get => status; set { status = value; Notify(); } }
     private string title = "EA SPORTS FC Database Editor";
-    public string DocumentTitle { get => title; private set { title = value; Notify(); Notify(nameof(WindowTitle)); } }
+    public bool CanRenameDocument => Document?.IsSquad == true;
+    public bool DocumentTitleLocked => !CanRenameDocument;
+    public string DocumentTitle
+    {
+        get => Document is null ? title : string.IsNullOrWhiteSpace(Document.DisplayName) ? System.IO.Path.GetFileName(Document.SourcePath) : Document.DisplayName;
+        set
+        {
+            if (Document?.IsSquad == true)
+            {
+                try { Document.SetSquadName(value); }
+                catch (InvalidDataException) { Notify(); Notify(nameof(WindowTitle)); return; }
+            }
+            else title = value;
+            Notify(); Notify(nameof(WindowTitle));
+        }
+    }
     public string WindowTitle => HasDocument ? "ATLink · " + DocumentTitle : "ATLink · Database Studio";
     private bool busy;
     public bool Busy { get => busy; set { busy = value; Notify(); CommandManager.InvalidateRequerySuggested(); } }
+    private Action? displayNameHandler;
     public void Load(DatabaseDocument doc, DatabaseDocument? localization = null)
     {
         ResetWorkspace?.Invoke();
+        UnhookDocument();
         Document = doc; Localization = localization;
+        displayNameHandler = () => { Notify(nameof(DocumentTitle)); Notify(nameof(WindowTitle)); };
+        doc.DisplayNameChanged += displayNameHandler;
         Tables.Clear();
         foreach (var table in doc.Tables) Tables.Add(table);
         if(localization is not null)foreach(var table in localization.Tables)Tables.Add(table);
         TableFilter = "";
         SelectedTable = Tables.FirstOrDefault(t => t.Name == "players") ?? Tables.FirstOrDefault();
-        DocumentTitle = string.IsNullOrWhiteSpace(doc.DisplayName) ? System.IO.Path.GetFileName(doc.SourcePath) : doc.DisplayName;
-        foreach (var name in new[] { nameof(HasDocument), nameof(TableCount), nameof(PlayersCount), nameof(TeamsCount), nameof(LeaguesCount), nameof(TransfersCount), nameof(StadiumsCount), nameof(WindowTitle), nameof(Page) }) Notify(name);
+        foreach (var name in new[] { nameof(HasDocument), nameof(TableCount), nameof(PlayersCount), nameof(TeamsCount), nameof(LeaguesCount), nameof(TransfersCount), nameof(StadiumsCount), nameof(WindowTitle), nameof(DocumentTitle), nameof(CanRenameDocument), nameof(DocumentTitleLocked), nameof(Page) }) Notify(name);
         Status = $"{Tables.Count} tables loaded · {DocumentTitle}. Changes are saved to a new file.";
         Screen = "Launcher";
     }
@@ -195,15 +214,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void Close()
     {
         ResetWorkspace?.Invoke();
+        UnhookDocument();
         Document = null; Localization = null; SelectedTable = null; Tables.Clear(); TableFilter = "";
-        DocumentTitle = "EA SPORTS FC Database Editor";
-        Notify(nameof(HasDocument)); Notify(nameof(WindowTitle)); Notify(nameof(Page)); Screen = "Editing";
+        title = "EA SPORTS FC Database Editor";
+        Notify(nameof(HasDocument)); Notify(nameof(WindowTitle)); Notify(nameof(DocumentTitle)); Notify(nameof(CanRenameDocument)); Notify(nameof(DocumentTitleLocked)); Notify(nameof(Page)); Screen = "Editing";
     }
     public void Revert()
     {
         if (Document is null) return;
         foreach (var table in Tables) table.Data.RejectChanges();
+        Document.RevertSquadName();
         RefreshPage(); Status = "Changes discarded.";
+    }
+    void UnhookDocument()
+    {
+        if (Document is not null && displayNameHandler is not null) Document.DisplayNameChanged -= displayNameHandler;
+        displayNameHandler = null;
     }
 }
 

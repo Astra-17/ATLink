@@ -19,19 +19,48 @@ public sealed class DatabaseTable
     public string Label => $"{Name}  ({RowCount:N0})";
 }
 
+public sealed record DatabaseSaveTarget(string Filter, string FileName, string? InitialDirectory, bool AddExtension);
+
 /// <summary>Independent reader for raw DB files. Squad FBCHUNKS wrappers are unpacked first.</summary>
 public sealed partial class DatabaseDocument
 {
     private readonly byte[] original;
     internal byte[]? PackagedOriginal;
     internal Func<byte[], byte[]>? Package;
+    private string? originalSquadName;
     internal IReadOnlyDictionary<string,string> ReferencePlayerNames { get; set; } = new Dictionary<string,string>();
     internal IReadOnlyDictionary<string,string> ReferenceNationNames { get; set; } = new Dictionary<string,string>();
     internal IReadOnlyDictionary<string,string> ReferenceNationCodes { get; set; } = new Dictionary<string,string>();
     public string SourcePath { get; }
     public string DisplayName { get; internal set; }
+    public event Action? DisplayNameChanged;
     public IReadOnlyList<DatabaseTable> Tables { get; }
-    public bool HasChanges => Tables.Any(t => t.Data.Rows.Cast<DataRow>().Any(r => r.RowState != DataRowState.Unchanged));
+    public bool HasChanges => SquadNameChanged || Tables.Any(t => t.Data.Rows.Cast<DataRow>().Any(r => r.RowState != DataRowState.Unchanged));
+    public bool IsSquad => PackagedOriginal is not null && SquadFile.IsContainer(PackagedOriginal);
+    public bool SquadNameChanged => IsSquad && originalSquadName is not null && DisplayName != originalSquadName;
+    public DatabaseSaveTarget SaveTarget()
+    {
+        string full = Path.GetFullPath(SourcePath);
+        string stem = Path.GetFileNameWithoutExtension(full);
+        string? directory = Path.GetDirectoryName(full);
+        return IsSquad
+            ? new("Squad|*", stem + "-edited", directory, false)
+            : new("Database (*.db)|*.db", stem + "-edited.db", directory, true);
+    }
+    internal void RememberSquadName() => originalSquadName = DisplayName;
+    public void SetSquadName(string name)
+    {
+        if (!IsSquad || PackagedOriginal is null) throw new InvalidOperationException("Seul un fichier Squad a un nom interne.");
+        int capacity = Math.Min(SquadFile.NameCapacity, SquadFile.PrefixLength(PackagedOriginal) - SquadFile.NameOffset);
+        DisplayName = SquadFile.NormalizeName(name, capacity);
+        DisplayNameChanged?.Invoke();
+    }
+    public void RevertSquadName()
+    {
+        if (originalSquadName is null || DisplayName == originalSquadName) return;
+        DisplayName = originalSquadName;
+        DisplayNameChanged?.Invoke();
+    }
     private DatabaseDocument(string path, byte[] bytes, List<DatabaseTable> tables)
         => (SourcePath, DisplayName, original, Tables) = (path, Path.GetFileName(path), bytes, tables);
 

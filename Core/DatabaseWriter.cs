@@ -22,7 +22,7 @@ public sealed partial class DatabaseDocument
             BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(24+i*8+4,4),checked((int)body.Length));
             int end=i+1<ordered.Length?ordered[i+1].Start:original.Length;
             if(!table.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Unchanged)) body.Write(original.AsSpan(table.Start,end-table.Start));
-            else body.Write(SerializeTable(table));
+            else body.Write(SerializeTable(table,end));
         }
         BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(8,4),checked(headerSize+(int)body.Length));
         BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(20,4),Crc(header.AsSpan(0,20)));
@@ -69,7 +69,7 @@ public sealed partial class DatabaseDocument
             if(removed.Count>0&&child.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Deleted&&removed.Contains(r[fk.Name].ToString()??"")))throw new InvalidDataException($"{parent.Name}: une ligne supprimée est encore référencée dans {child.Name}.{fk.Name}.");
         }
     }
-    private byte[] SerializeTable(DatabaseTable table)
+    private byte[] SerializeTable(DatabaseTable table,int originalEnd)
     {
         var rows=table.Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted).ToArray();
         if(rows.Length>ushort.MaxValue)throw new InvalidDataException($"{table.Name}: plus de 65535 lignes.");
@@ -111,6 +111,11 @@ public sealed partial class DatabaseDocument
         BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(32,4),Crc(header.AsSpan(0,32)));
         using var output=new MemoryStream();output.Write(header);records.Position=0;records.CopyTo(output);strings.Position=0;strings.CopyTo(output);
         while(length++%8!=0)output.WriteByte(0);
+        // Native FC files store index definitions after the records/string block.
+        // They are part of the table checksum, and must survive a table rebuild.
+        int indexLength=originalEnd-4-table.CrcOffset;
+        if(indexLength<0)throw new InvalidDataException($"{table.Name}: invalid table footer.");
+        output.Write(original.AsSpan(table.CrcOffset,indexLength));
         byte[] partial=output.ToArray();
         Span<byte> crc=stackalloc byte[4];BinaryPrimitives.WriteUInt32LittleEndian(crc,Crc(partial.AsSpan(36)));output.Write(crc);
         return output.ToArray();

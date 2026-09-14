@@ -10,6 +10,17 @@
  <Style x:Key="HomeCardButton" TargetType="Button" BasedOn="{StaticResource CardButton}"><Setter Property="Background" Value="{StaticResource HomeCardBrush}"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource HoverBrush}"/></Trigger></Style.Triggers></Style>
  <Style x:Key="ModuleCard" TargetType="Button" BasedOn="{StaticResource CardButton}"><Setter Property="MinHeight" Value="96"/><Setter Property="Margin" Value="0,0,12,0"/></Style>
  <Style TargetType="TextBox"><Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="8,4"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Background" Value="{StaticResource PanelBrush}"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" Background="{TemplateBinding Background}"><ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/></Border></ControlTemplate></Setter.Value></Setter></Style>
+ <Style x:Key="DocumentNameBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+  <Setter Property="MinHeight" Value="18"/><Setter Property="Padding" Value="0"/><Setter Property="FontSize" Value="12"/>
+  <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+  <Setter Property="BorderBrush" Value="Transparent"/><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+  <Setter Property="ToolTip" Value="Squad name shown in FC26"/>
+  <Style.Triggers>
+   <Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="6,0"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/></Trigger>
+   <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="6,0"/><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/><Setter Property="Background" Value="{StaticResource PanelBrush}"/></Trigger>
+   <Trigger Property="IsReadOnly" Value="True"><Setter Property="Cursor" Value="Arrow"/><Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/></Trigger>
+  </Style.Triggers>
+ </Style>
  <Style TargetType="ComboBox">
   <Setter Property="MinHeight" Value="30"/><Setter Property="Padding" Value="8,4"/>
   <Setter Property="Background" Value="{StaticResource InputBrush}"/><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>

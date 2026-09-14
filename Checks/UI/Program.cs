@@ -94,6 +94,8 @@ internal static class Program
         }
         var modules=new ATLink.Views.ModulesWindow(doc);
         RenderControl(modules,"modules",1536,960);
+        if(modules.FindName("Subtitle") is not System.Windows.Controls.TextBox dbName||!dbName.IsReadOnly)
+            throw new Exception("Raw DB header name must stay read-only");
         typeof(ATLink.Views.ModulesWindow).GetMethod("Switch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(modules,new object[]{"transfers"});
         app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
         if(modules.FindName("PlayerContent") is not System.Windows.Controls.ContentControl transferHost||transferHost.Content is not ATLink.Views.TransfersPage transfers)
@@ -267,6 +269,10 @@ internal static class Program
         rowToKeep["teamname"]=originalName;rowToKeep.AcceptChanges();
         Console.WriteLine("PASS Editing cards, settings/welcome, language replacement and preserved main DB edits");
         var squadDocument=studio.OpenSquad(Path.Combine(root,"files","Squads20260905195257141"),"eng_us").Main;
+        var squadSave=squadDocument.SaveTarget();
+        if(squadSave.Filter!="Squad|*"||squadSave.AddExtension||squadSave.FileName.EndsWith(".db",StringComparison.OrdinalIgnoreCase)||!squadSave.FileName.EndsWith("-edited",StringComparison.Ordinal))
+            throw new Exception("Squad Save As must not use a .db extension");
+        Console.WriteLine("PASS Squad Save As uses Squad|* without a .db suffix");
         var squadCatalog=new FootballCatalog(squadDocument);
         var browser=new ATLink.Views.PlayerBrowser(squadCatalog);
         var browserSearch=(System.Windows.Controls.TextBox)typeof(ATLink.Views.PlayerBrowser).GetField("search",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(browser)!;
@@ -288,6 +294,16 @@ internal static class Program
         if(squadPitch is null||squadPitch.Children.OfType<System.Windows.Controls.Border>().Count()!=11)throw new Exception("Squad formation pitch must display eleven players");
         if(squadDocument.HasChanges)throw new Exception("Viewing Squad formation mutated data");
         Console.WriteLine("PASS selected Squad formations render eleven players without changing the document");
+        string previousSquadName=squadDocument.DisplayName;
+        var renamePage=new ATLink.Views.ModulesWindow(squadDocument);
+        if(renamePage.FindName("Subtitle") is not System.Windows.Controls.TextBox squadName||squadName.IsReadOnly)
+            throw new Exception("Squad header name must be editable");
+        squadName.Text="UI Squad Name";
+        typeof(ATLink.Views.ModulesWindow).GetMethod("CommitSquadName",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(renamePage,null);
+        if(squadDocument.DisplayName!="UI Squad Name"||!squadDocument.HasChanges)throw new Exception("Squad header rename did not apply");
+        squadDocument.RevertSquadName();
+        if(squadDocument.DisplayName!=previousSquadName||squadDocument.HasChanges)throw new Exception("Squad header rename revert");
+        Console.WriteLine("PASS Squad in-game name can be edited under ATLink Studio");
         var chromeProbe=new Window{Width=640,Height=400,Title="ATLink Studio",Background=Brushes.Black,
             Style=(Style)window.FindResource(typeof(Window)),ShowInTaskbar=false,
             Content=new System.Windows.Controls.TextBlock{Text="Window controls",Foreground=Brushes.White,Margin=new Thickness(24)}};

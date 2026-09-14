@@ -4,24 +4,59 @@ namespace ATLink.Core;
 public sealed class SquadFile
 {
     public const int NameOffset=18;
+    public const int NameCapacity=40;
     public DatabaseDocument Database {get;}
     public string SourcePath {get;}
     public string Name {get;}
     private SquadFile(DatabaseDocument database,string path,string name)=>(Database,SourcePath,Name)=(database,path,name);
     public static bool IsContainer(ReadOnlySpan<byte> data)=>data.Length>=18&&data[..8].SequenceEqual("FBCHUNKS"u8)&&data[8]==1&&data[9]==0;
+    public static int PrefixLength(ReadOnlySpan<byte> data)
+    {
+        if(!IsContainer(data))throw new InvalidDataException("Conteneur Squad FBCHUNKS attendu.");
+        return checked(18+BinaryPrimitives.ReadInt32LittleEndian(data[10..14]));
+    }
+    public static uint ComputeSaveTypeCrc(ReadOnlySpan<byte> packed)
+    {
+        // Native files store a CRC32 after SaveType_Squads. zlib CRC32 and the FIFA
+        // table CRC do not reproduce it on the DB, BNRY, or wrapper slices — including
+        // with the field zeroed first. FC26 rejects a leftover native CRC once the DB
+        // changes; reconstructed squads that load in-game write 0 here.
+        return 0;
+    }
     public static string ReadName(ReadOnlySpan<byte> data)
     {
         if(!IsContainer(data)||data.Length<=NameOffset)return "";
-        int prefix=checked(18+BinaryPrimitives.ReadInt32LittleEndian(data[10..14]));
+        int prefix=PrefixLength(data);
         int limit=Math.Min(NameOffset+128,Math.Min(prefix,data.Length));
         int end=NameOffset;while(end<limit&&data[end]!=0)end++;
         return end==NameOffset?"":Encoding.UTF8.GetString(data[NameOffset..end]).Trim();
+    }
+    public static string NormalizeName(string name,int capacity=NameCapacity)
+    {
+        string text=name.Replace("\0","").Trim();
+        if(text.Length==0)throw new InvalidDataException("Le nom du Squad ne peut pas être vide.");
+        int max=Math.Max(1,capacity-1);
+        byte[] bytes=Encoding.UTF8.GetBytes(text);
+        if(bytes.Length<=max)return text;
+        int length=max;
+        while(length>0&&(bytes[length]&0xC0)==0x80)length--;
+        if(length==0)throw new InvalidDataException("Le nom du Squad est trop long.");
+        return Encoding.UTF8.GetString(bytes,0,length);
+    }
+    public static void WriteName(Span<byte> data,string name)
+    {
+        int prefix=PrefixLength(data);
+        int capacity=Math.Min(NameCapacity,prefix-NameOffset);
+        if(capacity<=0)return;
+        byte[] encoded=Encoding.UTF8.GetBytes(NormalizeName(name,capacity));
+        data.Slice(NameOffset,capacity).Clear();
+        encoded.CopyTo(data[NameOffset..]);
     }
     public static SquadFile Open(string path,string metadata)
     {
         byte[] data=File.ReadAllBytes(path);
         if(!IsContainer(data))throw new InvalidDataException("Conteneur Squad FBCHUNKS attendu.");
-        int prefix=checked(18+BinaryPrimitives.ReadInt32LittleEndian(data.AsSpan(10,4)));
+        int prefix=PrefixLength(data);
         int dbStart=checked(prefix+52);
         if(dbStart+28>data.Length||!data.AsSpan(dbStart,8).SequenceEqual(new byte[]{68,66,0,8,0,0,0,0}))throw new InvalidDataException("DB embarquée absente du Squad.");
         int dbSize=BinaryPrimitives.ReadInt32LittleEndian(data.AsSpan(dbStart+8,4));
@@ -31,23 +66,26 @@ public sealed class SquadFile
         byte[] trail=data.AsSpan(dbStart+dbSize).ToArray();
         var database=DatabaseDocument.FromBytes(inner,metadata,path);
         database.PackagedOriginal=data;
-        database.Package=innerDb=>Pack(head,innerDb,trail);
+        database.Package=innerDb=>Pack(head,innerDb,trail,database.DisplayName);
         string name=ReadName(data);
         if(name.Length>0)database.DisplayName=name;
+        database.RememberSquadName();
         return new(database,path,name);
     }
     public void SaveAs(string path)=>Database.SaveAs(path);
-    private static byte[] Pack(byte[] head,byte[] db,byte[] trail)
+    private static byte[] Pack(byte[] head,byte[] db,byte[] trail,string name)
     {
         if(head.Length<18)throw new InvalidDataException("En-tête Squad incomplet.");
         int prefix=18+BinaryPrimitives.ReadInt32LittleEndian(head.AsSpan(10,4));
         if(prefix+52!=head.Length)throw new InvalidDataException("En-tête Squad incohérent.");
         byte[] packed=new byte[head.Length+db.Length+trail.Length];
         head.CopyTo(packed,0);
+        WriteName(packed,name);
         db.CopyTo(packed,head.Length);
         trail.CopyTo(packed,head.Length+db.Length);
         BinaryPrimitives.WriteInt32LittleEndian(packed.AsSpan(14,4),checked(head.Length-prefix+db.Length+trail.Length));
         BinaryPrimitives.WriteInt32LittleEndian(packed.AsSpan(prefix+48,4),checked(db.Length+trail.Length));
+        BinaryPrimitives.WriteUInt32LittleEndian(packed.AsSpan(prefix+16,4),ComputeSaveTypeCrc(packed));
         return packed;
     }
     public static string? AdjacentMetadata(string path)

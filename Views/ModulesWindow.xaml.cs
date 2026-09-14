@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ATLink.Core;
-using Microsoft.Win32;
 
 namespace ATLink.Views;
 public partial class ModulesWindow : UserControl, IWorkspacePage
@@ -21,7 +20,9 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private IReadOnlyList<EntityItem> items=[];
     public ModulesWindow(DatabaseDocument document,string initial="players")
     {
-        InitializeComponent();this.document=document;catalog=new(document);Subtitle.Text=document.DisplayName;
+        InitializeComponent();this.document=document;catalog=new(document);
+        Subtitle.Text=document.DisplayName;Subtitle.IsReadOnly=!document.IsSquad;
+        if(!document.IsSquad)Subtitle.ToolTip=document.DisplayName;
         string national=Path.Combine(Path.GetDirectoryName(document.SourcePath)!,"FC26_NATIONAL_TEAM_IDS.csv");
         if(!File.Exists(national))national=Path.Combine(AppContext.BaseDirectory,"Data","FC26_NATIONAL_TEAM_IDS.csv");
         if(File.Exists(national)){try{catalog.LoadNationalTeams(national);}catch(Exception ex){Status.Text=ex.Message;}}
@@ -113,8 +114,21 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         if(PlayerContent.Content is PlayerEditor editor&&!editor.TryApply())return;
-        var dialog=new SaveFileDialog{Filter="Database (*.db)|*.db",FileName=Path.GetFileNameWithoutExtension(document.SourcePath)+"-edited.db"};if(!ShellDialogs.Open(dialog,this))return;
+        CommitSquadName();
+        var dialog=ShellDialogs.ForDatabase(document);if(!ShellDialogs.Open(dialog,this))return;
         try{document.SaveAs(dialog.FileName);Status.Text="Saved: "+dialog.FileName;}catch(Exception ex){Error(ex);}
+    }
+    void SubtitleKey(object sender,KeyEventArgs e)
+    {
+        if(e.Key==Key.Enter){CommitSquadName();e.Handled=true;Keyboard.ClearFocus();}
+        else if(e.Key==Key.Escape){Subtitle.Text=document.DisplayName;Keyboard.ClearFocus();e.Handled=true;}
+    }
+    void SubtitleCommit(object sender,RoutedEventArgs e)=>CommitSquadName();
+    void CommitSquadName()
+    {
+        if(!document.IsSquad){Subtitle.Text=document.DisplayName;return;}
+        try{document.SetSquadName(Subtitle.Text);Subtitle.Text=document.DisplayName;}
+        catch(Exception ex){Subtitle.Text=document.DisplayName;Error(ex);}
     }
     private void Error(Exception ex){Status.Text=ex.Message;ShellDialogs.Message(this,ex.Message,"ATLink");}
 }

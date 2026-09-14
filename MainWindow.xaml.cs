@@ -101,7 +101,7 @@ public partial class MainWindow : Window
         if(model.Busy || model.Document is null)return;
         if(!TableGrid.CommitEdit(DataGridEditingUnit.Cell,true)||!TableGrid.CommitEdit(DataGridEditingUnit.Row,true))return;
         if(model.Localization?.HasChanges==true){try{SaveFullProject();}catch(Exception ex){Error(ex);}return;}
-        var save=new SaveFileDialog{Title="Enregistrer dans un nouveau fichier",Filter="Base de données (*.db)|*.db",FileName=Path.GetFileNameWithoutExtension(model.Document.SourcePath)+"-edited.db"};
+        var save=Views.ShellDialogs.ForDatabase(model.Document,"Enregistrer dans un nouveau fichier");
         if(save.ShowDialog(this)!=true)return;
         try{model.Document.SaveAs(save.FileName);model.Status=$"Copie enregistrée : {save.FileName}. L'original reste inchangé.";}catch(Exception ex){Error(ex);}
     }

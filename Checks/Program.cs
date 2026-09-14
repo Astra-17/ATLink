@@ -1,4 +1,5 @@
 using ATLink.Core;
+if(args.Contains("--squad-debug")){SquadDebugChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--squad-debug")??"."));return;}
 if(args.Contains("--transfers")){await TransferIntegrationChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--transfers")??"."));return;}
 if(args.Contains("--dbm")){DbmParityChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--dbm")??"."));return;}
 if(args.Contains("--startup")){StartupChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--startup")??"."));return;}
@@ -185,6 +186,14 @@ if(!squad.Name.Contains("Squad Update",StringComparison.OrdinalIgnoreCase)||squa
 byte[] squadBytes=File.ReadAllBytes(squadPath);
 if(SquadFile.ReadName(squadBytes)!=squad.Name)throw new Exception("Squad name parse");
 if(!squad.Database.Serialize().AsSpan().SequenceEqual(squadBytes))throw new Exception("Unchanged squad wrapper roundtrip");
+string originalSquadName=squad.Name;
+squad.Database.SetSquadName("ATLink Custom Squad");
+if(!squad.Database.HasChanges||squad.Database.DisplayName!="ATLink Custom Squad")throw new Exception("Squad rename not tracked");
+if(SquadFile.ReadName(squad.Database.Serialize())!="ATLink Custom Squad")throw new Exception("Squad name not packed");
+squad.Database.SetSquadName(new string('A',80));
+if(System.Text.Encoding.UTF8.GetByteCount(squad.Database.DisplayName)>=SquadFile.NameCapacity)throw new Exception("Squad name not truncated");
+squad.Database.RevertSquadName();
+if(squad.Database.HasChanges||SquadFile.ReadName(squad.Database.Serialize())!=originalSquadName||!squad.Database.Serialize().AsSpan().SequenceEqual(squadBytes))throw new Exception("Squad name revert");
 var squadPlayers=squad.Database.Tables.Single(t=>t.Name=="players");
 if(squadPlayers.RowCount==0||squadPlayers.SlotCapacity<=squadPlayers.RowCount)throw new Exception("Reserved squad slots not preserved");
 var squadRow=squadPlayers.Data.Rows[0];string originalOverall=(string)squadRow["overallrating"];
