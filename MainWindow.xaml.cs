@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private void FirstLaunch(object sender,RoutedEventArgs e)
     {
         Loaded-=FirstLaunch;
+        if(DesignerProperties.GetIsInDesignMode(this))return;
         try
         {
             if(studioData.NeedsLanguageChoice)
