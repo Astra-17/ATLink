@@ -8,12 +8,13 @@ public sealed record TournamentDraft(int ParentId,string Code,string Name,Tourna
     bool GenerateCalendar=true,bool AddRules=true,int Bench=9,int Substitutions=5,int WinPoints=3,int DrawPoints=1,int LossPoints=0);
 public sealed record CompetitionObject(int Id,int Kind,string Code,string Name,int ParentId)
 {
-    public override string ToString()=>$"{Code} · {Name} ({Id})";
+    public string DisplayName {get;init;}=Name;
+    public override string ToString()=>DisplayName;
 }
 public static class TournamentBuilder
 {
     public static IReadOnlyList<CompetitionObject> Objects(CompdataProject project)=>Lines(project,"compobj.txt")
-        .Where(r=>r.Length>=5).Select(r=>new CompetitionObject(int.Parse(r[0]),int.Parse(r[1]),r[2],r[3],int.Parse(r[4]))).OrderBy(o=>o.Id).ToArray();
+        .Where(r=>r.Length>=5).Select(r=>new CompetitionObject(int.Parse(r[0]),int.Parse(r[1]),r[2],r[3],int.Parse(r[4]))).Select(o=>o with {DisplayName=project.Labels?.Name(o)??o.Name}).OrderBy(o=>o.Id).ToArray();
     internal static IEnumerable<string[]> Lines(CompdataProject p,string path)=>p.Files.FirstOrDefault(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase))?.Text.Split('\n')
         .Select(l=>l.Trim()).Where(l=>l.Length>0&&!l.StartsWith('#')).Select(l=>l.Split(',').Select(v=>v.Trim()).ToArray())??[];
     public static CompetitionClone Append(CompdataProject project,IDictionary<string,List<string>> additions,int objects=0)
@@ -58,13 +59,14 @@ public static class TournamentBuilder
             if(draft.Format==TournamentFormat.Cup){Setting(competition,"match_endruleko1leg","ET");Setting(competition,"match_endruleko1leg","PENS");}
         }
         for(int i=0;i<draft.Teams.Count;i++)Line("initteams.txt",competition,i,draft.Teams[i]);
-        int Group(int phase,int number,int slots){int id=Obj(5,"G"+number,"",phase);for(int position=1;position<=slots;position++)Line("standings.txt",id,position);return id;}
+        bool zeroBased=Lines(project,"standings.txt").Any(r=>r.Length>=2&&r[1]=="0");
+        int Group(int phase,int number,int slots){int id=Obj(5,"G"+number,"",phase);for(int position=1;position<=slots;position++)Line("standings.txt",id,zeroBased?position-1:position);return id;}
         void Schedule(int phase,int round,int day,int matches)=>Line("schedule.txt",phase,day,round,matches,matches,time);
         int firstDay=draft.FirstMatch.DayNumber-draft.SeasonStart.DayNumber;
         if(draft.Format is TournamentFormat.League or TournamentFormat.Groups)
         {
             int phase=Obj(4,"S1",draft.Format==TournamentFormat.League?"FCE_League_Stage":"FCE_Group_Stage",competition);
-            if(draft.AddRules){Setting(phase,"match_stagetype",draft.Format==TournamentFormat.League?"LEAGUE":"GROUP");Setting(phase,"match_matchsituation",draft.Format==TournamentFormat.League?"LEAGUE":"GROUP");}
+            if(draft.AddRules){Setting(phase,"match_stagetype","LEAGUE");Setting(phase,"match_matchsituation",draft.Format==TournamentFormat.League?"LEAGUE":"GROUP");}
             for(int g=0;g<draft.Groups;g++)Group(phase,g+1,draft.TeamsPerGroup);
             if(draft.GenerateCalendar)
             {

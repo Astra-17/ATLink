@@ -15,7 +15,19 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel model=new();
     private readonly Views.WorkspaceController workspace;
-    private readonly StudioData studioData=new(Path.Combine(AppContext.BaseDirectory,"Data"));
+    private StudioData studioData=new(Path.Combine(AppContext.BaseDirectory,"Data"));
+    private bool changingGame;
+    private void GameChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(changingGame||!IsInitialized||GamePicker.SelectedItem is not ComboBoxItem {Tag:string game}||game==studioData.Game)return;
+        if(model.Busy||!MayDiscard())
+        {
+            changingGame=true;GamePicker.SelectedIndex=studioData.Game=="FC26"?0:1;changingGame=false;return;
+        }
+        model.Close();
+        studioData=new StudioData(Path.Combine(AppContext.BaseDirectory,"Data"),game:game);
+        model.Status=game+" selected. Choose a database.";
+    }
     public MainWindow()
     {
         InitializeComponent();DataContext=model;Closing+=OnClosing;model.PropertyChanged+=ModelChanged;
@@ -95,7 +107,12 @@ public partial class MainWindow : Window
     }
     private void OpenPage(UserControl page)=>workspace.Push(page);
     private void HashClick(object sender,RoutedEventArgs e)=>OpenPage(new Views.LanguageHashWindow());
-    private bool MayDiscard()=>model.Document?.HasChanges!=true && model.Localization?.HasChanges!=true || MessageBox.Show(this,"Abandonner les modifications en mémoire ?","Modifications non enregistrées",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;
+    private bool MayDiscard()
+    {
+        var competition=model.Page is Views.CompetitionStudio studio?studio.Model.Context:model.Page is Views.CompetitionCreationWizard wizard?wizard.ProjectContext:model.Page is Views.FootballCreationWizard football?football.ProjectContext:null;
+        if((competition?.HasUnexportedChanges==true||model.Page is Views.CompetitionStudio {Model.Season.HasPending:true})&&MessageBox.Show(this,"Leave the competition project without exporting its changes?","Unexported competition changes",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return false;
+        return model.Document?.HasChanges!=true&&model.Localization?.HasChanges!=true||MessageBox.Show(this,"Abandonner les modifications en mémoire ?","Modifications non enregistrées",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;
+    }
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy || model.Document is null)return;
@@ -248,10 +265,30 @@ public partial class MainWindow : Window
         page.Closed+=ok=>{if(ok){model.RefreshPage();model.Status=$"Updated {rows.Length} rows.";}};
         OpenPage(page);
     }
-    private void CompdataClick(object sender,RoutedEventArgs e)
+    private async void CompdataClick(object sender,RoutedEventArgs e)
     {
-        var dialog=new OpenFolderDialog{Title="Open Compdata folder"};if(dialog.ShowDialog(this)!=true)return;
-        try{OpenPage(new ATLink.Views.CompdataWindow(CompdataProject.Open(dialog.FolderName)));}catch(Exception ex){Error(ex);}
+        if(model.Busy)return;
+        try
+        {
+            string folder=studioData.CompdataFolder;
+            if(!File.Exists(Path.Combine(folder,"compobj.txt")))
+            {
+                var dialog=new OpenFolderDialog{Title="Open "+studioData.Game+" Compdata folder"};if(dialog.ShowDialog(this)!=true)return;
+                folder=dialog.FolderName;
+            }
+            model.Busy=true;model.Status="Opening competition project…";
+            var data=studioData;string code=data.SuggestedLanguage().Code;var language=data.Languages.Single(l=>l.Code==code);
+            var loadedBase=model.Document is {IsSquad:false}?model.Document:null;var loadedLoc=model.Localization;
+            var context=await Task.Run(()=>
+            {
+                var project=CompdataProject.Open(folder);
+                var database=loadedBase is null?DatabaseDocument.Open(data.BaseDatabase,data.Metadata):CompetitionProjectContext.Clone(loadedBase,data.Metadata);
+                var localization=loadedLoc??data.OpenLocalization(code);
+                return new CompetitionProjectContext(project,data.Game,database,localization,data.Metadata,language.MetadataPath);
+            });
+            OpenPage(new ATLink.Views.CompetitionStudio(context));
+        }
+        catch(Exception ex){Error(ex);}finally{model.Busy=false;}
     }
     private void BigClick(object sender,RoutedEventArgs e)
     {
@@ -296,12 +333,7 @@ public partial class MainWindow : Window
             if(MessageBox.Show(this,$"Replace {previews.Count} tables with {previews.Sum(p=>p.Rows.Count):N0} validated rows? Changes stay in memory until save.","Bulk import preview",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
             foreach(var preview in previews)TableEditing.Replace(preview.Table,preview.Rows);model.RefreshPage();model.Status=$"Imported {previews.Count} tables.";
         }catch(Exception ex){Error(ex);}
-    }    private void OnClosing(object? sender,System.ComponentModel.CancelEventArgs e){if(model.Busy || !MayDiscard())e.Cancel=true;}
+    }    private void OnClosing(object? sender,System.ComponentModel.CancelEventArgs e){if(model.Busy||model.Page is Views.CompetitionStudio {Model.IsWorking:true}||!MayDiscard())e.Cancel=true;}
     private void Error(Exception ex){model.Status=ex.Message;MessageBox.Show(this,ex.Message,"ATLink",MessageBoxButton.OK,MessageBoxImage.Warning);}
 }
-
-
-
-
-
 

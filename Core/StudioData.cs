@@ -14,13 +14,18 @@ public sealed class StudioData
     private IReadOnlyDictionary<string,string>? referenceNationCodes;
     public string Root {get;}
     public string PreferencesPath {get;}
-    public StudioData(string root,string? preferencesPath=null)
+    public string Game {get;}
+    public StudioData(string root,string? preferencesPath=null,string game="FC26")
     {
-        Root=Path.GetFullPath(root);
-        PreferencesPath=preferencesPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ATLink","settings.json");
+        if(game is not ("FC26" or "FC27"))throw new ArgumentException("Unsupported game.",nameof(game));
+        Game=game;
+        string installedRoot=Path.GetFullPath(root);
+        Root=game=="FC27"?Path.Combine(installedRoot,"FC27"):installedRoot;
+        PreferencesPath=preferencesPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ATLink",game=="FC26"?"settings.json":"settings-FC27.json");
     }
     public string BaseDatabase=>Require("fifa_ng_db.db");
     public string Metadata=>Require("fifa_ng_db-meta.xml");
+    public string CompdataFolder=>Path.Combine(Root,"compdata");
     string Require(string file){string path=Path.Combine(Root,file);return File.Exists(path)?path:throw new FileNotFoundException("Fichier intégré manquant. Réinstaller les données ATLink : "+file,path);}
     public IReadOnlyList<DatabaseLanguage> Languages=>Directory.Exists(Root)?Directory.EnumerateFiles(Root,"*-meta.xml")
         .Select(path=>Path.GetFileName(path).Replace("-meta.xml",""))

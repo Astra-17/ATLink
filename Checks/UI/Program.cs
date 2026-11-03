@@ -14,6 +14,10 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--football-editor")){FootballEditorUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--football-editor")??"."));return;}
+        if(args.Contains("--competition-studio")){CompetitionStudioUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-studio")??"."));return;}
+        if(args.Contains("--compdata")){CompdataUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--compdata")??"."));return;}
+        if(args.Contains("--games")){GameSelectionChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--games")??"."));return;}
         if(args.Contains("--transfers")){TransferUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--transfers")??"."));return;}
         string root=Path.GetFullPath(args.Length>0?args[0]:".");
         var app=new Application();
@@ -335,6 +339,3 @@ internal static class Program
         window.Close();app.Shutdown();
     }
 }
-
-
-

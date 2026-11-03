@@ -8,4 +8,6 @@ obj/
 Checks/output/
 files/*.db
 files/Squads*
+files/**/*.db
+files/**/Squads*
 artifacts/

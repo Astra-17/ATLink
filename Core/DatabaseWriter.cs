@@ -165,6 +165,9 @@ public sealed partial class DatabaseDocument
     public static void ValidateKeys(DatabaseTable table)
     {
         var keys=table.Fields.Where(f=>f.IsKey).ToArray(); if(keys.Length==0)return;
+        // A competition has separate ball records for weather/stage variants.
+        // The descriptor marks competitionid as a key, but it is not unique alone.
+        if(table.Name=="competitionballs")keys=table.Fields.Where(f=>f.Name is "competitionid" or "weather" or "stage").ToArray();
         var seen=new Dictionary<string,int>(StringComparer.Ordinal);
         var baseline=table.Data.Rows.Cast<DataRow>().Where(r=>r.HasVersion(DataRowVersion.Original)).GroupBy(r=>string.Join("\u001f",keys.Select(f=>r[f.Name,DataRowVersion.Original].ToString()))).ToDictionary(g=>g.Key,g=>g.Count());
         foreach(var row in table.Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted))

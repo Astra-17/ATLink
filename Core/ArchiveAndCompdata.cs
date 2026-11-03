@@ -48,6 +48,7 @@ public sealed class CompdataFile
 }
 public sealed class CompdataProject
 {
+    public CompetitionLabels? Labels {get;set;}
     public required string SourceFolder {get;init;}
     public required IReadOnlyList<CompdataFile> Files {get;set;}
     public static CompdataProject Open(string folder)
@@ -86,7 +87,7 @@ public sealed class CompdataProject
     public void SaveAs(string folder)
     {
         if(Directory.Exists(folder)||File.Exists(folder))throw new IOException("Choisir un nouveau dossier.");
-        var errors=Validate();if(errors.Count>0)throw new InvalidDataException(string.Join(Environment.NewLine,errors.Take(20)));
+        var errors=CompetitionEditing.Validate(this);if(errors.Count>0)throw new InvalidDataException(string.Join(Environment.NewLine,errors.Take(20)));
         var pending=Files.Select(f=>(f.RelativePath,Bytes:f.Changed?f.Encoding.GetPreamble().Concat(f.Encoding.GetBytes(f.Text)).ToArray():f.Original)).ToArray();
         string temporary=Path.GetFullPath(folder)+"."+Guid.NewGuid().ToString("N")+".tmp";Directory.CreateDirectory(temporary);
         foreach(var f in pending){string path=Path.Combine(temporary,f.RelativePath);Directory.CreateDirectory(Path.GetDirectoryName(path)!);File.WriteAllBytes(path,f.Bytes);}

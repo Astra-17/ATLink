@@ -1,4 +1,14 @@
 using ATLink.Core;
+if(args.Contains("--scheduling")){SchedulingChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--scheduling")??"."));return;}
+if(args.Contains("--phase-settings")){PhaseSettingsChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--phase-settings")??"."));return;}
+if(args.Contains("--competition-parity")){CompetitionParityChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-parity")??"."));return;}
+if(args.Contains("--dbm-competition-audit")){DbmCompetitionAudit.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--dbm-competition-audit")??"."));return;}
+
+if(args.Contains("--football-editor")){FootballEditorChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--football-editor")??"."));return;}
+if(args.Contains("--competition-studio")){CompetitionStudioChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-studio")??"."));return;}
+if(args.Contains("--fc27-compdata")){Fc27CompdataChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--fc27-compdata")??"."));return;}
+if(args.Contains("--fc27")){Fc27Checks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--fc27")??"."));return;}
+
 if(args.Contains("--squad-debug")){SquadDebugChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--squad-debug")??"."));return;}
 if(args.Contains("--transfers")){await TransferIntegrationChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--transfers")??"."));return;}
 if(args.Contains("--dbm")){DbmParityChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--dbm")??"."));return;}
@@ -205,4 +215,3 @@ if((string)rereadSquad.Database.Tables.Single(t=>t.Name=="players").Data.Rows[0]
 if(rereadSquad.Database.Tables.Single(t=>t.Name=="players").SlotCapacity!=squadPlayers.SlotCapacity)throw new Exception("Squad capacity lost");
 if(rereadSquad.Name!=squad.Name)throw new Exception("Squad name lost on rewrite");
 File.Delete(squadOut);Console.WriteLine($"PASS squad FBCHUNKS read/write, name '{squad.Name}', {squadPlayers.RowCount} active players, reserved slots kept");
-

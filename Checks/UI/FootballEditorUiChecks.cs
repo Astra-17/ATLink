@@ -1,0 +1,152 @@
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using ATLink;
+using ATLink.Core;
+using ATLink.Views;
+using ATLink.ViewModels;
+internal static class FootballEditorUiChecks
+{
+    [STAThread]
+    public static void Run(string root)
+    {
+        void Check(bool ok,string message){if(!ok)throw new Exception(message);}
+        var app=new Application();System.Threading.SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));var window=new MainWindow();var main=(MainViewModel)window.DataContext;
+        ((ComboBox)window.FindName("GamePicker")).SelectedIndex=1;typeof(MainWindow).GetMethod("CompdataClick",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,[window,new RoutedEventArgs()]);
+        var frame=new DispatcherFrame();var watch=Stopwatch.StartNew();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(50)};timer.Tick+=(_,_)=>{if(!main.Busy||watch.Elapsed.TotalSeconds>120)frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);timer.Stop();Check(main.Page is CompetitionStudio,"Studio did not open");var studio=(CompetitionStudio)main.Page!;var vm=studio.Model;
+        Check(vm.Competitions.Count==93,"Competition count");Check(vm.Stages.All(s=>!FootballCompetitionAdapter.IsHidden(vm.Context,s.Id)),"Setup visible");Check(vm.RuleScopes.All(s=>s.Id==vm.Selected!.Id||s.Kind==4&&!FootballCompetitionAdapter.IsHidden(vm.Context,s.Id)),"Technical rule scope visible");Check(vm.Seats.All(s=>s.File!="initteams.txt"),"Previous standings counted as participants");
+        var errors=new StringWriter();var listener=new TextWriterTraceListener(errors);PresentationTraceSources.DataBindingSource.Listeners.Add(listener);PresentationTraceSources.DataBindingSource.Switch.Level=SourceLevels.Error;
+        var content=(FrameworkElement)window.Content;var tabs=(TabControl)studio.FindName("Sections");string output=Path.Combine(root,"Checks/output/ui/football");Directory.CreateDirectory(output);
+        void Render(FrameworkElement element,string name,int width,int height)
+        {
+            element.Measure(new Size(width,height));element.Arrange(new Rect(0,0,width,height));element.UpdateLayout();app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);element.Measure(new Size(width,height));element.Arrange(new Rect(0,0,width,height));element.UpdateLayout();var bmp=new RenderTargetBitmap(width,height,96,96,PixelFormats.Pbgra32);bmp.Render(element);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using var stream=File.Create(Path.Combine(output,name+".png"));png.Save(stream);
+        }
+        for(int section=0;section<tabs.Items.Count;section++){tabs.SelectedIndex=section;Render(content,"section-"+section,1400,850);Render(content,"small-"+section,960,580);}
+        var cup=vm.Context.Objects.First(o=>o.Kind==3&&FootballCompetitionAdapter.Read(vm.Context,o.Id).Phases.Count(p=>p.Kind==FootballPhaseKind.Knockout)>=2);vm.Selected=cup;
+        int a=FootballCompetitionAdapter.Read(vm.Context,cup.Id).Phases.First(p=>p.Kind==FootballPhaseKind.Knockout).NativeId!.Value;vm.RuleScope=vm.RuleScopes.Single(s=>s.Id==a);
+        var rules=vm.SportRules!;Check(!rules.Tables,"Table rules shown for knockout");var sub=rules.Fields.Single(f=>f.Definition.Key=="rule_numsubsmatch");sub.UseDefault=false;sub.Value="3";vm.SaveSportRules();Check(string.IsNullOrEmpty(vm.RulesError),"Phase rule save: "+vm.RulesError);Check(vm.Context.EffectiveRules(a).Single(r=>r.Key=="rule_numsubsmatch").Value=="3","Phase override");vm.UndoCommand.Execute(null);
+        vm.RuleScope=vm.RuleScopes.Single(s=>s.Id==a);rules=vm.SportRules!;Check(!rules.HasChanges,"Opening rules creates a pending change");
+        rules.AllRules=true;Check(rules.Sections.SelectMany(g=>g.Fields).Any(f=>f.Definition.Key=="rule_allowadditionalsub"),"Additional substitution missing");
+        var opening=Stopwatch.StartNew();var wizard=new FootballCreationWizard(vm.Context,vm.Selected!.ParentId,_=>{});opening.Stop();Console.WriteLine("Add competition initialization: "+opening.ElapsedMilliseconds+" ms");var create=wizard.Model;Check(((TabControl)wizard.FindName("Steps")).Items.Count==5,"Five-step wizard");
+        var journey=(TabControl)wizard.FindName("Steps");Check(journey.Items.Cast<TabItem>().Select(t=>t.Header?.ToString()).SequenceEqual(new[]{"1 · Format","2 · Teams","3 · Schedule & venues","4 · Rules & rewards","5 · Review"}),"Creation journey order");
+        Check(((Button)wizard.FindName("CreateButton")).Visibility==Visibility.Collapsed,"Create should appear only at Review");
+        create.Name="";journey.SelectedIndex=4;Check(journey.SelectedIndex==0&&!string.IsNullOrEmpty(create.Error),"Direct navigation bypassed format validation");create.Name="New competition";
+        var crestTeams=create.Teams.Where(t=>t.Crest is not null).Take(2).ToArray();Check(crestTeams.Length==2,"Team crest fixtures unavailable");
+        create.SelectedAvailable=crestTeams[0];create.AddTeam();Check(create.ParticipantCounter=="1/20","First selected team count");create.SelectedAvailable=crestTeams[1];create.AddTeam();Check(create.ParticipantCounter=="2/20","Second selected team count");
+        create.Format.Phases[0].Participants="24";Check(create.ParticipantCounter=="2/24","Counter ignored format capacity change");create.SelectedParticipant=create.Participants[0];create.RemoveTeam();create.AddTeam();Check(create.ParticipantCounter=="1/24","Removal or duplicate changed the count incorrectly");create.Format.Phases[0].Participants="20";
+        journey.SelectedIndex=1;Render(wizard,"teams-crests-counter",1400,850);Render(wizard,"teams-crests-counter-small",960,580);Check(((TextBlock)wizard.FindName("SelectedTeamCounter")).Text=="1/20","Visible participant counter stale");
+        create.Participants.Clear();journey.SelectedIndex=0;
+        foreach(var type in create.Types)
+        {
+            create.Type=type;Check(create.Regions.Count>0,"No supported regions for "+type.Name);Check(create.Format.Phases.All(p=>p.Kind!=FootballPhaseKind.Special),"Technical creation phase");
+            Check(create.ValidateStep(2),"Preset invalid: "+create.Error);var steps=(TabControl)wizard.FindName("Steps");for(int step=0;step<5;step++){steps.SelectedIndex=step;Render(wizard,"wizard-"+type.Kind+"-"+step,1400,850);Render(wizard,"wizard-small-"+type.Kind+"-"+step,960,580);}
+        }
+        create.Type=create.Types.Single(t=>t.Kind==FootballCompetitionKind.GroupsAndKnockout);
+        var group=create.Format.Phases[0];group.Participants="16";group.Groups="8";
+        Check(group.QualifierChoices.SequenceEqual(new[]{"1","2"}),"16 teams / 8 groups must offer at most two qualifiers");
+        group.Qualifiers="4";Check(group.Qualifiers!="4","Impossible qualifier selection accepted");
+        group.Qualifiers="1";Check(create.Format.Phases[1].Participants=="8"&&!create.Format.Phases[1].CanChooseInput,"Next phase must use actual qualifiers");
+        group.Participants="12";Check(group.GroupChoices.All(g=>12%int.Parse(g)==0),"Uneven group selection offered");
+        Check(create.ValidateStep(2),"Dependent selection invalid: "+create.Error);
+        // Exercise the actual visible ComboBox: a model-only assignment misses WPF selection re-entry.
+        ((TabControl)wizard.FindName("Steps")).SelectedIndex=0;
+        create.Type=create.Types.Single(t=>t.Kind==FootballCompetitionKind.GroupsAndKnockout);
+        create.Format.Selected=create.Format.Phases[0];create.Format.Selected.Participants="32";
+        Render(wizard,"guided-live",1400,850);
+        IEnumerable<DependencyObject> Descendants(DependencyObject parent){for(int i=0;i<VisualTreeHelper.GetChildrenCount(parent);i++){var child=VisualTreeHelper.GetChild(parent,i);yield return child;foreach(var nested in Descendants(child))yield return nested;}}
+        var groupsBox=Descendants(wizard).OfType<ComboBox>().Single(b=>ReferenceEquals(b.DataContext,create.Format.Phases[0])&&System.Windows.Data.BindingOperations.GetBindingExpression(b,ComboBox.SelectedItemProperty)?.ParentBinding.Path.Path=="Groups");
+        int notifications=0;var live=create.Format.Phases[0];live.PropertyChanged+=(_,_)=>{if(++notifications>3000)throw new Exception("Selection notification loop");};
+        foreach(string count in new[]{"4","8","2","1","8","4"}){groupsBox.SelectedItem=count;app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);Check(live.Groups==count,"Live group selection lost: expected "+count+", actual "+live.Groups+", current "+create.Format.Phases[0].Groups);}
+        Check(notifications<3000,"Unbounded selection notifications");
+        Check(Descendants(wizard).OfType<TextBlock>().All(t=>t.Text!="Edit this phase"),"Permanent edit panel still visible");
+        var headers=tabs.Items.Cast<TabItem>().Select(t=>t.Header?.ToString()).ToArray();Check(Array.IndexOf(headers,"Settings")==Array.IndexOf(headers,"Expert")-1,"Settings must precede Expert");
+        tabs.SelectedIndex=Array.IndexOf(headers,"Settings");Render(content,"settings-by-phase",1400,850);Render(content,"settings-by-phase-small",960,580);
+        var editable=create.Format.Phases[0];string originalName=editable.Name;string originalGroups=editable.Groups;
+        var canceled=new FootballPhaseWindow(editable,vm.Context);canceled.Draft.Name="Canceled phase";canceled.Draft.Groups="2";
+        Check(editable.Name==originalName&&editable.Groups==originalGroups,"Popup edits leak before confirmation");canceled.Close();
+        var confirmed=new FootballPhaseWindow(editable,vm.Context);confirmed.Draft.Name="Confirmed phase";confirmed.Draft.Groups="2";
+        Check(confirmed.Draft.Rules.AllRules,"Popup hides compatible settings");
+        var bench=confirmed.Draft.Rules.Fields.Single(f=>f.Definition.Key=="rule_numsubsbench");bench.UseDefault=false;bench.Value="12";
+        Render((FrameworkElement)confirmed.Content,"phase-popup",780,680);Render((FrameworkElement)confirmed.Content,"phase-popup-small",620,500);
+        ((TabControl)confirmed.FindName("Sections")).SelectedIndex=1;Render((FrameworkElement)confirmed.Content,"phase-popup-rules",780,680);
+        var active=confirmed.Draft.Rules.ActiveOptions;Check(active.Any(o=>o.Definition.Key=="rule_numsubsbench"&&o.Value=="12"&&o.Origin=="This phase"),"Active phase override missing");
+        var existingKeys=active.Select(o=>o.Definition.Key).ToHashSet();var missing=FootballRuleCatalogue.Scalar(confirmed.Draft.Kind).FirstOrDefault(d=>!existingKeys.Contains(d.Key));
+        if(missing is not null){var added=confirmed.Draft.Rules.Fields.Single(f=>f.Definition.Key==missing.Key);added.UseDefault=false;added.Value=missing.Input==FootballRuleInput.Toggle?missing.On:Math.Max(missing.Minimum,1).ToString();Check(confirmed.Draft.Rules.ActiveOptions.Any(o=>o.Definition.Key==missing.Key),"New option not active");}
+        ((TabControl)confirmed.FindName("Sections")).SelectedIndex=2;Render((FrameworkElement)confirmed.Content,"phase-settings",780,680);
+        Check(confirmed.ConfirmDraft(),"Popup confirmation failed");Check(editable.Name=="Confirmed phase"&&editable.Groups=="2"&&editable.Rules.Overrides()["rule_numsubsbench"][0]=="12","Popup changes not applied");confirmed.Close();
+        var savedPhase=vm.FootballFormat.Phases.First(p=>p.NativeId.HasValue);int savedId=savedPhase.NativeId!.Value;
+        var savedField=savedPhase.Rules.Fields.Single(f=>f.Definition.Key=="rule_numsubsbench");savedField.UseDefault=false;savedField.Value="30";
+        typeof(CompetitionStudio).GetMethod("ApplyPhaseSettings",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(studio,[studio,new RoutedEventArgs()]);
+        Check(vm.Context.EffectiveRules(savedId).Any(r=>r.Key=="rule_numsubsbench"&&r.Value=="30"&&r.Source==savedId),"Settings not saved to project draft");vm.UndoCommand.Execute(null);
+        var optionPicker=new FootballOptionWindow([FootballRuleCatalogue.Entries.Single(d=>d.Key=="rule_numsubsbench")],"12");Check(optionPicker.SelectedValue=="12","Option value choice lost");Render((FrameworkElement)optionPicker.Content,"option-picker",520,400);optionPicker.Close();
+        foreach(var native in vm.Context.Objects.Where(o=>o.Kind==3)){var readOnlySeason=new FootballSeasonViewModel(vm.Context,native.Id);Check(!readOnlySeason.HasPending,"Native season read creates pending edits: "+native.DisplayName);var readOnlyFormat=new FootballFormatViewModel(vm.Context,true);readOnlyFormat.Load(native.Id);Check(!readOnlyFormat.HasStructureChanges,"Native format appears edited: "+native.DisplayName);}
+        tabs.SelectedIndex=Array.IndexOf(headers,"Settings");((TabControl)studio.FindName("SettingsSections")).SelectedIndex=1;Render(content,"season-studio",1400,850);Render(content,"season-studio-small",960,580);
+        var nativeLeague=vm.Context.Objects.Single(o=>o.Code=="C13");var season=new FootballSeasonViewModel(vm.Context,nativeLeague.Id);int nativeTasks=season.Tasks.Count;season.Propose();Check(!season.HasPending&&season.Tasks.Count==nativeTasks,"Native partial historical classification was expanded automatically");
+        season.StartMonth=season.Months.Single(m=>m.Id==8);season.RefreshPreview();season.ConfirmChanges=true;season.Apply();Check(string.IsNullOrEmpty(season.Error),"Season settings apply: "+season.Error);vm.UndoCommand.Execute(null);
+        create.Type=create.Types.Single(t=>t.Kind==FootballCompetitionKind.League);create.Format.Phases[0].Participants="8";Check(create.ValidateStep(1),"League format preflight");
+        foreach(var team in vm.Context.Teams.Take(4))create.Participants.Add(new CompetitionTeamVm(team));
+        var entry=new FootballSeasonTask("FillFromCompTableBackupLeague",new(0),[nativeLeague.Id,13,4]);
+        var taskWindow=new FootballTaskWindow(create.Season,entry);Check(taskWindow.ConfirmRule()&&taskWindow.Result!.Parameters.SequenceEqual(entry.Parameters),"Named source picker changed typed references");Render((FrameworkElement)taskWindow.Content,"season-rule-picker",620,600);taskWindow.Close();create.Season.SetTask(entry);
+        ((TabControl)wizard.FindName("Steps")).SelectedIndex=1;((TabControl)wizard.FindName("TeamsAndRulesTabs")).SelectedIndex=1;Render(wizard,"season-wizard",1400,850);Render(wizard,"season-wizard-small",960,580);
+        create.Season.UseSelectedClubs(vm.Context.Teams.Take(8).Select(t=>new CompetitionTeamVm(t)));create.UpdateReview();Check(create.Review.Contains("Season behaviour")&&create.ValidateStep(2),"Season review invalid: "+create.Error);create.Create();Check(create.Completed,"Guided dynamic creation failed: "+create.Error);vm.Context.Undo();vm.Refresh();
+        var duplicateDialog=new FootballDuplicateWindow(vm.Context,nativeLeague.Id);Check(duplicateDialog.CreateDraft(),"Duplicate draft failed");Check(vm.Context.Objects.Any(o=>o.Id==duplicateDialog.CreatedId),"Duplicate missing");duplicateDialog.Close();vm.Context.Undo();vm.Refresh();
+        var dateWizard=new FootballCreationWizard(vm.Context,507,_=>{});var dates=dateWizard.Model;dates.Format.Phases[0].Participants="4";dates.Format.Phases[0].Legs="Single match";foreach(var team in vm.Context.Teams.Take(4))dates.Participants.Add(new CompetitionTeamVm(team));
+        dates.Calendar.Mode="Choose matchday dates";dates.Calendar.BuildMatchdays();Check(dates.Calendar.Matchdays.Count==3,"Manual matchday list not generated");
+        dates.Calendar.Matchdays[0].Date=new DateTime(2028,2,27);dates.Calendar.Matchdays[0].Kickoff="17:30";dates.Calendar.Matchdays[1].Date=new DateTime(2028,2,29);dates.Calendar.Matchdays[1].Kickoff="20:15";dates.Calendar.Matchdays[2].Date=new DateTime(2028,3,3);
+        dates.Calendar.Home=dates.Season.Clubs[0];dates.Calendar.Away=dates.Season.Clubs[1];dates.Calendar.FixtureDate=new DateTime(2028,2,29);dates.Calendar.FixtureTime="20:15";dates.Calendar.AddFixture();Check(dates.Calendar.Fixtures.Count==1,"Known fixture not accepted beside date slots: "+dates.Calendar.Error);
+        dates.Calendar.BulkPhase=dates.Calendar.Phases[0];dates.Calendar.BulkTime="18:45";dates.Calendar.AdjustPhase(false);Check(dates.Calendar.Plan().Matchdays.All(r=>r.Kickoff=="1845")&&dates.Calendar.Fixtures[0].Kickoff=="1845","Phase kick-off did not update slots and fixtures together");
+        dates.Calendar.BulkDate=new DateTime(2028,3,1);dates.Calendar.AdjustPhase(true);Check(dates.Calendar.Matchdays[0].Date==new DateTime(2028,3,1)&&dates.Calendar.Fixtures[0].Date==new DateOnly(2028,3,3),"Phase move did not preserve leap-year spacing");
+        string bulkBefore=dates.Calendar.Summary();dates.Calendar.BulkTime="25:00";dates.Calendar.AdjustPhase(false);Check(!string.IsNullOrEmpty(dates.Calendar.Error)&&dates.Calendar.Summary()==bulkBefore,"Invalid bulk time changed the draft");
+        dates.Calendar.BulkDate=new DateTime(2028,2,27);dates.Calendar.AdjustPhase(true);dates.Calendar.BulkTime="20:15";dates.Calendar.AdjustPhase(false);
+        ((TabControl)dateWizard.FindName("Steps")).SelectedIndex=2;((TabControl)dateWizard.FindName("ScheduleTabs")).SelectedIndex=0;Render(dateWizard,"creation-matchday-dates",1400,850);Render(dateWizard,"creation-matchday-dates-small",960,580);
+        var dateSteps=(TabControl)dateWizard.FindName("Steps");dates.Calendar.Matchdays[0].Kickoff="25:00";dateSteps.SelectedIndex=4;Check(dateSteps.SelectedIndex==2,"Review bypassed calendar validation");dates.Calendar.Matchdays[0].Kickoff="20:15";
+        dateSteps.SelectedIndex=3;var sharedBench=dates.GeneralRules.Fields.Single(f=>f.Definition.Key=="rule_numsubsbench");sharedBench.UseDefault=false;sharedBench.Value="12";((TabControl)dateWizard.FindName("RulesTabs")).SelectedIndex=1;
+        Check(dates.Format.Phases[0].Rules.Fields.Single(f=>f.Definition.Key=="rule_numsubsbench").Value=="12","Phase rules did not refresh the competition defaults");Render(dateWizard,"journey-rules-rewards",1400,850);Render(dateWizard,"journey-rules-rewards-small",960,580);
+        dateSteps.SelectedIndex=4;Check(((Button)dateWizard.FindName("CreateButton")).Visibility==Visibility.Visible&&((TextBlock)dateWizard.FindName("StepLabel")).Text=="Step 5 of 5","Review footer state");dateSteps.SelectedIndex=0;dateSteps.SelectedIndex=2;
+        ((TabControl)dateWizard.FindName("ScheduleTabs")).SelectedIndex=1;Render(dateWizard,"journey-venues",1400,850);Render(dateWizard,"journey-venues-small",960,580);
+        dates.RefreshPhaseDefaults();Check(dates.Calendar.Plan().Matchdays.Any(r=>r.Date==new DateOnly(2028,2,29)),"Phase default refresh discarded custom dates");dates.Calendar.BuildMatchdays();Check(dates.Calendar.Matchdays.Any(r=>r.Date==new DateTime(2028,2,29)),"Updating the calendar overwrote entered dates");dates.UpdateReview();Check(dates.Review.Contains("29/02/2028")&&dates.ValidateStep(2),"Precise calendar review failed: "+dates.Error+" Review="+dates.Review);dates.Create();Check(dates.Completed,"Precise calendar creation failed: "+dates.Error);vm.Context.Undo();vm.Refresh();
+        var exactWizard=new FootballCreationWizard(vm.Context,507,_=>{});var exact=exactWizard.Model;exact.Type=exact.Types.Single(t=>t.Kind==FootballCompetitionKind.Cup);exact.Format.Phases[0].Participants="4";foreach(var team in vm.Context.Teams.Take(4))exact.Participants.Add(new CompetitionTeamVm(team));exact.Calendar.Mode="Exact fixtures";exact.Calendar.Synchronize();exact.Calendar.FixturePhase=exact.Calendar.Phases.Last();exact.Calendar.Home=exact.Season.Clubs[0];exact.Calendar.Away=exact.Season.Clubs[2];exact.Calendar.FixtureDate=new DateTime(2028,7,1);exact.Calendar.FixtureTime="21:35";exact.Calendar.AddFixture();Check(exact.Calendar.Fixtures.Count==1,"Exact fixture dialog failed: "+exact.Calendar.Error);
+        ((TabControl)exactWizard.FindName("Steps")).SelectedIndex=2;((TabControl)exactWizard.FindName("ScheduleTabs")).SelectedIndex=0;Render(exactWizard,"creation-exact-fixtures",1400,850);Render(exactWizard,"creation-exact-fixtures-small",960,580);exact.Create();Check(exact.Completed,"Exact fixture creation failed: "+exact.Error);vm.Context.Undo();vm.Refresh();
+        // Exercise the new controls through the real guided draft and popup copy/confirm path.
+        int essentialsId=0;var essentialsWizard=new FootballCreationWizard(vm.Context,507,id=>essentialsId=id);var essentials=essentialsWizard.Model;
+        essentials.Type=essentials.Types.Single(t=>t.Kind==FootballCompetitionKind.Cup);essentials.Format.Phases[0].Participants="8";essentials.Format.Phases[0].Rounds="3";
+        var editedRound=essentials.Format.Phases[0];Check(editedRound.EssentialRounds.Count==3,"Collapsed knockout rounds need independent essentials");
+        essentials.Calendar.Mode="Choose matchday dates";essentials.Calendar.BulkPhase=essentials.Calendar.Phases.Last();string firstRoundTime=essentials.Calendar.Matchdays[0].Kickoff;essentials.Calendar.BulkTime="21:15";essentials.Calendar.AdjustPhase(false);
+        Check(essentials.Calendar.Matchdays.Last().Kickoff=="21:15"&&essentials.Calendar.Matchdays[0].Kickoff==firstRoundTime,"Bulk edit changed the first phase instead of the selected final");
+        var finalSettings=editedRound.EssentialRounds.Last();finalSettings.PrizeMode=finalSettings.PrizeModes.Single(m=>m.Mode==FootballSettingMode.Value);finalSettings.Prize="20 000 000";finalSettings.VenueMode=finalSettings.VenueModes.Single(m=>m.Mode==FootballSettingMode.Value);finalSettings.Stadium=finalSettings.StadiumChoices.First();
+        var draftCopy=editedRound.EditCopy();draftCopy.EssentialRounds.Last().Prize="5";Check(finalSettings.Prize=="20 000 000","Cancelled popup copy changed source prize");
+        essentials.RefreshPhaseDefaults();editedRound=essentials.Format.Phases[0];Check(editedRound.EssentialRounds.Last().Snapshot().Prize.Value=="20000000"&&editedRound.EssentialRounds.Last().Stadium is not null,"Defaults refresh discarded essentials");
+        var essentialsView=new FootballPhaseEssentials{DataContext=editedRound};essentialsView.Resources.MergedDictionaries.Add(new ResourceDictionary{Source=new Uri("/ATLink;component/Themes/Studio.xaml",UriKind.Relative)});Render(essentialsView,"phase-essentials",780,800);Render(essentialsView,"phase-essentials-small",540,580);
+        var prizeBox=Descendants(essentialsView).OfType<TextBox>().Last(b=>System.Windows.Data.BindingOperations.GetBindingExpression(b,TextBox.TextProperty)?.ParentBinding.Path.Path=="Prize");
+        prizeBox.SetCurrentValue(TextBox.TextProperty,"1");app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);prizeBox.SetCurrentValue(TextBox.TextProperty,"12");app.Dispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
+        Check(editedRound.EssentialRounds.Last().Prize=="12"&&Descendants(essentialsView).Contains(prizeBox),"Typing recreated the prize input or lost the second digit");editedRound.EssentialRounds.Last().Prize="20 000 000";
+        var finalOnly=new FootballPhaseViewModel(editedRound.Snapshot() with{Participants=2,Rounds=1,RoundSettings=[editedRound.Snapshot().RoundSettings.Last()]},new Dictionary<string,string[]>());finalOnly.ConfigureEssentials(vm.Context);
+        var finalView=new FootballPhaseEssentials{DataContext=finalOnly};finalView.Resources.MergedDictionaries.Add(new ResourceDictionary{Source=new Uri("/ATLink;component/Themes/Studio.xaml",UriKind.Relative)});Render(finalView,"final-essentials",780,800);Render(finalView,"final-essentials-small",540,580);
+        Check(!finalSettings.DisciplineChoices.Last().Available&&finalSettings.HostChoices.All(c=>!c.Available),"Unverified policies selectable");
+        essentials.UpdateReview();Check(essentials.Review.Contains("20 M")&&essentials.ValidateStep(2),"Essentials review: "+essentials.Error);essentials.Create();Check(essentials.Completed,"Essentials creation: "+essentials.Error);
+        var recreated=FootballCompetitionAdapter.Read(vm.Context,essentialsId);Check(recreated.Phases.Select(p=>vm.Context.EffectiveRules(p.NativeId!.Value).Single(r=>r.Key=="info_prize_money").Value).SequenceEqual(new[]{"0","0","20000000"}),"Guided round prizes not written");vm.Context.Undo();vm.Refresh();
+        // Monthly calendar, vertical day editor and simulation stay separate from confirmed fixtures.
+        var calendarWizard=new FootballCreationWizard(vm.Context,507,_=>{});var cal=calendarWizard.Model;cal.Format.Phases[0].Participants="8";cal.Format.Phases[0].Legs="Single match";
+        var barca=vm.Context.Teams.First(t=>t.Name.Contains("Barcelona",StringComparison.OrdinalIgnoreCase));foreach(var t in new[]{barca}.Concat(vm.Context.Teams.Where(t=>t.Id!=barca.Id).Take(7)))cal.Participants.Add(new(t));
+        cal.Calendar.Mode="Choose matchday dates";var board=cal.Calendar.Board;board.Synchronize();
+        void WaitFor(System.Threading.Tasks.Task task){if(!task.IsCompleted){var f=new DispatcherFrame();task.ContinueWith(_=>app.Dispatcher.BeginInvoke(new Action(()=>f.Continue=false)));Dispatcher.PushFrame(f);}task.GetAwaiter().GetResult();}
+        WaitFor(board.LoadAvailability());Check(board.Index.Events.Count>0,"Availability not loaded: "+board.Error);Check(board.Index.Events.Any(e=>e.Teams.Contains(barca.Id)),"Barcelona external availability missing");
+        Check(board.Days.Count==42&&board.TimeChoices.Count==96&&board.TimeChoices.Contains("10:15"),"Calendar grid / quarter-hour picker");
+        DateOnly day=board.Matches.First().Date!.Value;string before=System.Text.Json.JsonSerializer.Serialize(board.Matches);var cancelledDay=new CalendarDayViewModel(board,cal.Calendar.Phases,day);cancelledDay.Cards[0].Time="10:15";Check(System.Text.Json.JsonSerializer.Serialize(board.Matches)==before,"Unapplied day draft mutated the calendar");
+        var dayModel=new CalendarDayViewModel(board,cal.Calendar.Phases,day);dayModel.Cards[0].Time="10:15";Check(dayModel.Apply(),"Day popup apply: "+dayModel.Error);Check(board.Matches.Any(m=>m.Date==day&&m.Kickoff=="1015"),"Quarter-hour not applied");
+        var dailyWindow=new CalendarDayWindow(new CalendarDayViewModel(board,cal.Calendar.Phases,day));Render((FrameworkElement)dailyWindow.Content,"calendar-day-popup",720,760);Render((FrameworkElement)dailyWindow.Content,"calendar-day-popup-small",520,520);dailyWindow.Close();
+        var removable=new CalendarDayViewModel(board,cal.Calendar.Phases,day);int initialCount=removable.Count;removable.ConfirmRemoval=()=>false;removable.Count=initialCount-1;Check(removable.Count==initialCount,"Removal ignored confirmation");removable.ConfirmRemoval=()=>true;removable.Count=initialCount-1;Check(removable.Apply(),"Removal draft rejected");Check(board.Matches.Any(m=>m.Date is null),"Removed match was silently lost instead of unplaced");board.Undo();Check(board.Matches.All(m=>m.Date.HasValue),"Calendar undo failed");
+        board.Start=day.ToDateTime(TimeOnly.MinValue);board.End=day.AddDays(100).ToDateTime(TimeOnly.MinValue);string slotsBefore=System.Text.Json.JsonSerializer.Serialize(cal.Calendar.Matchdays.Select(m=>m.Snapshot()));WaitFor(board.Simulate());Check(board.HasProposal,"Simulation failed: "+board.Error);Check(System.Text.Json.JsonSerializer.Serialize(cal.Calendar.Matchdays.Select(m=>m.Snapshot()))==slotsBefore,"Simulation preview changed the native draft");Check(board.Proposal!.Unplaced.Count==0,"Small league not placed: "+board.ProposalText);board.ApplyProposal();Check(!board.HasProposal&&string.IsNullOrEmpty(board.Error),"Proposal apply failed: "+board.Error);
+        Check(cal.Calendar.Fixtures.Count==0,"Simulation froze fixtures without confirmation");board.UseFixtures();Check(cal.Calendar.Fixtures.Count==board.Matches.Count,"Confirmed named fixtures missing");board.Undo();Check(cal.Calendar.Fixtures.Count==0,"Fixture confirmation undo failed");
+        var fixtureReview=new CalendarFixturesReview(board.Matches);Render((FrameworkElement)fixtureReview.Content,"calendar-fixtures-review",720,600);fixtureReview.Close();
+        ((TabControl)calendarWizard.FindName("Steps")).SelectedIndex=2;Render(calendarWizard,"calendar-month",1400,950);Render(calendarWizard,"calendar-month-small",960,680);board.Team=board.TeamChoices.Single(t=>t.Id==int.Parse(barca.Id));Render(calendarWizard,"calendar-barcelona",1400,950);board.ChangeMonth(7);Check(board.Days.Count==42,"Cross-year month navigation");
+        CompetitionRecreationUiChecks.Run(vm.Context,root);
+        Check(!vm.Context.HasChanges,"Reading/edit undo mutated native files");listener.Flush();PresentationTraceSources.DataBindingSource.Listeners.Remove(listener);Check(string.IsNullOrWhiteSpace(errors.ToString()),"Binding errors: "+errors);
+        main.Close();window.Close();Console.WriteLine("PASS football UI and season parity: five-step journey, navigation validation, bulk scheduling and draft preservation, hidden preparation/historical standings, per-phase rules, overrides and undo, 1400/960 renders and no binding errors");
+    }
+}

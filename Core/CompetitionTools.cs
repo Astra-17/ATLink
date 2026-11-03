@@ -32,8 +32,8 @@ public static class CompetitionTools
                     int[] parameterRefs=old[2] switch{"FillFromCompTable" or "FillFromCompTableBackupLeague" or "UpdateTable"=>[4],"FillFromCompTableBackup"=>[4,5],_=>[]};
                     foreach(int index in parameterRefs)if(map.TryGetValue(row[index],out var target))row[index]=target;
                 }
-                if(fileName=="settings.txt"&&row.Length>=3&&row[1] is "info_league_promo" or "info_league_releg" or "schedule_forcecomp"&&map.TryGetValue(row[2],out var reference))row[2]=reference;
-                if(fileName=="compobj.txt") {if(old[0]==sourceId){row[2]=code;row[3]=name;}else row[2]=(char.IsAsciiLetter(old[2].FirstOrDefault())?old[2][0]:'S')+map[old[0]];}
+                if(fileName=="settings.txt"&&row.Length>=3&&row[1] is "schedule_forcecomp" or "schedule_refcomp" or "schedule_use_dates_comp" or "rule_suspension" or "advance_pointskeep" or "advance_standingskeep" or "advance_teamcompdependency"&&map.TryGetValue(row[2],out var reference))row[2]=reference;
+                if(fileName=="compobj.txt") {if(old[0]==sourceId){row[2]=code;row[3]=name;}else row[2]=old[2];}
                 additions.Add(string.Join(',',row));
             }
             if(additions.Count>0){string nl=file.Text.Contains("\r\n")?"\r\n":"\n";string after=file.Text+(file.Text.EndsWith('\n')?"":nl)+string.Join(nl,additions)+nl;changes.Add(new(file.RelativePath,file.Text,after));}
@@ -43,7 +43,7 @@ public static class CompetitionTools
             string tail=Path.GetFileName(file.RelativePath)[(source[2].Length+1)..];
             var stage=objects.Where(r=>selected.Contains(r[0])&&r[1]=="4").FirstOrDefault(r=>tail.StartsWith(r[2]+"_",StringComparison.OrdinalIgnoreCase));
             if(stage is null)throw new InvalidDataException($"Phase inconnue pour {file.RelativePath}.");
-            string stageCode=(char.IsAsciiLetter(stage[2].FirstOrDefault())?stage[2][0]:'S')+map[stage[0]];
+            string stageCode=stage[2];
             string filename=code+"_"+stageCode+tail[stage[2].Length..];
             string path=Path.Combine(Path.GetDirectoryName(file.RelativePath)!,filename);
             if(project.Files.Any(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Calendrier cible déjà présent.");

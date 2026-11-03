@@ -1,0 +1,31 @@
+<UserControl x:Class="ATLink.Views.FootballPhaseEssentials" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
+ <UserControl.Resources>
+  <BooleanToVisibilityConverter x:Key="Visible"/>
+  <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="16"/><Setter Property="Margin" Value="0,0,0,12"/></Style>
+  <Style x:Key="Title" TargetType="TextBlock"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="18"/><Setter Property="Margin" Value="0,0,0,10"/></Style>
+  <Style x:Key="Hint" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="0,8"/></Style>
+ </UserControl.Resources>
+ <StackPanel><StackPanel Visibility="{Binding ShowIntroduction,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><TextBlock Text="Phase essentials" FontSize="23" FontWeight="Bold" Margin="0,0,0,8"/><TextBlock Text="Set rewards and venues for each played round. Existing native settings are preserved until you change them." Style="{StaticResource Hint}"/>
+ </StackPanel><ItemsControl ItemsSource="{Binding EssentialRounds}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,12,0,8">
+  <TextBlock Text="{Binding Name}" FontSize="21" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,14"/>
+  <Border Style="{StaticResource Card}" Visibility="{Binding ShowPrize,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><StackPanel><TextBlock Text="Prize money" Style="{StaticResource Title}"/>
+   <ComboBox ItemsSource="{Binding PrizeModes}" SelectedItem="{Binding PrizeMode}" IsEnabled="{Binding Supported}"/>
+   <TextBox Text="{Binding Prize,UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding CustomPrize,Converter={StaticResource Visible}}" IsEnabled="{Binding Supported}" Margin="0,10,0,0"/>
+   <TextBlock Text="{Binding PrizeError}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding NativePrize,StringFormat='Existing: {0}'}" Style="{StaticResource Hint}"/><TextBlock Text="{Binding InheritedPrize,StringFormat='Competition default: {0}'}" Style="{StaticResource Hint}"/>
+   <TextBlock Text="{Binding SupportNote}" Style="{StaticResource Hint}"/>
+  </StackPanel></Border>
+  <Border Style="{StaticResource Card}" Visibility="{Binding ShowVenues,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><StackPanel><TextBlock Text="Venues" Style="{StaticResource Title}"/>
+   <ComboBox ItemsSource="{Binding VenueModes}" SelectedItem="{Binding VenueMode}" IsEnabled="{Binding Supported}"/>
+   <StackPanel Visibility="{Binding SingleStadium,Converter={StaticResource Visible}}" IsEnabled="{Binding Supported}"><TextBlock Text="Search stadiums by name" Style="{StaticResource Hint}"/><TextBox Text="{Binding StadiumSearch,UpdateSourceTrigger=PropertyChanged}"/><ListBox ItemsSource="{Binding StadiumChoices}" SelectedItem="{Binding Stadium}" DisplayMemberPath="Name" Height="140" Margin="0,8,0,0" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/></StackPanel>
+   <TextBlock Text="{Binding VenueError}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding NativeVenue,StringFormat='Existing: {0}'}" Style="{StaticResource Hint}"/><TextBlock Text="{Binding InheritedVenue,StringFormat='Competition default: {0}'}" Style="{StaticResource Hint}"/>
+   <Button Content="Selected host stadiums" IsEnabled="False" HorizontalAlignment="Left" ToolTip="{Binding HostLimitation}"/>
+   <TextBlock Text="{Binding HostLimitation}" Style="{StaticResource Hint}"/>
+  </StackPanel></Border>
+  <Border Style="{StaticResource Card}" Visibility="{Binding ShowDiscipline,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><StackPanel><TextBlock Text="Discipline" Style="{StaticResource Title}"/>
+   <ComboBox ItemsSource="{Binding DisciplineChoices}" SelectedItem="{Binding DisciplineChoice,Mode=OneWay}"><ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem"><Setter Property="IsEnabled" Value="{Binding Available}"/><Setter Property="ToolTip" Value="{Binding Explanation}"/></Style></ComboBox.ItemContainerStyle></ComboBox>
+   <TextBlock Text="{Binding DisciplineOrigin}" Style="{StaticResource Hint}"/><TextBlock Text="{Binding YellowLimitation}" Style="{StaticResource Hint}"/>
+  </StackPanel></Border>
+  <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/>
+ </StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+ </StackPanel>
+</UserControl>

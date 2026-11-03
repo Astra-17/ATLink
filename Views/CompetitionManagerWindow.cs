@@ -7,10 +7,10 @@ namespace ATLink.Views;
 public sealed class CompetitionManagerWindow:UserControl,IWorkspacePage
 {
     public event Action<bool>? Closed;
-    public CompetitionManagerWindow(CompdataProject project)
+    public CompetitionManagerWindow(CompdataProject project,int? selectedId=null)
     {
         var snapshots=project.Files.ToDictionary(f=>f.RelativePath,f=>f.Text,StringComparer.OrdinalIgnoreCase);
-        var draftProject=new CompdataProject{SourceFolder=project.SourceFolder,Files=project.Files.Select(f=>new CompdataFile{RelativePath=f.RelativePath,Text=f.Text,InitialText=f.Text,Encoding=f.Encoding,Original=f.Original}).ToArray()};
+        var draftProject=new CompdataProject{SourceFolder=project.SourceFolder,Labels=project.Labels,Files=project.Files.Select(f=>new CompdataFile{RelativePath=f.RelativePath,Text=f.Text,InitialText=f.Text,Encoding=f.Encoding,Original=f.Original}).ToArray()};
         var files=draftProject.Files.ToList();
         var schemas=new[]{("settings.txt","Règles"),("tasks.txt","Sources d'équipes"),("schedule.txt","Calendrier"),("standings.txt","Places"),("advancement.txt","Progression"),("initteams.txt","Équipes initiales"),("weather.txt","Météo")};
         foreach(var (path,_) in schemas)if(!files.Any(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase)))files.Add(new(){RelativePath=path,Text="",InitialText="",Original=[],Encoding=new UTF8Encoding(false)});
@@ -39,9 +39,11 @@ public sealed class CompetitionManagerWindow:UserControl,IWorkspacePage
         {
             var file=files.Single(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase));var table=new CompdataTable(file);tables[file.RelativePath]=table;
             var panel=new DockPanel();
-            var help=new TextBlock{Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap,Text=path switch{"settings.txt"=>"Les règles de l'objet sélectionné remplacent celles de ses parents. Plusieurs valeurs par clé sont possibles.","tasks.txt"=>"Sources d'équipes : timing start/end, action et cible. Les paramètres dépendent de l'action.","advancement.txt"=>"Les positions commencent à 1. Une place de destination ne peut recevoir qu'une progression.","initteams.txt"=>"Les positions commencent à 0. Les identifiants doivent correspondre aux équipes de votre DB.","schedule.txt"=>"Jour = offset depuis la date de référence du jeu. Heure HHmm ; minimum de matchs ≤ maximum.","weather.txt"=>"Choisir un pays. Sec + pluie + neige = 100 ; couverture nuageuse indépendante.",_=>"Une ligne représente une place de classement, numérotée à partir de 1."}};
+            var help=new TextBlock{Margin=new Thickness(8),TextWrapping=TextWrapping.Wrap,Text=path switch{"settings.txt"=>"Les règles de l'objet sélectionné remplacent celles de ses parents. Plusieurs valeurs par clé sont possibles.","tasks.txt"=>"Sources d'équipes : timing start/end, action et cible. Les paramètres dépendent de l'action.","advancement.txt"=>"Les positions commencent à 1. Une place de destination ne peut recevoir qu'une progression.","initteams.txt"=>"Positions start at 0. Team IDs must match your DB; -1 leaves a slot unassigned.","schedule.txt"=>"Jour = offset depuis la date de référence du jeu. Heure HHmm ; minimum de matchs ≤ maximum.","weather.txt"=>"Choisir un pays. Sec + pluie + neige = 100 ; couverture nuageuse indépendante.",_=>"Une ligne représente une place de classement, numérotée à partir de 1."}};
+            if(path=="weather.txt"&&table.Data.Columns.Count==9)help.Text="FC27: world, confederation or country; five weather weights totaling 100, then sunset and night (HHmm). Legacy climate presets are unavailable for this format.";
+            if(path=="standings.txt"&&table.Data.Rows.Cast<DataRow>().Any(r=>(string)r[1]=="0"))help.Text="FC27 standings indices start at 0. Progression uses ranks starting at 1; existing source value 0 is preserved.";
             DockPanel.SetDock(help,Dock.Top);panel.Children.Add(help);
-            if(path=="weather.txt")
+            if(path=="weather.txt"&&table.Data.Columns.Count==8)
             {
                 var bar=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(8)};DockPanel.SetDock(bar,Dock.Top);panel.Children.Add(bar);
                 var preset=new ComboBox{ItemsSource=new[]{"temperate","cold","tropical","dry","rainy"},SelectedIndex=0,Width=150};bar.Children.Add(preset);
@@ -66,7 +68,8 @@ public sealed class CompetitionManagerWindow:UserControl,IWorkspacePage
             {
                 if(selection.SelectedItem is not CompetitionObject group||group.Kind!=5||!int.TryParse(rank.Text,out int position)||position<1)throw new InvalidOperationException("Choisir un groupe et une position positive.");
                 var slots=tables["standings.txt"].Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted);
-                if(!slots.Any(r=>(string)r[0]==group.Id.ToString()&&(string)r[1]==position.ToString()))throw new InvalidOperationException("Cette place n'existe pas dans standings.");
+                bool zeroBased=slots.Any(r=>(string)r[1]=="0");
+                if(!slots.Any(r=>(string)r[0]==group.Id.ToString()&&(string)r[1]==(zeroBased?position-1:position).ToString()))throw new InvalidOperationException("Cette place n'existe pas dans standings.");
                 var settings=tables["settings.txt"];
                 foreach(var row in settings.Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted&&(string)r[0]==group.Id.ToString()&&(keys.Contains((string)r[1])||(string)r[1]=="info_slot_champ")&&(string)r[2]==position.ToString()).ToArray())row.Delete();
                 settings.Data.Rows.Add(group.Id.ToString(),(string)kind.SelectedItem,position.ToString());
@@ -121,6 +124,7 @@ public sealed class CompetitionManagerWindow:UserControl,IWorkspacePage
             }
             catch(Exception ex){status.Text=ex.Message;}
         };
+        if(selectedId.HasValue)selection.SelectedItem=objects.FirstOrDefault(o=>o.Id==selectedId.Value)??objects.FirstOrDefault();
         Refresh();Effective();
     }
 }

@@ -27,8 +27,11 @@ public sealed class CompdataTable
             "weather.txt"=>["countryid","month","dry","rain","snow","overcast","sunset","night"],
             _=>[]
         };
-        if(columns.Length==0&&System.Text.RegularExpressions.Regex.IsMatch(name,@"^[a-z]\d+_[a-z]\d+_\d{4}(?:\.txt)?$"))columns=["date","time","hometeamid","awayteamid"];
+        if(columns.Length==0&&System.Text.RegularExpressions.Regex.IsMatch(name,@"^[a-z]\d+_[a-z][a-z0-9]*_\d{4}(?:\.txt)?$"))columns=["date","time","hometeamid","awayteamid"];
         int max=originalLines.Where(l=>!string.IsNullOrWhiteSpace(l)&&!l.TrimStart().StartsWith('#')).Select(l=>l.Split(',').Length).DefaultIfEmpty(columns.Length).Max();
+        // FC27 stores five weather weights, followed by two times. Keep the
+        // weights neutral until their individual engine meanings are documented.
+        if(name=="weather.txt"&&max==9)columns=["objectid","month","weatherweight1","weatherweight2","weatherweight3","weatherweight4","weatherweight5","sunset","night"];
         for(int i=0;i<Math.Max(max,columns.Length);i++)Data.Columns.Add(i<columns.Length?columns[i]:$"column{i+1}",typeof(string));
         for(int i=0;i<originalLines.Length;i++)
         {
