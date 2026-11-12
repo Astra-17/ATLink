@@ -20,6 +20,7 @@ public sealed record CreationFixture(string PhaseKey,int PhaseIndex,string Phase
 public sealed class CreationCalendarViewModel:FootballNotify
 {
     public CalendarBoardViewModel Board {get;}
+    public InternationalCalendarViewModel International {get;}
     public void NotifyBoardEdit(){signature=Shape(Phases);Refresh();}
     readonly CompetitionProjectContext context;readonly Func<IReadOnlyList<FootballPhase>> layout;
     public FootballSeasonViewModel Season {get;}
@@ -59,7 +60,7 @@ public sealed class CreationCalendarViewModel:FootballNotify
     }
     string signature="";
     string Shape(IReadOnlyList<FootballCalendarPhase> phases)=>string.Join("|",phases.Select(p=>$"{p.Key}:{p.Rounds}:{p.Matches}"));
-    public CreationCalendarViewModel(CompetitionProjectContext context,FootballSeasonViewModel season,Func<IReadOnlyList<FootballPhase>> layout){this.context=context;Season=season;this.layout=layout;Board=new(this,context,layout);FixtureDate=context.ReferenceDate.AddDays(7).ToDateTime(TimeOnly.MinValue);}
+    public CreationCalendarViewModel(CompetitionProjectContext context,FootballSeasonViewModel season,Func<IReadOnlyList<FootballPhase>> layout){this.context=context;International=new(context);Season=season;this.layout=layout;Board=new(this,context,layout);FixtureDate=context.SeasonStart.AddDays(7).ToDateTime(TimeOnly.MinValue);}
     public void Synchronize()
     {
         try
@@ -107,18 +108,20 @@ public sealed class CreationCalendarViewModel:FootballNotify
     public void RemoveFixture(){if(SelectedFixture is not null)Fixtures.Remove(SelectedFixture);}
     public FootballCalendarPlan Plan()
     {
-        Synchronize();if(Automatic)return Season.Calendar() with{SimulationOptions=Board.Edited?Board.Options():null};Board.ValidateDraft();var defaults=new FootballCalendarPlan(FootballCalendarMode.Generate,context.ReferenceDate,1,"1500"){SimulationOptions=Board.Edited?Board.Options():null};
+        Synchronize();if(Automatic&&Board.FriendlyReplacements.Count>0)throw new InvalidDataException("Apply the manual replacement dates before returning to an automatic schedule.");if(Automatic)return Season.Calendar() with{SimulationOptions=Board.Edited?Board.Options():null};Board.ValidateDraft();var defaults=new FootballCalendarPlan(FootballCalendarMode.Generate,context.ReferenceDate,1,"1500"){SimulationOptions=Board.Edited?Board.Options():null,FriendlyReplacements=Board.FriendlyReplacements};
         if(Manual&&signature!=Shape(Phases))throw new InvalidDataException("Update the matchday calendar to match the current format before creating the competition.");
         var plan=defaults with{Mode=Manual?FootballCalendarMode.ManualMatchdays:FootballCalendarMode.ExactFixtures,Matchdays=Manual?Matchdays.Select(r=>r.Snapshot()).ToArray():[],Fixtures=CanAssign?Fixtures.Select(f=>{var phase=Phases.FirstOrDefault(p=>p.Key==f.PhaseKey)??throw new InvalidDataException("Remove fixtures belonging to a removed phase.");return new FootballFixtureDraft(phase.Index,f.Date,f.Kickoff,f.Home.Id.ToString(),f.Away.Id.ToString());}).ToArray():[]};
         FootballExactCalendar.Validate(context,Phases,plan);Error="";Notify(nameof(Error));return plan;
     }
     public string Summary()
     {
-        var plan=Plan();return plan.Mode switch
+        var plan=Plan();var summary=plan.Mode switch
         {
             FootballCalendarMode.ManualMatchdays=>"Custom matchday dates\n"+string.Join("\n",plan.Matchdays.Select(r=>$"• {Phases[r.PhaseIndex].Name} · Matchday {r.Round}: {r.Date:dd'/'MM'/'yyyy} at {r.Kickoff[..2]}:{r.Kickoff[2..]}"))+(Fixtures.Count>0?"\nAssigned fixtures\n"+string.Join("\n",Fixtures.Select(f=>$"• {f.PhaseName}: {f.Description}")):""),
             FootballCalendarMode.ExactFixtures=>"Exact fixtures\n"+string.Join("\n",Fixtures.Select(f=>$"• {f.PhaseName}: {f.Description}"))+"\nOnly the listed fixtures are scheduled. Unlisted rounds remain to be configured.",
             _=>$"{Season.CalendarMode}: first date {plan.FirstDate:dd'/'MM'/'yyyy}, interval {plan.IntervalDays} days, kick-off {plan.Kickoff}."
         };
+        return summary+(plan.FriendlyReplacements.Count==0?"":"\nInternational friendly slots removed on export (all matches in each slot)\n"+string.Join("\n",plan.FriendlyReplacements.Select(s=>$"• {s.Date(context.ReferenceDate):dd/MM/yyyy}: {s.Description}")));
     }
 }
+

@@ -20,6 +20,7 @@ public sealed record FootballCalendarPhase(int Index,string Name,int Rounds,int 
 public sealed record FootballCalendarPlan(FootballCalendarMode Mode,DateOnly FirstDate,int IntervalDays,string Kickoff)
 {
     public FootballSchedulingOptions? SimulationOptions {get;init;}
+    public IReadOnlyList<InternationalFriendlySlot> FriendlyReplacements {get;init;}=[];
     public IReadOnlyList<FootballMatchdayDraft> Matchdays {get;init;}=[];
     public IReadOnlyList<FootballFixtureDraft> Fixtures {get;init;}=[];
 }
@@ -64,7 +65,10 @@ public static class FootballSeason
     public static void Validate(CompetitionProjectContext c,int competition,FootballSeasonTask task)
     {
         var action=Actions.SingleOrDefault(a=>a.Code==task.Action)??throw new InvalidDataException("This automation remains in Expert.");
-        var target=c.Objects.SingleOrDefault(o=>o.Id==task.Target.Value);if(target is null||target.Kind!=action.TargetKind||!c.Scope(competition).Contains(target.Id))throw new InvalidDataException("Choose a compatible destination in this competition.");
+        var target=c.Objects.SingleOrDefault(o=>o.Id==task.Target.Value);
+        bool crossTable=c.Game=="FC27"&&task.Action=="UpdateTable";
+        if(target is null||target.Kind!=action.TargetKind||!crossTable&&!c.Scope(competition).Contains(target.Id))
+            throw new InvalidDataException("Choose a compatible destination for this rule.");
         if(task.Parameters.Length!=action.Parameters.Length)throw new InvalidDataException("Complete all option fields.");
         for(int i=0;i<task.Parameters.Length;i++)
         {
@@ -82,7 +86,8 @@ public static class FootballSeason
         }
         if(task.Action=="FillWithTeam"&&task.Parameters[0]>Capacity(c,target.Id))throw new InvalidDataException("This place is outside the phase's participant capacity.");
         if(task.Action=="UpdateTable"&&task.Parameters[1]>Capacity(c,task.Parameters[0]))throw new InvalidDataException("This finishing position does not exist in the results group.");
-        if(task.Action=="FillFromLeagueMaxFromCountry"&&task.Parameters[2]>task.Parameters[1])throw new InvalidDataException("The country limit cannot exceed the number of selected teams.");
+        // A country cap can span several entry pools (for example 2 + 2 Dutch clubs).
+        // FC27's native recruitment tasks also use caps larger than one task's allocation.
     }
     public static string[] Native(CompetitionProjectContext c,int competition,FootballSeasonTask task)
     {
@@ -106,7 +111,7 @@ public static class FootballSeason
             "FillFromLeagueMaxFromCountry"=>$"Select {P(1)} teams from {League(P(0))}, with at most {P(2)} per country.",
             "FillFromTopCoefficientCountry"=>$"Select {P(1)} teams from the country ranked {P(0)} by coefficient, using entry position {P(2)}.",
             "ClearLeagueStats"=>$"At tournament start, clear previous statistics for {League(P(0))}.",
-            "UpdateTable"=>$"At season end, save finishing position {P(1)} from {Group(P(0))} as position {P(2)} for next season.",
+            "UpdateTable"=>$"At season end, save finishing position {P(1)} from {Group(P(0))} as position {P(2)} in {c.ObjectName(task.Target.Value)} for next season.",
             "UpdateLeagueTable"=>$"At season end, update the standings of {League(P(0))} using this phase.",
             "UpdateLeagueStats"=>$"At season end, update the statistics of {League(P(0))} using this phase.",
             _=>Actions.Single(a=>a.Code==task.Action).Label+": "+string.Join(", ",task.Parameters)
@@ -119,6 +124,10 @@ public static class FootballSeason
         foreach(var task in tasks)_=Native(c,competition,task);
         var fixedPlaces=tasks.Where(t=>t.Action=="FillWithTeam").ToArray();if(fixedPlaces.GroupBy(t=>(t.Target,t.Parameters[0])).Any(g=>g.Count()>1))throw new InvalidDataException("Two clubs cannot occupy the same place.");
         if(tasks.Where(t=>t.Action=="UpdateTable").GroupBy(t=>(t.Target,t.Parameters[2])).Any(g=>g.Count()>1))throw new InvalidDataException("Two finishing positions cannot replace the same next-season table position.");
+        var existingWriters=c.Rows("tasks.txt").Where(r=>r.Length==7&&r[0]!=competition.ToString()&&r[1]=="end"&&r[2]=="UpdateTable")
+            .Select(r=>(r[3],r[6])).ToHashSet();
+        if(tasks.Any(t=>t.Action=="UpdateTable"&&existingWriters.Contains((t.Target.Value.ToString(),t.Parameters[2].ToString()))))
+            throw new InvalidDataException("Another competition already writes to that next-season table position.");
         c.Edit("tasks.txt",table=>
         {
             int cursor=0;
@@ -126,6 +135,62 @@ public static class FootballSeason
             foreach(var task in tasks.Skip(cursor))table.Data.Rows.Add(Native(c,competition,task).Cast<object>().ToArray());
         });
     }
+    public static void ConfigureTwoGroupExchange(CompetitionProjectContext c,int upper,int lower)
+    {
+        if(c.Game!="FC27"||upper==lower||!c.CompetitionMappings.Any(m=>m.CompdataObjectId==upper)||!c.CompetitionMappings.Any(m=>m.CompdataObjectId==lower))
+            throw new InvalidDataException("Choose two distinct FC27 competitions created in this project.");
+        int[] Groups(int id)
+        {
+            var phases=FootballCompetitionAdapter.Read(c,id).Phases;
+            var first=phases.FirstOrDefault();
+            if(first is not {Kind:FootballPhaseKind.Groups,Participants:20,Groups:2}||first.NativeGroups.Any(g=>Capacity(c,g)!=10))
+                throw new InvalidDataException("Each competition needs an opening phase of two groups of ten.");
+            var teams=c.Rows("initteams.txt").Where(r=>r[0]==id.ToString()).OrderBy(r=>int.Parse(r[1])).ToArray();
+            if(teams.Length!=20||!teams.Select(r=>int.Parse(r[1])).SequenceEqual(Enumerable.Range(0,20))||
+                teams.Select(r=>r[2]).Distinct().Count()!=20||teams.Any(r=>!c.Teams.Any(t=>t.Id==r[2])))
+                throw new InvalidDataException("Each competition needs 20 distinct clubs in its initial standings.");
+            return first.NativeGroups.ToArray();
+        }
+        var upperGroups=Groups(upper);var lowerGroups=Groups(lower);
+        if(c.Rows("initteams.txt").Where(r=>r[0]==upper.ToString()||r[0]==lower.ToString()).Select(r=>r[2]).Distinct().Count()!=40)
+            throw new InvalidDataException("A club cannot start in both competitions.");
+        c.Execute("Configure promotion and relegation",()=>
+        {
+            void Write(int source,int destination,int[] groups,int retainedStart,int exchangeRank)
+            {
+                var pools=FootballQualifications.EntryPools(c,source);
+                if(pools.Count!=1||Capacity(c,pools[0])!=20)
+                    throw new InvalidDataException("Each competition needs a single preparation pool of 20 clubs.");
+                int pool=pools[0];var snapshot=Read(c,source);
+                if(snapshot.UnknownCount>0||snapshot.Tasks.Any(t=>t.Action switch
+                {
+                    "FillWithTeam"=>t.Target.Value!=pool,
+                    "FillFromCompTable"=>t.Target.Value!=pool||t.Parameters[0]!=source,
+                    "UpdateTable"=>t.Target.Value!=source&&t.Target.Value!=destination,
+                    _=>t.Action.StartsWith("Fill",StringComparison.Ordinal)
+                }))
+                    throw new InvalidDataException("Existing entry rules or special tasks require review before replacing them.");
+                var tasks=new List<FootballSeasonTask>{new("FillFromCompTable",new(pool),[source,20])};
+                tasks.AddRange(snapshot.Tasks.Where(t=>!t.Action.StartsWith("Fill",StringComparison.Ordinal)&&t.Action!="UpdateTable"));
+                for(int group=0;group<2;group++)
+                {
+                    for(int place=1;place<=9;place++)
+                        tasks.Add(new("UpdateTable",new(source),[groups[group],retainedStart+place-1,group*9+place]));
+                    tasks.Add(new("UpdateTable",new(destination),[groups[group],exchangeRank,19+group]));
+                }
+                ApplyTasks(c,source,snapshot,tasks);
+            }
+            Write(upper,lower,upperGroups,1,10);
+            Write(lower,upper,lowerGroups,2,1);
+            foreach(int group in upperGroups)c.SetRule(group,"info_label_slot_releg",["10"]);
+            foreach(int group in lowerGroups)
+            {
+                c.SetRule(group,"info_label_slot_promo",["1"]);
+                c.SetRule(group,"info_label_slot_releg",[]);
+            }
+        });
+    }
+
     public static IReadOnlyList<FootballSeasonTask> ProposeResults(CompetitionProjectContext c,int competition)
     {
         if(c.Game!="FC27")throw new InvalidDataException("Automatic season profiles have not been validated for this game.");

@@ -12,13 +12,13 @@
    <ComboBox ItemsSource="{Binding PrizeModes}" SelectedItem="{Binding PrizeMode}" IsEnabled="{Binding Supported}"/>
    <TextBox Text="{Binding Prize,UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding CustomPrize,Converter={StaticResource Visible}}" IsEnabled="{Binding Supported}" Margin="0,10,0,0"/>
    <TextBlock Text="{Binding PrizeError}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding NativePrize,StringFormat='Existing: {0}'}" Style="{StaticResource Hint}"/><TextBlock Text="{Binding InheritedPrize,StringFormat='Competition default: {0}'}" Style="{StaticResource Hint}"/>
-   <TextBlock Text="{Binding SupportNote}" Style="{StaticResource Hint}"/>
+   <TextBlock Text="{Binding SupportNote}" Style="{StaticResource Hint}"/><CheckBox Content="Set a draw date" IsChecked="{Binding SetDrawDate}"/><DatePicker SelectedDate="{Binding DrawDate}" IsEnabled="{Binding SetDrawDate}" Margin="0,8"/><CheckBox Content="Remove the existing draw date when not setting a date" IsChecked="{Binding ResetDrawDate}"/>
   </StackPanel></Border>
   <Border Style="{StaticResource Card}" Visibility="{Binding ShowVenues,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><StackPanel><TextBlock Text="Venues" Style="{StaticResource Title}"/>
    <ComboBox ItemsSource="{Binding VenueModes}" SelectedItem="{Binding VenueMode}" IsEnabled="{Binding Supported}"/>
    <StackPanel Visibility="{Binding SingleStadium,Converter={StaticResource Visible}}" IsEnabled="{Binding Supported}"><TextBlock Text="Search stadiums by name" Style="{StaticResource Hint}"/><TextBox Text="{Binding StadiumSearch,UpdateSourceTrigger=PropertyChanged}"/><ListBox ItemsSource="{Binding StadiumChoices}" SelectedItem="{Binding Stadium}" DisplayMemberPath="Name" Height="140" Margin="0,8,0,0" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/></StackPanel>
    <TextBlock Text="{Binding VenueError}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding NativeVenue,StringFormat='Existing: {0}'}" Style="{StaticResource Hint}"/><TextBlock Text="{Binding InheritedVenue,StringFormat='Competition default: {0}'}" Style="{StaticResource Hint}"/>
-   <Button Content="Selected host stadiums" IsEnabled="False" HorizontalAlignment="Left" ToolTip="{Binding HostLimitation}"/>
+   <ItemsControl ItemsSource="{Binding TieVenues}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,8"><local:FootballTieVenueEditor/></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Content="Selected host stadiums" IsEnabled="False" HorizontalAlignment="Left" ToolTip="{Binding HostLimitation}"/>
    <TextBlock Text="{Binding HostLimitation}" Style="{StaticResource Hint}"/>
   </StackPanel></Border>
   <Border Style="{StaticResource Card}" Visibility="{Binding ShowDiscipline,RelativeSource={RelativeSource AncestorType=local:FootballPhaseEssentials},Converter={StaticResource Visible}}"><StackPanel><TextBlock Text="Discipline" Style="{StaticResource Title}"/>
@@ -29,3 +29,4 @@
  </StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
  </StackPanel>
 </UserControl>
+

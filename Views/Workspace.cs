@@ -33,20 +33,24 @@ public sealed class WorkspaceController
     void OnClosed(bool _)
     {
         if(stack.Count==0)return;
-        if(stack.Peek() is IWorkspacePage hosted)hosted.Closed-=OnClosed;
         Pop();
     }
     public void Pop()
     {
         if(stack.Count==0)return;
-        stack.Pop();
+        Release(stack.Pop());
         Show();
     }
     public void Clear()
     {
-        stack.Clear();
+        while(stack.TryPop(out var page))Release(page);
         model.Page=null;
         if(model.Screen=="Page")model.Screen=model.HasDocument?"Launcher":"Editing";
+    }
+    void Release(UserControl page)
+    {
+        if(page is IWorkspacePage hosted)hosted.Closed-=OnClosed;
+        if(page is IDisposable disposable)disposable.Dispose();
     }
     void Show()
     {

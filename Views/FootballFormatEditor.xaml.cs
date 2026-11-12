@@ -6,7 +6,7 @@ public partial class FootballFormatEditor:UserControl
 {
     public static readonly DependencyProperty CreationFlowProperty=DependencyProperty.Register(nameof(CreationFlow),typeof(bool),typeof(FootballFormatEditor),new PropertyMetadata(false));
     public bool CreationFlow{get=>(bool)GetValue(CreationFlowProperty);set=>SetValue(CreationFlowProperty,value);}
-    public FootballFormatEditor()=>InitializeComponent();
+    public FootballFormatEditor(){InitializeComponent();Loaded+=(_,_)=>{if(Model is {} model)model.ConfirmVenueRemoval=message=>ShellDialogs.Message(this,message,"Remove tie venues",MessageBoxButton.YesNo)==MessageBoxResult.Yes;};}
     FootballFormatViewModel? Model=>DataContext as FootballFormatViewModel;
     FootballPhaseViewModel? Phase(object sender)=>(sender as FrameworkElement)?.DataContext as FootballPhaseViewModel;
     void Edit(object sender,RoutedEventArgs e)=>OpenPhase(sender,false);

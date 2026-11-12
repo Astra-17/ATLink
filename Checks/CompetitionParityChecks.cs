@@ -18,7 +18,19 @@ internal static class CompetitionParityChecks
         var calendar=new FootballCalendarPlan(FootballCalendarMode.Generate,new DateOnly(2027,12,29),3,"19:45");
         FootballBehaviourPlan Plan(FootballSeasonTask[]? tasks=null,FootballStandingSeed[]? seeds=null,bool automatic=true,FootballCalendarPlan? dates=null)=>new(tasks??[],seeds??[],automatic,new(),dates??calendar);
         int Create(FootballCompetitionKind kind,FootballPhase[] phases,string[] clubs,FootballBehaviourPlan? behaviour=null)
-        {int id=0;c.Execute("Parity create",()=>id=FootballCompetitionCompiler.Create(c,kind,507,"Parity "+kind,phases,clubs,new Dictionary<string,string[]>(),behaviour));Check(CompetitionEditing.Validate(c.Project).Count==0,"Native structure validation");return id;}
+        {int id=0;c.Execute("Parity create",()=>id=FootballCompetitionCompiler.Create(c,kind,507,"Parity "+kind,phases,clubs,new Dictionary<string,string[]>(),behaviour));Check(CompetitionEditing.Validate(c.Project).Count==0,"Native structure validation");CheckPreparationOrder(c,id);return id;}
+        void CheckPreparationOrder(CompetitionProjectContext context,int id)
+        {
+            var rows=context.Rows("compobj.txt").ToArray();
+            var stages=rows.Where(r=>r[1]=="4"&&r[4]==id.ToString()).ToArray();
+            var setup=stages.First();int setupId=int.Parse(setup[0]);
+            Check(setup[2]=="S1"&&context.Rows("settings.txt").Any(r=>r[0]==setup[0]&&r[1]=="match_stagetype"&&r[2]=="SETUP"),"Preparation must precede played phases in compobj");
+            var allocationRow=rows.Single(r=>r[1]=="5"&&r[4]==setup[0]);int allocationId=int.Parse(allocationRow[0]);
+            Check(setupId<allocationId&&stages.Skip(1).All(r=>int.Parse(r[0])>allocationId)&&Array.IndexOf(rows,allocationRow)<Array.IndexOf(rows,stages[1]),"Preparation and allocation IDs/file order must precede played phases");
+            var firstGroups=rows.Where(r=>r[1]=="5"&&r[4]==stages[1][0]).Select(r=>r[0]).ToHashSet();
+            var routes=context.Rows("advancement.txt").Where(r=>r[0]==allocationId.ToString()).ToArray();
+            Check(routes.Length==context.Rows("standings.txt").Count(r=>r[0]==allocationId.ToString())&&routes.All(r=>firstGroups.Contains(r[2])),"Preparation routes must still fill the first played phase");
+        }
         int leagueId=Create(FootballCompetitionKind.League,[league],teams[..8],Plan());var leagueModel=FootballCompetitionAdapter.Read(c,leagueId);int leagueDb=FootballSeason.DatabaseId(c,leagueId);
         var leagueTasks=FootballSeason.Read(c,leagueId).Tasks;Check(leagueTasks.Count(t=>t.Action=="UpdateTable")==8,"League final table update missing");Check(leagueTasks.Any(t=>t.Action=="ClearLeagueStats"&&t.Parameters[0]==leagueDb)&&leagueTasks.Any(t=>t.Action=="UpdateLeagueStats"&&t.Parameters[0]==leagueDb),"New league statistics reference incorrect");
         int allocation=FootballQualifications.EntryPools(c,leagueId).Single();int leaguePhase=leagueModel.Phases.Single().NativeId!.Value,leagueGroup=leagueModel.Phases.Single().NativeGroups.Single();
@@ -40,13 +52,20 @@ internal static class CompetitionParityChecks
             Check(routes.Length==2&&int.Parse(routes[0][0])==cupModel.Phases[0].NativeGroups[2*i]&&int.Parse(routes[1][0])==cupModel.Phases[0].NativeGroups[2*i+1],"DBM adjacent knockout pairing differs");
         }
         Check(FootballSeason.Read(c,cupId).Tasks.Count(t=>t.Action=="UpdateTable")==2,"Final winner/runner-up season results missing");
+        var cupScope=c.Scope(cupId);
+        var cupObjectives=c.Rows("objectives.txt").Where(r=>cupScope.Contains(int.Parse(r[0]))).ToArray();
+        Check(cupObjectives.Length==16&&cupObjectives.Count(r=>r[1]=="REACH_ROUND_OF_16")==8&&cupObjectives.Count(r=>r[1]=="REACH_QUARTER_FINALS")==4&&cupObjectives.Count(r=>r[1]=="REACH_SEMI_FINALS")==2,"Native knockout career objectives missing");
+        Check(cupObjectives.Where(r=>r[0]==cupModel.Phases.Last().NativeGroups.Single().ToString()).Select(r=>string.Join(",",r.Skip(1))).SequenceEqual(new[]{"CHAMPION,1","REACH_FINALS,0"}),"Final career objectives differ from C234");
+        Check(c.Rows("initteams.txt").Where(r=>r[0]==cupId.ToString()).Select(r=>string.Join(",",r.Skip(1))).SequenceEqual(teams[..16].Select((team,position)=>$"{position},{team}")),"Fixed teams not seeded in native entry order");
         Check(c.Objects.Any(o=>o.ParentId==cupId&&o.Code=="S1"&&FootballCompetitionAdapter.IsHidden(c,o.Id))&&c.Objects.Single(o=>o.Id==cupModel.Phases[0].NativeId).Code=="S2","Native setup/played stage codes");
         var group=new FootballPhase{Name="Groups",Kind=FootballPhaseKind.Groups,Participants=16,Groups=4,QualifiersPerGroup=2,Legs=2};
         int grouped=Create(FootballCompetitionKind.GroupsAndKnockout,[group,cup with{Participants=8,Rounds=3,Legs=2,FinalLegs=1}],teams[..16],Plan());var groupedModel=FootballCompetitionAdapter.Read(c,grouped);Check(groupedModel.Phases.Last().Legs==1&&groupedModel.Phases.Skip(1).First().Legs==2,"Two-leg rounds and single final");
+        Check(groupedModel.Phases[0].NativeGroups.All(id=>c.Rows("objectives.txt").Count(r=>r[0]==id.ToString()&&r[1]=="REACH_GROUPS"&&r[2]=="0")==1),"Group career objectives missing");
         int mixed=Create(FootballCompetitionKind.Custom,[new(){Name="Qualifying",Kind=FootballPhaseKind.Knockout,Participants=32,Rounds=1,Legs=2},group,cup with{Participants=8,Rounds=3}],teams,Plan());Check(FootballCompetitionAdapter.Read(c,mixed).Phases.Count==5,"Mixed sporting flow");
         var dynamic=new FootballSeasonTask("FillFromCompTableBackupLeague",new(0),[nativeLeague,13,8]);var seeds=teams[..8].Select((id,i)=>new FootballStandingSeed(id,i)).ToArray();int dynamicId=Create(FootballCompetitionKind.Cup,[cup with{Participants=8,Rounds=3}],[],Plan([dynamic],seeds));
         var imported=FootballSeason.Read(c,dynamicId);var dynamicTask=imported.Tasks.Single(t=>t.Action==dynamic.Action);Check(dynamicTask.Parameters.SequenceEqual(dynamic.Parameters)&&c.Rows("tasks.txt").Any(r=>r[0]==dynamicId.ToString()&&r[2]==dynamic.Action)&&!imported.Tasks.Any(t=>t.Action=="FillWithTeam"),"Dynamic rule was expanded to today's clubs");Check(c.Rows("initteams.txt").Count(r=>r[0]==dynamicId.ToString())==8,"Explicit zero-based initial standings missing");
         int partial=Create(FootballCompetitionKind.Cup,[cup with{Participants=8,Rounds=3}],teams[..4],Plan([dynamic with{Parameters=[nativeLeague,13,4]}]));Check(FootballSeason.Read(c,partial).Tasks.Count(t=>t.Action=="FillWithTeam")==4,"Mixed named and dynamic entries");
+        Check(!c.Rows("initteams.txt").Any(r=>r[0]==partial.ToString()),"Dynamic participants were frozen in initial standings");
         var fixtures=calendar with{Mode=FootballCalendarMode.AssignedFixtures,FirstDate=new DateOnly(2028,2,27),IntervalDays=2};int fixtureId=Create(FootballCompetitionKind.League,[league with{Participants=4}],teams[..4],Plan(dates:fixtures));Check(c.Calendar(fixtureId).Count(s=>s.FixedDate.HasValue)==12&&c.Calendar(fixtureId).Any(s=>s.FixedDate==new DateOnly(2028,2,29)),"Assigned fixtures and leap day");
         c.Execute("Manual assigned match",()=>FootballBehaviour.AddAssignedFixture(c,fixtureId,FootballCompetitionAdapter.Read(c,fixtureId).Phases[0].NativeId!.Value,new DateOnly(2028,4,1),"18:15",teams[0],teams[1]));Check(c.Calendar(fixtureId).Count(s=>s.FixedDate.HasValue)==13,"Manual assigned match missing");
         Reject(()=>c.Execute("Clashing assigned match",()=>FootballBehaviour.AddAssignedFixture(c,fixtureId,FootballCompetitionAdapter.Read(c,fixtureId).Phases[0].NativeId!.Value,new DateOnly(2028,4,1),"18:15",teams[0],teams[2])),"Assigned match double booking accepted");c.Undo();
@@ -75,7 +94,31 @@ internal static class CompetitionParityChecks
         Reject(()=>FootballExactCalendar.Validate(c,FootballExactCalendar.Phases([cup]),exact with{Fixtures=[new(0,new DateOnly(2028,7,1),"21:35",teams[0],teams[1]),new(1,new DateOnly(2028,7,1),"21:35",teams[0],teams[2])]}),"Same club double-booked in two phases");
         var twoLegSpecs=FootballExactCalendar.Phases([cup with{Participants=8,Rounds=3,Legs=2,FinalLegs=1}]);Check(twoLegSpecs.Select(p=>p.Rounds).SequenceEqual(new[]{2,2,1}),"Calendar lost the separate final leg count");
         string output=Path.Combine(root,"Checks/output/parity-"+Guid.NewGuid().ToString("N"));
-        try{c.Export(output);var reopened=c.OpenProject(output);Check(reopened.CompetitionMappings.Count==c.CompetitionMappings.Count,"Project identity mappings lost on reopen");using(var manifest=JsonDocument.Parse(File.ReadAllText(Path.Combine(output,"project.json"))))Check(manifest.RootElement.GetProperty("ValidationLevels").GetProperty("InGame").GetString()=="Not performed","Export claims in-game validation");Check(FootballSeason.Read(reopened,dynamicId).Tasks.Any(t=>t.Action==dynamic.Action)&&reopened.Rows("settings.txt").Any(r=>r[1]=="unrecognized_setting"&&r[2]=="keep-me"),"Export/reopen season and unknown settings");Check(reopened.Calendar(fixtureId).Any(s=>s.FixedDate==new DateOnly(2028,2,29)),"Exported leap-day fixture");Check(reopened.Calendar(manualCalendar).Count(s=>!s.FixedDate.HasValue)==3&&reopened.Calendar(exactCup).Any(s=>s.FixedDate==new DateOnly(2028,7,1)&&s.Time=="2135"),"Precise creation calendar lost on export/reopen");}
+        var exchangeClubs=c.Teams.Take(40).Select(t=>t.Id).ToArray();
+        var twoGroups=group with{Participants=20,Groups=2,QualifiersPerGroup=0,Legs=1};
+        int upper=0,lower=0;
+        var exchangePlan=Plan(automatic:false);
+        c.Execute("Create exchange test",()=>
+        {
+            upper=FootballCompetitionCompiler.Create(c,FootballCompetitionKind.GroupsAndKnockout,84,"Upper test",
+                [twoGroups with{QualifiersPerGroup=8},cup],exchangeClubs[..20],new Dictionary<string,string[]>{{"schedule_internationaldependency",["NONE"]}},exchangePlan);
+            lower=FootballCompetitionCompiler.Create(c,FootballCompetitionKind.League,84,"Lower test",
+                [twoGroups],exchangeClubs[20..],new Dictionary<string,string[]>(),exchangePlan);
+        });
+        FootballSeason.ConfigureTwoGroupExchange(c,upper,lower);
+        void CheckExchange(CompetitionProjectContext project)
+        {
+            foreach(var (owner,other,sourceRank) in new[]{(upper,lower,10),(lower,upper,1)})
+            {
+                var entries=FootballSeason.Read(project,owner);
+                Check(entries.UnknownCount==0&&entries.Tasks.Single(t=>!t.Action.StartsWith("Update")).Parameters.SequenceEqual(new[]{owner,20}),"Table entry source missing");
+                var updates=entries.Tasks.Where(t=>t.Action=="UpdateTable").ToArray();
+                Check(updates.Length==20&&updates.Where(t=>t.Target.Value==owner).Select(t=>t.Parameters[2]).Order().SequenceEqual(Enumerable.Range(1,18)),"Retained positions missing");
+                Check(updates.Where(t=>t.Target.Value==other&&t.Parameters[1]==sourceRank).Select(t=>t.Parameters[2]).SequenceEqual(new[]{19,20}),"Cross-competition promotion/relegation missing");
+            }
+        }
+        CheckExchange(c);c.Undo();Check(FootballSeason.Read(c,upper).Tasks.Count(t=>t.Action=="FillWithTeam")==20,"Exchange undo did not restore the original entrants");c.Redo();CheckExchange(c);
+        try{c.Export(output);var reopened=c.OpenProject(output);CheckExchange(reopened);foreach(int created in new[]{leagueId,grouped,mixed,dynamicId,exactCup})CheckPreparationOrder(reopened,created);Check(reopened.CompetitionMappings.Count==c.CompetitionMappings.Count,"Project identity mappings lost on reopen");using(var manifest=JsonDocument.Parse(File.ReadAllText(Path.Combine(output,"project.json"))))Check(manifest.RootElement.GetProperty("ValidationLevels").GetProperty("InGame").GetString()=="Not performed","Export claims in-game validation");Check(FootballSeason.Read(reopened,dynamicId).Tasks.Any(t=>t.Action==dynamic.Action)&&reopened.Rows("settings.txt").Any(r=>r[1]=="unrecognized_setting"&&r[2]=="keep-me"),"Export/reopen season and unknown settings");Check(reopened.Calendar(fixtureId).Any(s=>s.FixedDate==new DateOnly(2028,2,29)),"Exported leap-day fixture");Check(reopened.Calendar(manualCalendar).Count(s=>!s.FixedDate.HasValue)==3&&reopened.Calendar(exactCup).Any(s=>s.FixedDate==new DateOnly(2028,7,1)&&s.Time=="2135"),"Precise creation calendar lost on export/reopen");}
         finally{if(Directory.Exists(output))Directory.Delete(output,true);}
         foreach(var original in originals)Check(File.ReadAllText(Path.Combine(dir,"compdata",original.Key))==original.Value,"Source FC27 file changed");Check(!c.Base!.HasChanges&&!c.Localization!.HasChanges,"Source DB/LOC mutated");
         Console.WriteLine("PASS competition parity: DBM adjacent knockout paths; FC27 result/statistics profiles; all typed source/operation references; dynamic and mixed entries; initial standings; configurable/assigned/leap calendars; unknown preservation; ordered tasks; promotion/playoff IDs; duplication remapping; continental entry links; history; integrated export/reopen. In-game validation NOT performed.");

@@ -27,6 +27,8 @@ public sealed record CompetitionGroupVm(int Id,string Name,int Capacity,string T
 public sealed record CompetitionStageVm(int Id,string Name,string Type,IReadOnlyList<CompetitionGroupVm> Groups,string Advancement);
 public sealed record CompetitionDayVm(DateTime Date,bool CurrentMonth,IReadOnlyList<CompetitionSlot> Events)
 {
+    public IReadOnlyList<InternationalCalendarEntry> InternationalEntries {get;init;}=[];
+    public string InternationalMarker=>InternationalEntries.Count==0?"":"INT "+string.Join(" / ",InternationalEntries.Select(e=>e.Kind.ToLowerInvariant()).Distinct());
     public string Day=>Date.Day.ToString();public string Caption=>Events.Count==0?"":$"{Events.Count(e=>e.FixedDate is null)} slots · {Events.Count(e=>e.FixedDate is not null)} matches";
     public string Stages=>string.Join("\n",Events.Select(e=>e.Phase).Distinct().Take(2));
     public double Opacity=>CurrentMonth?1:0.4;
@@ -46,6 +48,7 @@ public sealed class CompetitionStudioViewModel:INotifyPropertyChanged
     public string Game=>Context.Game;
     public FootballFormatViewModel FootballFormat {get;}
     public FootballSeasonViewModel? Season {get;private set;}
+    public FootballLinksViewModel? Links {get;private set;}
     public FootballRulesViewModel? SportRules {get;private set;}
     public IReadOnlyList<string> SportSources {get;private set;}=[];
     public bool IsWorking {get;private set;}
@@ -164,7 +167,14 @@ public sealed class CompetitionStudioViewModel:INotifyPropertyChanged
             return new CompetitionPlaceVm(rank,string.Join(" · ",marked.Select(l=>l.Text)),marked.Length==0?"":category);
         }).ToArray())).ToArray();Notify(nameof(StandingPlaces));
         Notify(nameof(Title));Notify(nameof(Name));Notify(nameof(Region));Notify(nameof(Overview));Notify(nameof(Stages));Notify(nameof(Seats));Notify(nameof(Sources));Notify(nameof(Qualifications));Notify(nameof(Groups));Notify(nameof(SourceTargets));Notify(nameof(StageChoices));Notify(nameof(AllCompetitions));Notify(nameof(RuleScopes));
-        int? scope=ruleScope?.Id;ruleScope=RuleScopes.FirstOrDefault(o=>o.Id==scope)??RuleScopes.FirstOrDefault();Notify(nameof(RuleScope));LoadRules();LoadSportRules();FootballFormat.Load(Selected.Id);if(Season?.CompetitionId==Selected.Id&&!Season.HasPending)Season.Load();else Season=new(Context,Selected.Id,()=>Refresh());Notify(nameof(Season));RefreshCalendar();RefreshAdvanced();
+        int? scope=ruleScope?.Id;ruleScope=RuleScopes.FirstOrDefault(o=>o.Id==scope)??RuleScopes.FirstOrDefault();Notify(nameof(RuleScope));LoadRules();LoadSportRules();FootballFormat.Load(Selected.Id);if(Season?.CompetitionId==Selected.Id&&!Season.HasPending)Season.Load();else Season=new(Context,Selected.Id,()=>Refresh());Notify(nameof(Season));
+        if(Context.Game=="FC27")
+        {
+            if(Links?.CompetitionId==Selected.Id)Links.Reload();
+            else Links=new(Context,Selected.Id,()=>Refresh());
+        }
+        else Links=null;
+        Notify(nameof(Links));RefreshCalendar();RefreshAdvanced();
     }
     void LoadSportRules()
     {
@@ -246,16 +256,27 @@ public sealed class CompetitionStudioViewModel:INotifyPropertyChanged
     public IReadOnlyList<CompetitionSlot> Matchdays=>FilteredEvents.OrderBy(s=>s.Date(Context.ReferenceDate)).ThenBy(s=>s.Time).ToArray();
     IEnumerable<CompetitionSlot> FilteredEvents=>events.Where(s=>CalendarPhase is null||CalendarPhase.Id==-1||CalendarPhase.Id==s.ObjectId);
     public IReadOnlyList<CompetitionSlot> DayEvents {get;private set;}=[];
+    public IReadOnlyList<InternationalCalendarEntry> DayInternationalEntries {get;private set;}=[];
     CompetitionSlot? chosenSlot;public CompetitionSlot? ChosenSlot{get=>chosenSlot;set{chosenSlot=value;AddingSlot=false;Notify();Notify(nameof(HasChosenSlot));Notify(nameof(IsRelativeSlot));if(value is null)return;SlotDate=value.Date(Context.ReferenceDate).ToDateTime(TimeOnly.MinValue);SlotTime=value.Time;SlotRound=value.Round.ToString();Notify(nameof(SlotRound));SlotMin=value.Minimum.ToString();SlotMax=value.Maximum.ToString();SlotPhase=SourceTargets.FirstOrDefault(o=>o.Id==value.ObjectId)??new CompetitionObject(value.ObjectId,4,"",value.Phase,-1);SharedConsent=false;Notify(nameof(SlotDate));Notify(nameof(SlotTime));Notify(nameof(SlotMin));Notify(nameof(SlotMax));Notify(nameof(SlotPhase));Notify(nameof(SharedConsent));Notify(nameof(SlotPhaseChoices));}}
     public DateTime? SlotDate{get;set;}public string SlotTime{get;set;}="15:00";public string SlotMin{get;set;}="0";public string SlotMax{get;set;}="1";public CompetitionObject? SlotPhase{get;set;}public bool SharedConsent{get;set;}public bool MoveWholeDay{get;set;}=true;
     public bool AddingSlot{get;private set;}public string SlotRound{get;set;}="1";public bool HasChosenSlot=>ChosenSlot is not null||AddingSlot;public bool IsRelativeSlot=>ChosenSlot?.FixedDate is null;
     public IReadOnlyList<CompetitionObject> SlotPhaseChoices=>ChosenSlot?.Shared==true||ChosenSlot?.FixedDate is not null?[new CompetitionObject(ChosenSlot.ObjectId,4,"",ChosenSlot.Phase,-1)]:SourceTargets;
     public string SelectedDayTitle {get;private set;}="Choose a day";
     public void ChangeMonth(int direction){month=month.AddMonths(direction);BuildDays();}
-    public void SelectDay(CompetitionDayVm day){DayEvents=day.Events;SelectedDayTitle=day.Date.ToString("dddd, d MMMM yyyy",CultureInfo.GetCultureInfo("en-US"));Notify(nameof(DayEvents));Notify(nameof(SelectedDayTitle));ChosenSlot=DayEvents.FirstOrDefault();}
+    public void SelectDay(CompetitionDayVm day){DayEvents=day.Events;DayInternationalEntries=day.InternationalEntries;SelectedDayTitle=day.Date.ToString("dddd, d MMMM yyyy",CultureInfo.GetCultureInfo("en-US"));Notify(nameof(DayEvents));Notify(nameof(DayInternationalEntries));Notify(nameof(SelectedDayTitle));ChosenSlot=DayEvents.FirstOrDefault();}
     public void JumpToSlot(CompetitionSlot slot){month=new(slot.Date(Context.ReferenceDate).Year,slot.Date(Context.ReferenceDate).Month,1);BuildDays();SelectDay(Days.Single(d=>d.Date.Date==slot.Date(Context.ReferenceDate).ToDateTime(TimeOnly.MinValue)));ChosenSlot=slot;}
-    void RefreshCalendar(){events=Selected is null?[]:Context.Calendar(Selected.Id).Where(s=>!FootballCompetitionAdapter.IsHidden(Context,s.ObjectId)).ToArray();if(events.Length>0&&!Days.Any()){var first=events.Min(s=>s.Date(Context.ReferenceDate));month=new(first.Year,first.Month,1);}BuildDays();Notify(nameof(CalendarPhases));ChosenSlot=null;DayEvents=[];Notify(nameof(DayEvents));}
-    void BuildDays(){var start=month.AddDays(-(((int)month.DayOfWeek+6)%7));Days=Enumerable.Range(0,42).Select(i=>{var date=start.AddDays(i);return new CompetitionDayVm(date,date.Month==month.Month,FilteredEvents.Where(s=>s.Date(Context.ReferenceDate)==DateOnly.FromDateTime(date)).ToArray());}).ToArray();Notify(nameof(Days));Notify(nameof(MonthTitle));Notify(nameof(Matchdays));}
+    void RefreshCalendar(){events=Selected is null?[]:Context.Calendar(Selected.Id).Where(s=>!FootballCompetitionAdapter.IsHidden(Context,s.ObjectId)).ToArray();if(events.Length>0&&!Days.Any()){var first=events.Min(s=>s.Date(Context.ReferenceDate));month=new(first.Year,first.Month,1);}BuildDays();Notify(nameof(CalendarPhases));ChosenSlot=null;DayEvents=[];DayInternationalEntries=[];Notify(nameof(DayEvents));Notify(nameof(DayInternationalEntries));}
+    void BuildDays()
+    {
+        var start=month.AddDays(-(((int)month.DayOfWeek+6)%7));
+        var international=InternationalCalendarEntry.ReadMen(Context).ToLookup(e=>e.Slot.Date(Context.ReferenceDate));
+        Days=Enumerable.Range(0,42).Select(i=>
+        {
+            var date=start.AddDays(i);var day=DateOnly.FromDateTime(date);
+            return new CompetitionDayVm(date,date.Month==month.Month,FilteredEvents.Where(s=>s.Date(Context.ReferenceDate)==day).ToArray()){InternationalEntries=international[day].ToArray()};
+        }).ToArray();
+        Notify(nameof(Days));Notify(nameof(MonthTitle));Notify(nameof(Matchdays));
+    }
     public void AddSlot()
     {
         ChosenSlot=null;AddingSlot=true;SlotDate=ReferenceDate;SlotTime="15:00";SlotRound="1";SlotMin="0";SlotMax="1";SlotPhase=SourceTargets.FirstOrDefault();
@@ -277,6 +298,7 @@ public sealed class CompetitionStudioViewModel:INotifyPropertyChanged
     public void SaveAdvanced()=>Run("Edit advanced file",()=>{var file=Context.Project.Files.Single(f=>f.RelativePath==AdvancedFile);file.Text=AdvancedText;});
     public bool TryApplyPendingSeason()
     {
+        if(FootballFormat.Artwork.HasPending){Status="Apply or discard the artwork changes in Format before continuing.";Notify(nameof(Status));return false;}
         if(FootballFormat.HasStructureChanges){Status="Preview and apply the phase format changes before saving other sections, or cancel the draft.";Notify(nameof(Status));return false;}
         if(Season?.HasPending!=true)return true;
         var pending=Season;

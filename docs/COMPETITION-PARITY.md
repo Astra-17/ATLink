@@ -64,3 +64,7 @@ The five-step wizard includes `Schedule & venues / Dates & matches`:
 - Known fixtures may also be entered alongside matchday slots. Their phase/date/time and capacity must match an available slot. Later knockout rounds can keep dated slots without guessing their qualified teams.
 
 Creation validates missing matchdays, capacities, duplicate slots, invalid times, phase references and club double-bookings. The final Review includes every chosen date and entered fixture. Export/reopening preserves the relative slots and the absolute fixture dates. Relative matchday dates still use the explicitly illustrative project reference; successful tests do not certify the game's real season conversion.
+## Preparation object order
+
+New football competitions allocate S1 (SETUP) and its allocation group before all played phases (S2 onward), matching DBM's cup construction order. Both IDs and compobj row order follow this sequence. Entry tasks and advancement routes still use the allocated group. The parity checks cover creation and export/reopen. Previously exported projects are not migrated; recreate them to obtain the new order. This change does not establish in-game compatibility.
+

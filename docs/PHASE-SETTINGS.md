@@ -20,11 +20,19 @@ In manual-date mode, **Adjust a whole phase** can shift all dates by a common of
 
 Amounts accept non-negative 32-bit integers, with grouped input and K/M summaries. This is an editor serialization bound, not a proven gameplay ceiling. Historical guide limits are not imposed on FC27: the supplied file already contains larger amounts. `info_prize_money_drop` and `info_prize_money_promo` remain untouched in Expert.
 
+REF-55 guided recreation update: newly compiled FC27 competitions remove template-local
+`info_prize_money_drop` values rather than copying unrequested reward reductions.
+Existing competitions remain preserved. The user observed a 22.5 M losing-finalist
+award for a 45 M final configured with drop 50; other distributions remain unverified.
+Qualifying paths expose the same phase-prize and rule ViewModels through **Rules & rewards**.
+**Set a draw date** writes the phase's calendar-origin-relative `schedule_stage_draw_date`;
+keeping the existing value or removing it is explicit.
+
 New FC27 competitions start with zero rewards and no forced stadium inherited from their technical template. Existing competitions retain their values and discipline ownership. A phase venue change is blocked when a different group-level stadium override would prevent it from applying to the whole phase. This avoids silently discarding group-specific venues.
 
 ## Explicitly unavailable capabilities
 
-- Multiple host stadiums and venue assignment to individual dated fixtures: the supplied four-column fixture format has date, time, home and away only. No additional column is invented. The typed model represents these requests but the adapter rejects them, and the interface explains their unavailability.
+- Knockout ties support group-level `match_stadium` overrides, shared by both legs; see TIE-VENUES.md. Rotating host pools and individually dated league/group fixture venues remain unavailable. The four-column fixture format is preserved.
 - Clearing accumulated yellow cards while preserving acquired suspensions: no verified task or setting conversion was found in the supplied FC27 files, DBM sources or historical guide. `rule_suspension` is an object reference, not a reset flag. The clear option is disabled; existing references and suspensions are preserved.
 - FC26 writes through these new controls: mappings remain unverified. Its existing workflow is unchanged and imported native values are retained.
 

@@ -27,7 +27,7 @@ internal static class CompetitionRecreationUiChecks
             {
                 string? Effective(string key)=>c.EffectiveRules(p.NativeId!.Value).FirstOrDefault(r=>r.Key==key).Value;
                 string money=Effective("info_prize_money")??"0";string? stadium=Effective("match_stadium");
-                return p with{NativeId=null,NativeGroups=[],DraftKey=Guid.NewGuid(),ResetRules=[],RoundSettings=[new(){Prize=new(FootballSettingMode.Value,money),Stadium=stadium is null?new(FootballSettingMode.Inherit):new(FootballSettingMode.Value,stadium)}]};
+                return p with{NativeId=null,NativeGroups=[],DraftKey=Guid.NewGuid(),ResetRules=[],Matchups=[],RoundSettings=[new(){Prize=new(FootballSettingMode.Value,money),Stadium=stadium is null?new(FootballSettingMode.Inherit):new(FootballSettingMode.Value,stadium)}]};
             }).ToArray();
             vm.Format.SetPhases(stages);
             var sourceSlots=c.Calendar(reference.Object.Id).Where(s=>s.FixedDate is null).ToArray();

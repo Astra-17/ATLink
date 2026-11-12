@@ -1,0 +1,20 @@
+<UserControl x:Class="ATLink.Views.CompetitionArtworkEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Foreground="{DynamicResource TextBrush}">
+ <UserControl.Resources><BooleanToVisibilityConverter x:Key="Visible"/></UserControl.Resources>
+ <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Background="{DynamicResource PanelBrush}" Padding="16" Margin="0,12">
+ <StackPanel><TextBlock Text="Competition artwork" FontSize="21" FontWeight="SemiBold"/>
+  <TextBlock Text="Optional. Add both PNG images to generate all five formats automatically, using the same artwork for dark and light. Keep transparent backgrounds where appropriate." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,14"/>
+  <TextBlock Text="Competition logo — 1024 × 1024" FontWeight="SemiBold"/>
+  <Border Background="#292237" CornerRadius="4" HorizontalAlignment="Left" Width="148" Height="148" Margin="0,8"><Image Source="{Binding LogoPreview}" Stretch="Uniform" Margin="6"/></Border>
+  <Button Content="Import / replace logo" Click="ImportLogo" IsEnabled="{Binding CanEdit}" HorizontalAlignment="Left"/>
+  <TextBlock Text="Competition name image — 512 × 128" FontWeight="SemiBold" Margin="0,18,0,0"/>
+  <Border Background="#292237" CornerRadius="4" HorizontalAlignment="Stretch" Height="110" Margin="0,8"><Image Source="{Binding TitlePreview}" Stretch="Uniform" Margin="6"/></Border>
+  <Button Content="Import / replace name image" Click="ImportTitle" IsEnabled="{Binding CanEdit}" HorizontalAlignment="Left"/>
+  <TextBlock Text="Tiny preview · 200 × 64 · right-aligned" Foreground="{DynamicResource MutedBrush}" Margin="0,16,0,6"/>
+  <Border Background="#292237" HorizontalAlignment="Left" Width="200" Height="64"><Image Source="{Binding TinyPreview}" Stretch="None"/></Border>
+  <ProgressBar Value="{Binding Progress,Mode=OneWay}" Maximum="100" Height="6" Margin="0,12" Visibility="{Binding Busy,Converter={StaticResource Visible}}"/>
+  <Button Content="Cancel processing" Click="CancelProcessing" HorizontalAlignment="Left" Visibility="{Binding Busy,Converter={StaticResource Visible}}"/>
+  <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,6"/>
+  <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Margin="0,4"/>
+  <WrapPanel><Button Content="Remove artwork" Click="Remove" IsEnabled="{Binding CanEdit}" Margin="0,4,8,0"/><Button Content="Discard artwork changes" Click="Discard" IsEnabled="{Binding CanEdit}" Margin="0,4,8,0"/><Button Content="Apply artwork" Click="Apply" IsEnabled="{Binding CanEdit}" Visibility="{Binding Existing,Converter={StaticResource Visible}}" Margin="0,4,0,0"/></WrapPanel>
+ </StackPanel></Border>
+</UserControl>

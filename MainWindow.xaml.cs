@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();DataContext=model;Closing+=OnClosing;model.PropertyChanged+=ModelChanged;
         workspace=new Views.WorkspaceController(model,this);model.ResetWorkspace=workspace.Clear;
+        Closed+=(_,_)=>workspace.Clear();
         Loaded+=FirstLaunch;
     }
     private void FirstLaunch(object sender,RoutedEventArgs e)
@@ -285,7 +286,10 @@ public partial class MainWindow : Window
                 var project=CompdataProject.Open(folder);
                 var database=loadedBase is null?DatabaseDocument.Open(data.BaseDatabase,data.Metadata):CompetitionProjectContext.Clone(loadedBase,data.Metadata);
                 var localization=loadedLoc??data.OpenLocalization(code);
-                return new CompetitionProjectContext(project,data.Game,database,localization,data.Metadata,language.MetadataPath);
+                var context = new CompetitionProjectContext(project,data.Game,database,localization,data.Metadata,language.MetadataPath);
+                context.SetLanguages(data.Languages);
+                context.SetInstalledCompdata(data.CompdataFolder);
+                return context;
             });
             OpenPage(new ATLink.Views.CompetitionStudio(context));
         }

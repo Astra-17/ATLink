@@ -20,7 +20,7 @@ public static class CompetitionTools
         foreach(var file in project.Files)
         {
             string fileName=Path.GetFileName(file.RelativePath).ToLowerInvariant();
-            int[] refs=fileName switch{"compobj.txt"=>[0,4],"compids.txt"=>[0],"settings.txt"=>[0],"tasks.txt"=>[0,3],"schedule.txt"=>[0],"standings.txt"=>[0],"advancement.txt"=>[0,2],"initteams.txt"=>[0],_=>[]};
+            int[] refs=fileName switch{"compobj.txt"=>[0,4],"compids.txt"=>[0],"settings.txt"=>[0],"tasks.txt"=>[0,3],"schedule.txt"=>[0],"standings.txt"=>[0],"advancement.txt"=>[0,2],"initteams.txt" or "objectives.txt"=>[0],_=>[]};
             if(refs.Length==0)continue;
             var additions=new List<string>();
             foreach(var old in Rows(file))
@@ -67,7 +67,7 @@ public static class CompetitionTools
         var files=project.Files.ToList();
         foreach(var change in preview.Changes)
         {
-            if(change.Before is null)files.Add(new CompdataFile{RelativePath=change.Path,InitialText="",Original=[],Text=change.After,Encoding=new UTF8Encoding(false)});
+            if(change.Before is null)files.Add(new CompdataFile{RelativePath=change.Path,InitialText="",Original=[],Text=change.After,Encoding=new UTF8Encoding(false),IsNew=true});
             else files.Single(f=>f.RelativePath==change.Path).Text=change.After;
         }
         project.Files=files;

@@ -16,5 +16,10 @@ public partial class FootballSeasonEditor:UserControl
     void UseClubs(object sender,RoutedEventArgs e){if(SelectedClubs is not null)Model?.UseSelectedClubs(SelectedClubs());}
     void ReviewQualification(object sender,RoutedEventArgs e)=>Model?.ReviewQualification();void ConnectQualification(object sender,RoutedEventArgs e)=>Model?.ConnectQualification();
     void AddAssignedMatch(object sender,RoutedEventArgs e)=>Model?.AddAssignedMatch();
+    void ConfigureExchange(object sender,RoutedEventArgs e)
+    {
+        if(Model is not {CompetitionId:int id} model)return;
+        WorkspaceController.Open(new FootballLinksPage(model.Context,id));
+    }
     void Propose(object sender,RoutedEventArgs e)=>Model?.Propose();void Review(object sender,RoutedEventArgs e)=>Model?.RefreshPreview();void Apply(object sender,RoutedEventArgs e)=>Model?.Apply();void Regenerate(object sender,RoutedEventArgs e)=>Model?.Regenerate();
 }

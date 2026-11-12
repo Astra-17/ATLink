@@ -9,6 +9,13 @@ public partial class CalendarBoard:UserControl
     void Previous(object sender,RoutedEventArgs e)=>Model?.ChangeMonth(-1);void Next(object sender,RoutedEventArgs e)=>Model?.ChangeMonth(1);void FirstMonth(object sender,RoutedEventArgs e)=>Model?.FirstMonth();
     async void LoadAvailability(object sender,RoutedEventArgs e){if(Model is {} model)await model.LoadAvailability();}
     void CancelWork(object sender,RoutedEventArgs e)=>Model?.CancelLoad();
+    void InternationalCalendar(object sender,RoutedEventArgs e)
+    {
+        if(Model is not {} model)return;
+        var draft=new InternationalCalendarViewModel(model.Context,model.International.Moves);
+        var window=new InternationalCalendarWindow(draft){Owner=Window.GetWindow(this)};
+        if(window.ShowDialog()==true){model.CommitInternational(draft.Moves);model.Synchronize();}
+    }
     async void Simulate(object sender,RoutedEventArgs e){if(Model is {} model)await model.Simulate();}
     void ApplyProposal(object sender,RoutedEventArgs e)=>Model?.ApplyProposal();
     void DiscardProposal(object sender,RoutedEventArgs e)=>Model?.DiscardProposal();

@@ -27,11 +27,27 @@ public sealed class StudioData
     public string Metadata=>Require("fifa_ng_db-meta.xml");
     public string CompdataFolder=>Path.Combine(Root,"compdata");
     string Require(string file){string path=Path.Combine(Root,file);return File.Exists(path)?path:throw new FileNotFoundException("Fichier intégré manquant. Réinstaller les données ATLink : "+file,path);}
-    public IReadOnlyList<DatabaseLanguage> Languages=>Directory.Exists(Root)?Directory.EnumerateFiles(Root,"*-meta.xml")
-        .Select(path=>Path.GetFileName(path).Replace("-meta.xml",""))
-        .Where(code=>code!="fifa_ng_db"&&File.Exists(Path.Combine(Root,code+".db")))
-        .Select(code=>new DatabaseLanguage(code,code switch{"eng_us"=>"English","fre_fr"=>"Français",_=>code},Path.Combine(Root,code+".db"),Path.Combine(Root,code+"-meta.xml")))
-        .OrderBy(l=>l.Name).ToArray():[];
+    public IReadOnlyList<DatabaseLanguage> Languages=>new[]{Root,Path.Combine(Root,"loc")}.Where(Directory.Exists)
+        .SelectMany(folder=>Directory.EnumerateFiles(folder,"*-meta.xml"))
+        .Select(path=>new DatabaseLanguage(Path.GetFileName(path)[..^9],"",path[..^9]+".db",path))
+        .Where(language=>language.Code!="fifa_ng_db"&&File.Exists(language.DatabasePath))
+        .DistinctBy(language=>language.Code)
+        .Select(language=>language with {Name=LanguageName(language.Code)})
+        .OrderBy(l=>l.Name).ToArray();
+
+    static string LanguageName(string code)
+    {
+        var parts=code.Split('_');
+        if(parts.Length!=2)return code;
+        string prefix=parts[0] switch
+        {
+            "chi" or "chs"=>"zh", "cze"=>"cs", "dut"=>"nl", "ger"=>"de",
+            "swe"=>"sv", "spa"=>"es", "jpn"=>"ja", "por"=>"pt", "pol"=>"pl", "tur"=>"tr",
+            _=>parts[0][..Math.Min(2,parts[0].Length)]
+        };
+        try{return CultureInfo.GetCultureInfo(prefix+"-"+parts[1].ToUpperInvariant()).NativeName+" ("+code+")";}
+        catch(CultureNotFoundException){return code;}
+    }
     public StudioPreferences? ReadPreferences()
     {
         if(!File.Exists(PreferencesPath))return null;

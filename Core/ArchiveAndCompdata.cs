@@ -44,24 +44,70 @@ public sealed class CompdataFile
     public required Encoding Encoding {get;init;}
     public required string InitialText {get;init;}
     public required string Text {get;set;}
-    public bool Changed=>Text!=InitialText;
+    public bool IsNew {get;init;}
+    public bool Changed=>IsNew||Text!=InitialText;
+    public byte[] Serialize()
+    {
+        if(!Changed)return Original;
+        byte[] preamble=Encoding.GetPreamble(),content=Encoding.GetBytes(TextInNativeOrder());
+        return Original.AsSpan().StartsWith(preamble)?preamble.Concat(content).ToArray():content;
+    }
+
+    static readonly HashSet<string> OrderedFiles=new(StringComparer.OrdinalIgnoreCase)
+    {
+        "activeteams.txt","compids.txt","compobj.txt","initteams.txt","objectives.txt",
+        "schedule.txt","settings.txt","standings.txt","tasks.txt","weather.txt"
+    };
+    static readonly System.Text.RegularExpressions.Regex ObjectRows=new(@"(?m)^(?<id>\d+)(?:,[^\r\n]*)?(?=\r?$)");
+
+    string TextInNativeOrder()
+    {
+        if(!OrderedFiles.Contains(RelativePath))return Text;
+        // The stable sort preserves execution order and rule priority for each object.
+        // Keep line endings, comments and other sections in place.
+        var sorted=ObjectRows.Matches(Text).Cast<System.Text.RegularExpressions.Match>()
+            .OrderBy(row=>long.Parse(row.Groups["id"].Value,System.Globalization.CultureInfo.InvariantCulture))
+            .Select(row=>row.Value).ToArray();
+        int index=0;
+        return ObjectRows.Replace(Text,_=>sorted[index++]);
+    }
 }
 public sealed class CompdataProject
 {
+    public const string LimitsFileName = "LIVE_EDITOR_LIMITS.json";
     public CompetitionLabels? Labels {get;set;}
     public required string SourceFolder {get;init;}
     public required IReadOnlyList<CompdataFile> Files {get;set;}
     public static CompdataProject Open(string folder)
+        => new(){SourceFolder=Path.GetFullPath(folder),Files=ReadFiles(folder,true)};
+
+    static IReadOnlyList<CompdataFile> ReadFiles(string folder,bool requireObjects)
     {
-        if(!File.Exists(Path.Combine(folder,"compobj.txt")))throw new InvalidDataException("Le dossier doit contenir compobj.txt.");
+        if(requireObjects&&!File.Exists(Path.Combine(folder,"compobj.txt")))throw new InvalidDataException("Le dossier doit contenir compobj.txt.");
+        if(!Directory.Exists(folder))return [];
         var files=new List<CompdataFile>();
-        foreach(string path in Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Where(p=>Path.GetExtension(p).Equals(".txt",StringComparison.OrdinalIgnoreCase)||System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p),@"^[a-z]\d+_[a-z]\d+_\d{4}$",System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
+        foreach(string path in Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Where(p=>Path.GetExtension(p).Equals(".txt",StringComparison.OrdinalIgnoreCase)||Path.GetRelativePath(folder,p).Equals(LimitsFileName,StringComparison.OrdinalIgnoreCase)||System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p),@"^[a-z]\d+_[a-z]\d+_\d{4}$",System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
         {
             byte[] bytes=File.ReadAllBytes(path);
             using var reader=new StreamReader(new MemoryStream(bytes),Encoding.UTF8,true);string text=reader.ReadToEnd();
             files.Add(new(){RelativePath=Path.GetRelativePath(folder,path),Original=bytes,Encoding=reader.CurrentEncoding,InitialText=text,Text=text});
         }
-        return new(){SourceFolder=Path.GetFullPath(folder),Files=files.OrderBy(f=>f.RelativePath).ToArray()};
+        return files.OrderBy(f=>f.RelativePath).ToArray();
+    }
+
+    public static CompdataProject OpenOverlay(string source,string overlay)
+        => ApplyOverlay(Open(source),overlay);
+
+    internal static CompdataProject ApplyOverlay(CompdataProject project,string overlay)
+    {
+        var files=project.Files.ToDictionary(f=>f.RelativePath,StringComparer.OrdinalIgnoreCase);
+        foreach(var file in ReadFiles(overlay,false))
+        {
+            if(files.TryGetValue(file.RelativePath,out var original))original.Text=file.Text;
+            else files.Add(file.RelativePath,new(){RelativePath=file.RelativePath,Original=[],Encoding=file.Encoding,InitialText="",Text=file.Text,IsNew=true});
+        }
+        project.Files=files.Values.OrderBy(f=>f.RelativePath).ToArray();
+        return project;
     }
     public IReadOnlyList<string> Validate()
     {
@@ -84,11 +130,12 @@ public sealed class CompdataProject
         }
         return errors;
     }
-    public void SaveAs(string folder)
+    public void SaveAs(string folder,bool changedOnly=false)
     {
         if(Directory.Exists(folder)||File.Exists(folder))throw new IOException("Choisir un nouveau dossier.");
         var errors=CompetitionEditing.Validate(this);if(errors.Count>0)throw new InvalidDataException(string.Join(Environment.NewLine,errors.Take(20)));
-        var pending=Files.Select(f=>(f.RelativePath,Bytes:f.Changed?f.Encoding.GetPreamble().Concat(f.Encoding.GetBytes(f.Text)).ToArray():f.Original)).ToArray();
+        var pending=Files.Where(f=>!changedOnly||f.Changed).Select(f=>(f.RelativePath,Bytes:f.Serialize())).ToArray();
+        if(changedOnly&&pending.Length==0)return;
         string temporary=Path.GetFullPath(folder)+"."+Guid.NewGuid().ToString("N")+".tmp";Directory.CreateDirectory(temporary);
         foreach(var f in pending){string path=Path.Combine(temporary,f.RelativePath);Directory.CreateDirectory(Path.GetDirectoryName(path)!);File.WriteAllBytes(path,f.Bytes);}
         Directory.Move(temporary,folder);

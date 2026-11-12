@@ -27,7 +27,7 @@ public static class CompetitionRuleDefinitions
         new("rule_numgamesbanyellowsmin","Minimum ban for accumulated yellows","Discipline"),new("rule_numgamesbanyellowsmax","Maximum ban for accumulated yellows","Discipline"),new("match_matchimportance","Match importance (0–100)","Match rules")];
     public static string SortLabel(string key)=>key switch{"POINTS"=>"Points","GOALDIFF"=>"Goal difference","GOALSFOR"=>"Goals scored","WINS"=>"Wins","TEAMRATING"=>"Team rating",_=>key+" (advanced criterion)"};
 }
-public sealed class CompetitionProjectContext
+public sealed partial class CompetitionProjectContext
 {
     public CompdataProject Project {get;}
     public DatabaseDocument? Base {get;}
@@ -36,51 +36,93 @@ public sealed class CompetitionProjectContext
     public string Metadata {get;}
     public string LocMetadata {get;}
     public DateOnly ReferenceDate {get;set;}=new(2026,7,1);
+    // FC27 offset 231 is 16 August 2026 (Community Shield, observed in game).
+    // The native day-zero origin and the start of the playable season are distinct.
+    public static readonly DateOnly Fc27CalendarOrigin=new(2025,12,28);
+    public DateOnly SeasonStart=>Game=="FC27"&&ReferenceDate==Fc27CalendarOrigin?new(2026,7,1):ReferenceDate;
+    public string CalendarReferenceLabel=>Game=="FC27"&&ReferenceDate==Fc27CalendarOrigin
+        ?"FC27 2026/27 calendar · calibrated against Community Shield: 16 Aug 2026. Other game dates remain to be checked."
+        :$"Custom / illustrative calendar origin: {ReferenceDate:dd/MM/yyyy}. Game dates are not confirmed.";
     public bool ReferenceConfirmed {get;set;}
     public Dictionary<int,FootballSchedulingOptions> SchedulingOptions {get;private set;}=[];
+    public Dictionary<int,IReadOnlyList<FootballMatchupMetadata>> MatchupSettings {get;private set;}=[];
     public List<CompetitionDbInsert> Inserts {get;private set;}=[];
     IReadOnlyList<CompetitionProjectMapping> importedMappings=[];
+    bool importedDatabase,importedLocalization;
+    (DatabaseDocument? Document,string Metadata) databaseSource,localizationSource;
     public IReadOnlyList<CompetitionTeam> Teams {get;}
-    sealed record State(IReadOnlyList<(CompdataFile File,string Text)> Files,CompetitionDbInsert[] Inserts,DateOnly Reference,bool Confirmed,Dictionary<int,FootballSchedulingOptions> SchedulingOptions);
+    sealed record State(IReadOnlyList<(CompdataFile File,string Text)> Files,CompetitionDbInsert[] Inserts,DateOnly Reference,bool Confirmed,Dictionary<int,FootballSchedulingOptions> SchedulingOptions,Dictionary<int,IReadOnlyList<FootballMatchupMetadata>> Matchups,CompetitionTranslation[] Translations,Dictionary<int,CompetitionArtwork> Artwork);
     readonly Stack<(string Label,State State)> undo=[];readonly Stack<(string Label,State State)> redo=[];
     State checkpoint;
     State exportedCheckpoint;
     public bool CanUndo=>undo.Count>0;public bool CanRedo=>redo.Count>0;
     public string UndoLabel=>undo.TryPeek(out var s)?s.Label:"";
-    public bool HasChanges=>Project.Files.Any(f=>f.Changed)||Inserts.Count>0;
-    public bool HasUnexportedChanges=>Project.Files.Count!=exportedCheckpoint.Files.Count||Project.Files.Where((f,i)=>f.RelativePath!=exportedCheckpoint.Files[i].File.RelativePath||f.Text!=exportedCheckpoint.Files[i].Text).Any()||!Inserts.SequenceEqual(exportedCheckpoint.Inserts)||ReferenceDate!=exportedCheckpoint.Reference||ReferenceConfirmed!=exportedCheckpoint.Confirmed||JsonSerializer.Serialize(SchedulingOptions)!=JsonSerializer.Serialize(exportedCheckpoint.SchedulingOptions);
+    public bool HasChanges=>Project.Files.Any(f=>f.Changed)||Inserts.Count>0||translations.Length>0||ArtworkStamp(artwork)!=ArtworkStamp(checkpoint.Artwork);
+    public bool HasUnexportedChanges=>ArtworkStamp(artwork)!=ArtworkStamp(exportedCheckpoint.Artwork)||Project.Files.Count!=exportedCheckpoint.Files.Count||Project.Files.Where((f,i)=>f.RelativePath!=exportedCheckpoint.Files[i].File.RelativePath||f.Text!=exportedCheckpoint.Files[i].Text).Any()||!Inserts.SequenceEqual(exportedCheckpoint.Inserts)||!translations.SequenceEqual(exportedCheckpoint.Translations)||ReferenceDate!=exportedCheckpoint.Reference||ReferenceConfirmed!=exportedCheckpoint.Confirmed||JsonSerializer.Serialize(SchedulingOptions)!=JsonSerializer.Serialize(exportedCheckpoint.SchedulingOptions)||JsonSerializer.Serialize(MatchupSettings)!=JsonSerializer.Serialize(exportedCheckpoint.Matchups);
     public CompetitionProjectContext(CompdataProject project,string game="FC27",DatabaseDocument? database=null,DatabaseDocument? localization=null,string metadata="",string locMetadata="")
     {
         Project=project;Game=game;Base=database;Localization=localization;Metadata=metadata;LocMetadata=locMetadata;
+        databaseSource=(database,metadata);localizationSource=(localization,locMetadata);
+        if(game=="FC27")ReferenceDate=Fc27CalendarOrigin;
         if(localization is not null)Project.Labels=new CompetitionLabels(localization);
         Teams=database is null?[]:new FootballCatalog(database).Entities("teams").Select(t=>new CompetitionTeam(t.Id,t.Name)).ToArray();checkpoint=Capture();exportedCheckpoint=checkpoint;
     }
-    public CompetitionProjectContext OpenProject(string folder)
+    public CompetitionProjectContext OpenProject(string folder) => OpenProject(folder,null,null);
+
+    CompetitionProjectContext OpenProject(string folder,CompdataProject? verifiedSource,LinkSources? verifiedDatabases)
     {
+        string? parent=Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(folder));
+        if(parent is not null&&Path.GetFileName(Path.TrimEndingDirectorySeparator(folder)).Equals("compdata",StringComparison.OrdinalIgnoreCase)&&File.Exists(Path.Combine(parent,"project.json")))folder=parent;
         string compdata=File.Exists(Path.Combine(folder,"compobj.txt"))?folder:Path.Combine(folder,"compdata");
         string root=File.Exists(Path.Combine(folder,"project.json"))?folder:Path.GetDirectoryName(compdata)!;
         string manifest=Path.Combine(root,"project.json");DateOnly reference=ReferenceDate;bool confirmed=false;var mappings=new List<CompetitionProjectMapping>();
+        string? compdataSource=null;
         if(File.Exists(manifest))
         {
             using var json=JsonDocument.Parse(File.ReadAllText(manifest));var data=json.RootElement;
+            compdataSource=Project.SourceFolder;
+            if(verifiedSource is null&&data.TryGetProperty("CompdataSource",out var source)&&source.GetString() is string original&&Directory.Exists(original))compdataSource=original;
             if(data.TryGetProperty("CompetitionMappings",out var savedMappings))foreach(var entry in savedMappings.EnumerateArray())mappings.Add(new(int.Parse(entry.GetProperty("DatabaseCompetitionId").ToString()),entry.GetProperty("CompdataObjectId").GetInt32(),entry.TryGetProperty("DatabaseLeagueId",out var league)&&league.ValueKind!=JsonValueKind.Null?int.Parse(league.ToString()):null));
             if(data.TryGetProperty("Game",out var game)&&game.GetString()!=Game)throw new InvalidDataException("Select "+game.GetString()+" before opening this project.");
             if(data.TryGetProperty("ReferenceDate",out var date)&&DateOnly.TryParse(date.GetString(),out var parsed))reference=parsed;
             if(data.TryGetProperty("ReferenceConfirmed",out var check))confirmed=check.GetBoolean();
         }
-        string meta=File.Exists(Path.Combine(root,"fifa_ng_db-meta.xml"))?Path.Combine(root,"fifa_ng_db-meta.xml"):Metadata;
-        DatabaseDocument? db=File.Exists(Path.Combine(root,"fifa_ng_db.db"))?DatabaseDocument.Open(Path.Combine(root,"fifa_ng_db.db"),meta):Base is null?null:Clone(Base,Metadata);
+        var baseSource=verifiedDatabases is null?databaseSource:verifiedDatabases.Database;
+        var locSource=verifiedDatabases is null?localizationSource:verifiedDatabases.Localization;
+        string meta=File.Exists(Path.Combine(root,"fifa_ng_db-meta.xml"))?Path.Combine(root,"fifa_ng_db-meta.xml"):baseSource.Metadata;
+        string dbPath=Path.Combine(root,"fifa_ng_db.db");
+        DatabaseDocument? db=File.Exists(dbPath)?DatabaseDocument.Open(dbPath,meta):baseSource.Document;
         string? locMeta=Directory.Exists(root)?Directory.EnumerateFiles(root,"*-meta.xml").Where(p=>Path.GetFileName(p)!="fifa_ng_db-meta.xml"&&File.Exists(p.Replace("-meta.xml",".db"))).OrderBy(p=>p).FirstOrDefault():null;
-        var loc=locMeta is not null?DatabaseDocument.Open(locMeta.Replace("-meta.xml",".db"),locMeta):Localization is null?null:Clone(Localization,LocMetadata);
-        var context=new CompetitionProjectContext(CompdataProject.Open(compdata),Game,db,loc,meta,locMeta??LocMetadata){ReferenceDate=reference,ReferenceConfirmed=confirmed};
+        var loc=locMeta is not null?DatabaseDocument.Open(locMeta.Replace("-meta.xml",".db"),locMeta):locSource.Document;
+        var project=verifiedSource is not null?CompdataProject.ApplyOverlay(verifiedSource,compdata):
+            compdataSource is null?CompdataProject.Open(compdata):CompdataProject.OpenOverlay(compdataSource,compdata);
+        var context=new CompetitionProjectContext(project,Game,db,loc,meta,locMeta??locSource.Metadata){ReferenceDate=reference,ReferenceConfirmed=confirmed,databaseSource=databaseSource,localizationSource=locSource.Document is null?localizationSource:locSource,installedCompdata=installedCompdata};
+        context.importedDatabase=File.Exists(dbPath)&&(databaseSource.Document is null||!db!.Serialize().AsSpan().SequenceEqual(databaseSource.Document.Serialize()));
+        context.importedLocalization=locMeta is not null&&(localizationSource.Document is null||!loc!.Serialize().AsSpan().SequenceEqual(localizationSource.Document.Serialize()));
         if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));if(saved.RootElement.TryGetProperty("SchedulingOptions",out var options))context.SchedulingOptions=options.Deserialize<Dictionary<int,FootballSchedulingOptions>>()??[];}
+        if(File.Exists(manifest)){using var matchupsJson=JsonDocument.Parse(File.ReadAllText(manifest));if(matchupsJson.RootElement.TryGetProperty("MatchupSettings",out var stored))context.MatchupSettings=stored.Deserialize<Dictionary<int,IReadOnlyList<FootballMatchupMetadata>>>()??[];}
+        context.languageSources=languageSources;
+        if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));if(saved.RootElement.TryGetProperty("Translations",out var edits))context.translations=edits.Deserialize<CompetitionTranslation[]>()??[];}
+        if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));context.ReadArtwork(root,saved.RootElement);}
         context.importedMappings=mappings;context.checkpoint=context.Capture();context.exportedCheckpoint=context.checkpoint;return context;
     }
-    State Capture()=>new(Project.Files.Select(f=>(f,f.Text)).ToArray(),Inserts.ToArray(),ReferenceDate,ReferenceConfirmed,new(SchedulingOptions));
-    void Restore(State s){Project.Files=s.Files.Select(v=>v.File).ToArray();foreach(var v in s.Files)v.File.Text=v.Text;Inserts=s.Inserts.ToList();ReferenceDate=s.Reference;ReferenceConfirmed=s.Confirmed;SchedulingOptions=new(s.SchedulingOptions);}
+    State Capture()=>new(Project.Files.Select(f=>(f,f.Text)).ToArray(),Inserts.ToArray(),ReferenceDate,ReferenceConfirmed,new(SchedulingOptions),new(MatchupSettings),translations,new(artwork));
+    void Restore(State s){Project.Files=s.Files.Select(v=>v.File).ToArray();foreach(var v in s.Files)v.File.Text=v.Text;Inserts=s.Inserts.ToList();ReferenceDate=s.Reference;ReferenceConfirmed=s.Confirmed;SchedulingOptions=new(s.SchedulingOptions);MatchupSettings=new(s.Matchups);translations=s.Translations;artwork=new(s.Artwork);}
+    int transactionDepth;
     public void Execute(string label,Action change)
     {
-        var before=Capture();try{change();var errors=CompetitionEditing.Validate(Project);if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));ValidateIntegration();undo.Push((label,before));redo.Clear();}catch{Restore(before);throw;}
+        var before=Capture();bool outer=transactionDepth==0;transactionDepth++;
+        try
+        {
+            change();
+            if(outer)
+            {
+                var errors=CompetitionEditing.Validate(Project);if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));
+                ValidateIntegration();undo.Push((label,before));redo.Clear();
+            }
+        }
+        catch{Restore(before);throw;}
+        finally{transactionDepth--;}
     }
     public void Undo(){if(undo.TryPop(out var old)){redo.Push((old.Label,Capture()));Restore(old.State);}}
     public void Redo(){if(redo.TryPop(out var next)){undo.Push((next.Label,Capture()));Restore(next.State);}}
@@ -88,6 +130,7 @@ public sealed class CompetitionProjectContext
     public void Cancel(){Restore(checkpoint);undo.Clear();redo.Clear();}
     readonly Dictionary<string,(string Text,string[][] Rows)> rowCache=new(StringComparer.OrdinalIgnoreCase);
     string? objectText;IReadOnlyList<CompetitionObject> objectCache=[];
+    CompetitionTranslation[]? objectTranslations;
     string? rulesText;string? rulesObjects;readonly Dictionary<int,IReadOnlyList<(int Source,string Key,string Value)>> effectiveCache=[];
     Dictionary<int,CompetitionObject> ruleObjects=[];
     ILookup<string,string[]>? rulesByObject;
@@ -98,7 +141,27 @@ public sealed class CompetitionProjectContext
     }
     public IReadOnlyList<CompetitionObject> Objects
     {
-        get{string text=Project.Files.Single(f=>f.RelativePath.Equals("compobj.txt",StringComparison.OrdinalIgnoreCase)).Text;if(!ReferenceEquals(objectText,text)){objectText=text;objectCache=TournamentBuilder.Objects(Project);}return objectCache;}
+        get
+        {
+            string text=Project.Files.Single(f=>f.RelativePath.Equals("compobj.txt",StringComparison.OrdinalIgnoreCase)).Text;
+            if(!ReferenceEquals(objectText,text)||!ReferenceEquals(objectTranslations,translations))
+            {
+                var names=translations.Where(t=>t.Language==PrimaryLanguage)
+                    .ToDictionary(t=>TranslationHash(t.Key),t=>t.Text);
+                objectCache=TournamentBuilder.Objects(Project).Select(item =>
+                {
+                    if(names.TryGetValue(TranslationHash(item.Name.Trim()),out string? name)&&name.Length>0)
+                        return item with {DisplayName=name};
+                    if(item.Kind==3&&item.Code.StartsWith('C')&&
+                       names.TryGetValue(TranslationHash("TrophyName_"+item.Code[1..]),out name)&&name.Length>0)
+                        return item with {DisplayName=name};
+                    return item;
+                }).ToArray();
+                objectText=text;
+                objectTranslations=translations;
+            }
+            return objectCache;
+        }
     }
     public IReadOnlyList<(int Source,string Key,string Value)> EffectiveRules(int id)
     {
@@ -139,7 +202,7 @@ public sealed class CompetitionProjectContext
     public void Edit(string path,Action<CompdataTable> edit)
     {
         var file=Project.Files.SingleOrDefault(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase));
-        if(file is null){file=new(){RelativePath=path,Text="",InitialText="",Original=[],Encoding=new UTF8Encoding(false)};Project.Files=Project.Files.Append(file).ToArray();}
+        if(file is null){file=new(){RelativePath=path,Text="",InitialText="",Original=[],Encoding=new UTF8Encoding(false),IsNew=true};Project.Files=Project.Files.Append(file).ToArray();}
         var table=new CompdataTable(file);edit(table);file.Text=table.Serialize();
     }
     public void SetRule(int objectId,string key,IEnumerable<string> values)
@@ -244,7 +307,7 @@ public sealed class CompetitionProjectContext
         Edit("advancement.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>(string)r[2]==destination.ToString()&&(string)r[3]==place.ToString()).ToArray())r.Delete();t.Data.Rows.Add(source.ToString(),rank.ToString(),destination.ToString(),place.ToString());});
     }
     public IReadOnlyList<string> ExportNotes=>new string[]{
-        "Compdata, database and localization are exported as a new project; source files are never overwritten.",
+        "Only changed Compdata, database and localization files are exported. Reopening uses the original game files for unchanged data.",
         "Competition IDs and Compdata object IDs are separate. Existing club league memberships are preserved.",
         "Competition graphics, trophies, badges, broadcast presentation and career-mode registration may require game-specific assets or configuration.",
         "A successful export is not proof that the competition is playable. Install with the appropriate game tools and validate in game.",
@@ -267,21 +330,63 @@ public sealed class CompetitionProjectContext
         }
         foreach(var entry in Inserts.Where(i=>i.Table=="competition"))if(Objects.Count(o=>o.Kind==3&&o.Code=="C"+entry.Values["competitionid"])!=1)throw new InvalidDataException("A prepared database competition must have exactly one matching Compdata competition.");
     }
-    public void Export(string target)
+    public IReadOnlyList<FifaModInput> PrepareFifaModFiles()
+    {
+        if(Game!="FC27")throw new InvalidDataException("FIFAMOD export currently supports FC27 only.");
+        var errors=CompetitionEditing.Validate(Project);
+        if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));
+        ValidateIntegration();
+        var files=Project.Files.Where(f=>f.Changed&&!f.RelativePath.Equals(CompdataProject.LimitsFileName,StringComparison.OrdinalIgnoreCase))
+            .Select(f=>new FifaModInput(FifaModFile.CompdataPath+f.RelativePath.Replace('\\','/'),f.Serialize())).ToList();
+        foreach(var loc in ExportTranslations()) files.Add(new("data/loc/"+loc.Name,loc.Bytes));
+        files.AddRange(ArtworkFiles());
+        if(files.Count==0)return files;
+
+        string limitsName=CompdataProject.LimitsFileName;
+        string limitsPath=Path.GetFullPath(Path.Combine(Project.SourceFolder,"..",limitsName));
+        string installedLimitsPath=Path.Combine(AppContext.BaseDirectory,"Data","FC27",limitsName);
+        var projectLimits=Project.Files.SingleOrDefault(f=>f.RelativePath.Equals(limitsName,StringComparison.OrdinalIgnoreCase));
+        byte[]? limits=File.Exists(limitsPath)?File.ReadAllBytes(limitsPath)
+            :File.Exists(installedLimitsPath)?File.ReadAllBytes(installedLimitsPath):projectLimits?.Serialize();
+        if(limits is null)throw new InvalidDataException("The FC27 Live Editor limits profile is missing: "+limitsPath);
+        files.Add(new(FifaModFile.CompdataPath+limitsName,limits));
+        return files;
+    }
+    public void ExportFifaMod(string target,string cachePath,FifaModDetails details)
+    {
+        var files=PrepareFifaModFiles();
+        if(files.Count==0)throw new InvalidDataException("There are no changed files to export.");
+        var catalog=FifaModCatalog.Read(cachePath,files.Select(f=>f.GamePath));
+        FifaModFile.Write(target,details,catalog,files);
+        // A deployable mod does not save editing metadata. Keep the project-save warning.
+    }
+    public void Export(string target) => ExportFolder(target,markSaved:true);
+
+    void ExportFolder(string target,bool markSaved)
     {
         if(Directory.Exists(target)||File.Exists(target))throw new IOException("Choose a new folder.");
         var errors=CompetitionEditing.Validate(Project);if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));ValidateIntegration();string temporary=target+"."+Guid.NewGuid().ToString("N")+".tmp";
         Directory.CreateDirectory(temporary);
         try
         {
-            Project.SaveAs(Path.Combine(temporary,"compdata"));
-            if(Base is not null){var db=Clone(Base,Metadata);ApplyInserts(db,Inserts.Where(i=>!i.Table.StartsWith("LanguageStrings")));db.SaveAs(Path.Combine(temporary,"fifa_ng_db.db"));}
-            if(Localization is not null){var loc=Clone(Localization,LocMetadata);ApplyInserts(loc,Inserts.Where(i=>i.Table.StartsWith("LanguageStrings")));loc.SaveAs(Path.Combine(temporary,Path.GetFileName(Localization.SourcePath)));}
-            if(File.Exists(Metadata))File.Copy(Metadata,Path.Combine(temporary,"fifa_ng_db-meta.xml"));
-            if(File.Exists(LocMetadata))File.Copy(LocMetadata,Path.Combine(temporary,Path.GetFileName(LocMetadata)));
-            File.WriteAllText(Path.Combine(temporary,"project.json"),JsonSerializer.Serialize(new{Game,ReferenceDate,ReferenceConfirmed,SchedulingOptions,ValidationLevels=new{DBMReference="1828c34e9650875a5b6befdf493854f8e4fbcfe1; native FC27 adaptations",Files="Validated on export",InGame="Not performed"},Notes=ExportNotes,CompetitionMappings,DatabaseChanges=Inserts.Select(i=>new{i.Table,Values=i.Values}),ChangedFiles=Project.Files.Where(f=>f.Changed).Select(f=>f.RelativePath)},new JsonSerializerOptions{WriteIndented=true}));
+            Project.SaveAs(Path.Combine(temporary,"compdata"),changedOnly:true);
+            var databaseInserts=Inserts.Where(i=>!i.Table.StartsWith("LanguageStrings")).ToArray();
+            if(Base is not null&&(importedDatabase||Base.HasChanges||databaseInserts.Length>0))
+            {
+                var db=Clone(Base,Metadata);ApplyInserts(db,databaseInserts);db.SaveAs(Path.Combine(temporary,"fifa_ng_db.db"));
+                if(File.Exists(Metadata))File.Copy(Metadata,Path.Combine(temporary,"fifa_ng_db-meta.xml"));
+            }
+            foreach(var loc in ExportTranslations())
+            {
+                string folder=loc.Name==Path.GetFileName(Localization?.SourcePath)?temporary:Path.Combine(temporary,"loc");
+                Directory.CreateDirectory(folder);
+                File.WriteAllBytes(Path.Combine(folder,loc.Name),loc.Bytes);
+                File.Copy(loc.Metadata,Path.Combine(folder,Path.GetFileName(loc.Metadata)));
+            }
+            var savedArtwork=WriteArtwork(temporary);
+            File.WriteAllText(Path.Combine(temporary,"project.json"),JsonSerializer.Serialize(new{Artwork=savedArtwork,Game,CompdataSource=Project.SourceFolder,ReferenceDate,ReferenceConfirmed,SchedulingOptions,MatchupSettings,Translations=translations,ValidationLevels=new{DBMReference="1828c34e9650875a5b6befdf493854f8e4fbcfe1; native FC27 adaptations",Files="Validated on export",InGame="Not performed"},Notes=ExportNotes,CompetitionMappings,DatabaseChanges=Inserts.Select(i=>new{i.Table,Values=i.Values}),ChangedFiles=Project.Files.Where(f=>f.Changed).Select(f=>f.RelativePath)},new JsonSerializerOptions{WriteIndented=true}));
             Directory.Move(temporary,target);
-            checkpoint=Capture();exportedCheckpoint=checkpoint;
+            if(markSaved) MarkExported();
         }
         catch{if(Directory.Exists(temporary))Directory.Delete(temporary,true);throw;}
     }

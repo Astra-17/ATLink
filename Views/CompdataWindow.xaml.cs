@@ -69,5 +69,18 @@ public partial class CompdataWindow:UserControl,IWorkspacePage
             (CompetitionBrowserHost.Content as CompetitionBrowser)?.Refresh();updating=true;Files.ItemsSource=project.Files;Files.SelectedItem=selected;updating=false;table=selected is null?null:new CompdataTable(selected);Records.ItemsSource=IdSortedView.Bind(table?.Data.DefaultView);updating=true;Editor.Text=selected?.Text??"";updating=false;(CompetitionBrowserHost.Content as CompetitionBrowser)?.Refresh();Status.Text="Competition created in memory. Review its rules, teams and calendar before saving.";};
         WorkspaceController.Open(page);
     }
-    private void SaveClick(object sender,RoutedEventArgs e){var dialog=new OpenFolderDialog{Title="Parent folder for a new Compdata copy"};if(!ShellDialogs.Open(dialog,this))return;try{CommitTable();string folder=Path.Combine(dialog.FolderName,"compdata-"+Guid.NewGuid().ToString("N")[..8]);project.SaveAs(folder);Status.Text="Saved: "+folder;}catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Compdata");}}
+    private void SaveClick(object sender,RoutedEventArgs e)
+    {
+        try
+        {
+            CommitTable();
+            if(!project.Files.Any(file=>file.Changed)){Status.Text="No Compdata changes to export.";return;}
+            var dialog=new OpenFolderDialog{Title="Parent folder for the changed Compdata files"};
+            if(!ShellDialogs.Open(dialog,this))return;
+            string folder=Path.Combine(dialog.FolderName,"compdata-"+Guid.NewGuid().ToString("N")[..8]);
+            project.SaveAs(folder,changedOnly:true);
+            Status.Text="Saved: "+folder;
+        }
+        catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Compdata");}
+    }
 }

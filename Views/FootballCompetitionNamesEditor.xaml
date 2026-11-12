@@ -1,0 +1,7 @@
+<UserControl x:Class="ATLink.Views.FootballCompetitionNamesEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Expander Header="English &amp; French names" Margin="0,8"><StackPanel Margin="8"><TextBlock Text="Leave blank to use the competition name. French is exported when its language database is loaded." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
+ <TextBlock Text="English short name" Margin="0,8,0,4"/><TextBox Text="{Binding EnglishShort,UpdateSourceTrigger=PropertyChanged}"/>
+ <TextBlock Text="French full name" Margin="0,8,0,4"/><TextBox Text="{Binding FrenchFull,UpdateSourceTrigger=PropertyChanged}"/>
+ <TextBlock Text="French short name" Margin="0,8,0,4"/><TextBox Text="{Binding FrenchShort,UpdateSourceTrigger=PropertyChanged}"/>
+ </StackPanel></Expander>
+</UserControl>

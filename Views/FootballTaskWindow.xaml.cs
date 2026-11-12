@@ -22,6 +22,8 @@ public partial class FootballTaskWindow:Window
     IReadOnlyList<FootballChoice> TargetOptions(SeasonAction action)
     {
         if(model.CompetitionId is not int id)return [new(0,action.TargetKind==5?"Incoming teams":action.TargetKind==3?"This competition":"Final played phase")];
+        if(action.Code=="UpdateTable"&&model.Context.Game=="FC27")
+            return model.Competitions.Where(choice=>choice.Id>0).OrderByDescending(choice=>choice.Id==id).ToArray();
         var scope=model.Context.Scope(id);return model.Context.Objects.Where(o=>scope.Contains(o.Id)&&o.Kind==action.TargetKind).Select(o=>new FootballChoice(o.Id,Label(o))).ToArray();
     }
     IReadOnlyList<FootballChoice> Options(SeasonParameter parameter,SeasonAction action)
@@ -35,8 +37,20 @@ public partial class FootballTaskWindow:Window
             SeasonParameterKind.Nation=>model.Countries,
             SeasonParameterKind.Coefficient=>Enumerable.Range(1,128).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
             SeasonParameterKind.Group=>model.CompetitionId is int id?c.Objects.Where(o=>o.Kind==5&&c.Scope(id).Contains(o.Id)&&!FootballCompetitionAdapter.IsHidden(c,o.Id)).Select(o=>new FootballChoice(o.Id,c.ObjectPath(o.Id))).ToArray():[new(0,"Final results group")],
+            SeasonParameterKind.Position when model.CompetitionId is int id&&action.Code=="UpdateTable"&&parameter.Label=="Finishing position"=>
+                Enumerable.Range(1,LargestPlayedGroup(id)).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
+            SeasonParameterKind.Position when model.Existing&&action.Code=="UpdateTable"=>Enumerable.Range(1,128).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
             _=>!model.Existing&&action.Code=="FillWithTeam"&&parameter.Kind==SeasonParameterKind.Position?[new(1,"Next free place")]:Enumerable.Range(1,Math.Max(1,model.Existing&&TargetChoice.SelectedItem is FootballChoice t&&action.TargetKind==5?model.Context.Rows("standings.txt").Count(r=>r[0]==t.Id.ToString()):parameter.Label=="Finishing position"?model.FinalCapacity:model.Capacity)).Select(n=>new FootballChoice(n,n.ToString())).ToArray()
         };
+    }
+    int LargestPlayedGroup(int id)
+    {
+        var context=model.Context;
+        var scope=context.Scope(id);
+        var groups=context.Objects.Where(o=>o.Kind==5&&scope.Contains(o.Id)&&!FootballCompetitionAdapter.IsHidden(context,o.Id))
+            .Select(o=>o.Id.ToString()).ToHashSet();
+        return context.Rows("standings.txt").Where(row=>groups.Contains(row[0]))
+            .GroupBy(row=>row[0]).Select(group=>group.Count()).DefaultIfEmpty(1).Max();
     }
     void ActionChanged(object sender,SelectionChangedEventArgs e)
     {

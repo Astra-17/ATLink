@@ -120,6 +120,17 @@ public sealed class FootballPhaseViewModel:FootballNotify
     readonly FootballPhase original;
     CompetitionProjectContext? settingsContext;
     readonly List<FootballPhaseSettingsViewModel> roundSettings=[];
+    public Func<string,bool>? ConfirmVenueRemoval {get;set;}
+    public bool HasCustomizedTieVenues=>roundSettings.SelectMany(r=>r.AllTieVenues).Any(t=>t.Snapshot().Stadium is var s&&(s.Mode==FootballSettingMode.Value||s.Mode==FootballSettingMode.Preserve&&s.Value is not null));
+    bool AcceptTieReduction()
+    {
+        int retainedRounds=Knockout?Math.Clamp(Number(rounds),1,7):0;
+        var removed=roundSettings.SelectMany((r,i)=>r.AllTieVenues.Skip(i<retainedRounds?Number(participants)/(1<<i)/2:0)).Where(t=>t.Snapshot().Stadium is var s&&(s.Mode==FootballSettingMode.Value||s.Mode==FootballSettingMode.Preserve&&s.Value is not null)).ToArray();
+        if(removed.Length==0)return true;
+        if(NativeId.HasValue||ConfirmVenueRemoval?.Invoke($"This format removes {removed.Length} tie venue setting(s). Remove these stadium choices?")!=true)return false;
+        for(int i=0;i<roundSettings.Count;i++)roundSettings[i].DiscardTiesAfter(i<retainedRounds?Number(participants)/(1<<i)/2:0);
+        return true;
+    }
     public IReadOnlyList<FootballPhaseSettingsViewModel> EssentialRounds
     {
         get
@@ -132,16 +143,17 @@ public sealed class FootballPhaseViewModel:FootballNotify
                 row.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseSettingsViewModel.Summary)){Notify(nameof(EssentialsSummary));Notify(nameof(Summary));}};
                 roundSettings.Add(row);
             }
-            for(int i=0;i<count;i++){int teams=Number(participants)/(1<<i);roundSettings[i].Name=count==1?Name:teams==2?"Final":teams==4?"Semi-finals":"Round of "+teams;}
+            for(int i=0;i<count;i++){int teams=Number(participants)/(1<<i);roundSettings[i].Name=count==1?Name:teams==2?"Final":teams==4?"Semi-finals":"Round of "+teams;roundSettings[i].ConfigureTies(Knockout?teams/2:0,(teams==2?finalLegs:legs)=="Home and away");}
             return roundSettings.Take(count).ToArray();
         }
     }
     public string EssentialsSummary=>string.Join("\n",EssentialRounds.Select(r=>(EssentialRounds.Count>1?r.Name+" · ":"")+r.Summary));
     public void ConfigureEssentials(CompetitionProjectContext context){settingsContext=context;foreach(var row in EssentialRounds)row.Configure(context,defaults);}
     public int? NativeId=>original.NativeId;public bool CanRemove=>!NativeId.HasValue;
+    public Guid DraftKey=>original.DraftKey;
     public bool Editable=>!original.Special;
     string name;public string Name{get=>name;set{if(name==value)return;name=value;Changed();}}
-    FootballPhaseKind kind;public FootballPhaseKind Kind{get=>kind;set{if(kind==value)return;kind=value;if(value==FootballPhaseKind.League)groups="1";ResetRulesForKind();Changed();}}
+    FootballPhaseKind kind;public FootballPhaseKind Kind{get=>kind;set{if(kind==value)return;var previous=kind;kind=value;if(!AcceptTieReduction()){kind=previous;Notify();return;}if(value==FootballPhaseKind.League)groups="1";ResetRulesForKind();Changed();}}
     public IReadOnlyList<FootballPhaseKind> Kinds=>original.Kind==FootballPhaseKind.Special?[FootballPhaseKind.Special]:[FootballPhaseKind.League,FootballPhaseKind.Groups,FootballPhaseKind.Knockout];
     string participants,groups,qualifiers,rounds;
     public bool Guided {get;set;}
@@ -159,9 +171,10 @@ public sealed class FootballPhaseViewModel:FootballNotify
     public int ForwardTeams=>Knockout?Number(participants)/(1 << Math.Clamp(Number(rounds),1,7)):Number(groups)*Number(qualifiers);
     public void ConfigureChoices(bool next,bool knockout,string? input)
     {
+        var before=(participants,groups,qualifiers,rounds);
         hasNext=next;nextKnockout=knockout;inputFixed=input is not null;
         if(input is not null)participants=input;
-        NormalizeChoices();NotifyChoices();
+        NormalizeChoices();if(!AcceptTieReduction())(participants,groups,qualifiers,rounds)=before;NotifyChoices();
     }
     void NormalizeChoices()
     {
@@ -174,10 +187,10 @@ public sealed class FootballPhaseViewModel:FootballNotify
     }
     bool notifyingChoices;
     void NotifyChoices(){if(notifyingChoices)return;notifyingChoices=true;try{foreach(string key in new[]{nameof(ParticipantChoices),nameof(GroupChoices),nameof(QualifierChoices),nameof(RoundChoices),nameof(CanChooseInput),nameof(Participants),nameof(Groups),nameof(Qualifiers),nameof(Rounds)})Notify(key);}finally{notifyingChoices=false;}}
-    public string Participants{get=>participants;set{if(notifyingChoices||value is null||participants==value||Guided&&!ParticipantChoices.Contains(value))return;participants=value;NormalizeChoices();NotifyChoices();Changed();}}
+    public string Participants{get=>participants;set{if(notifyingChoices||value is null||participants==value||Guided&&!ParticipantChoices.Contains(value))return;var before=(participants,groups,qualifiers,rounds);participants=value;NormalizeChoices();if(!AcceptTieReduction()){(participants,groups,qualifiers,rounds)=before;NotifyChoices();return;}NotifyChoices();Changed();}}
     public string Groups{get=>groups;set{if(notifyingChoices||value is null||groups==value||Guided&&!GroupChoices.Contains(value))return;groups=value;NormalizeChoices();NotifyChoices();Changed();}}
     public string Qualifiers{get=>qualifiers;set{if(notifyingChoices||value is null||qualifiers==value||Guided&&!QualifierChoices.Contains(value))return;qualifiers=value;Changed();}}
-    public string Rounds{get=>rounds;set{if(notifyingChoices||value is null||rounds==value||Guided&&!RoundChoices.Contains(value))return;rounds=value;Changed();}}
+    public string Rounds{get=>rounds;set{if(notifyingChoices||value is null||rounds==value||Guided&&!RoundChoices.Contains(value))return;var previous=rounds;rounds=value;if(!AcceptTieReduction()){rounds=previous;Notify();return;}Changed();}}
     string legs,finalLegs;public string Legs{get=>legs;set{if(legs==value)return;legs=value;Rules.ConfigureEndings(legs=="Single match"||finalLegs=="Single match",legs=="Home and away"||finalLegs=="Home and away");Changed();}}public string FinalLegs{get=>finalLegs;set{if(finalLegs==value)return;finalLegs=value;Rules.ConfigureEndings(legs=="Single match"||finalLegs=="Single match",legs=="Home and away"||finalLegs=="Home and away");Changed();}}
     public IReadOnlyList<string> LegOptions {get;}=["Single match","Home and away"];
     public bool Tables=>Kind is FootballPhaseKind.League or FootballPhaseKind.Groups;public bool IsGroups=>Kind==FootballPhaseKind.Groups;public bool Knockout=>Kind==FootballPhaseKind.Knockout;
@@ -196,7 +209,7 @@ public sealed class FootballPhaseViewModel:FootballNotify
         var copy=new FootballPhaseViewModel(original with{Kind=kind},defaults,Rules.DraftValues());
         copy.name=name;copy.kind=kind;copy.participants=participants;copy.groups=groups;copy.qualifiers=qualifiers;copy.rounds=rounds;copy.legs=legs;copy.finalLegs=finalLegs;
         copy.CarryPoints=CarryPoints;copy.CarryPercentage=CarryPercentage;copy.CarryRounding=CarryRounding;copy.Guided=Guided;
-        copy.CopyEssentials(this);
+        copy.ConfirmVenueRemoval=ConfirmVenueRemoval;copy.CopyEssentials(this);
         copy.ConfigureChoices(hasNext,nextKnockout,inputFixed?participants:null);copy.Rules.AllRules=true;copy.Rules.ConfigureEndings(legs=="Single match"||finalLegs=="Single match",legs=="Home and away"||finalLegs=="Home and away");return copy;
     }
     public void AcceptCopy(FootballPhaseViewModel copy)
@@ -213,14 +226,14 @@ public sealed class FootballPhaseViewModel:FootballNotify
             if(settingsContext is not null)row.Configure(settingsContext,defaults);
             row.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseSettingsViewModel.Summary)){Notify(nameof(EssentialsSummary));Notify(nameof(Summary));}};roundSettings.Add(row);
         }
-        Notify(nameof(EssentialRounds));Notify(nameof(EssentialsSummary));
+        _=EssentialRounds;Notify(nameof(EssentialRounds));Notify(nameof(EssentialsSummary));
     }
     void Changed(){Notify();Notify(nameof(Name));Notify(nameof(Kind));Notify(nameof(Participants));Notify(nameof(Groups));Notify(nameof(Qualifiers));Notify(nameof(Rounds));Notify(nameof(Legs));Notify(nameof(FinalLegs));Notify(nameof(Tables));Notify(nameof(IsGroups));Notify(nameof(Knockout));Notify(nameof(Summary));Notify(nameof(EssentialRounds));Notify(nameof(EssentialsSummary));}
     public FootballPhase Snapshot()
     {
         int Parse(string value,string label)=>int.TryParse(value,out int n)?n:throw new InvalidDataException(Name+": enter a whole number for "+label+".");
         var essentials=EssentialRounds.Select(r=>r.Snapshot()).ToArray();
-        if(roundSettings.Skip(essentials.Length).Any(r=>r.Snapshot() is var s&&(s.Prize.Mode==FootballSettingMode.Value&&s.Prize.Value!="0"||s.Stadium.Mode==FootballSettingMode.Value)))throw new InvalidDataException("A removed round has a prize or selected stadium. Restore the round and reset these settings before reducing the number of rounds.");
+        if(roundSettings.Skip(essentials.Length).Any(r=>r.Snapshot() is var s&&(s.Prize.Mode==FootballSettingMode.Value&&s.Prize.Value!="0"||s.Stadium.Mode==FootballSettingMode.Value||s.TieVenues.Any(t=>t.Stadium.Mode==FootballSettingMode.Value||t.Stadium.Value is not null))))throw new InvalidDataException("A removed round has a prize or selected stadium. Restore the round and reset these settings before reducing the number of rounds.");
         var overrides=Rules.Overrides();return original with{RoundSettings=essentials,ResetRules=original.Rules.Keys.Except(overrides.Keys).ToArray(),Name=Name,Kind=Kind,Participants=Parse(Participants,"teams"),Groups=Kind==FootballPhaseKind.League?1:Kind==FootballPhaseKind.Knockout?1:Parse(Groups,"groups"),QualifiersPerGroup=Kind==FootballPhaseKind.Knockout?1:Parse(Qualifiers,"qualifiers"),Rounds=Kind==FootballPhaseKind.Knockout?Parse(Rounds,"rounds"):1,Legs=Legs=="Home and away"?2:1,FinalLegs=FinalLegs=="Home and away"?2:1,CarryPoints=CarryPoints,CarryPercentage=Parse(CarryPercentage,"points percentage"),CarryRounding=CarryRounding,Rules=overrides};
     }
 }
@@ -230,24 +243,26 @@ public sealed class FootballFormatViewModel:FootballNotify
     readonly Action? changed;
     public ObservableCollection<FootballPhaseViewModel> Phases {get;}=[];
     FootballPhaseViewModel? selected;public FootballPhaseViewModel? Selected{get=>selected;set{selected=value;Notify();}}
+    public CompetitionArtworkViewModel Artwork {get;private set;}
     public int CompetitionId {get;private set;}
     public int? TemplateId {get;set;}
     public bool Existing {get;}
     public string PreviewText {get;private set;}="";public string Error {get;private set;}="";
+    public Func<string,bool>? ConfirmVenueRemoval {get;set;}
     public bool ConfirmChanges{get;set;}
     public bool RequiresConfirmation=>preview?.RequiresConfirmation==true;
     public bool HasStructureChanges{get{if(!Existing||CompetitionId==0)return false;try{var now=Snapshot();return !FootballCompetitionCompiler.SameStructure(loadedPhases,now)||!loadedPhases.Select(p=>p.Name).SequenceEqual(now.Select(p=>p.Name));}catch{return true;}}}
     FootballStructurePreview? preview;
     IReadOnlyDictionary<string,string[]> defaults=new Dictionary<string,string[]>();
     IReadOnlyList<FootballPhase> loadedPhases=[];
-    public FootballFormatViewModel(CompetitionProjectContext c,bool existing,Action? changed=null){Context=c;Existing=existing;this.changed=changed;}
+    public FootballFormatViewModel(CompetitionProjectContext c,bool existing,Action? changed=null){Context=c;Existing=existing;this.changed=changed;Artwork=new(c);}
     public void Load(int id)
     {
-        CompetitionId=id;defaults=FootballRulesViewModel.Effective(Context,id);loadedPhases=FootballCompetitionAdapter.Read(Context,id).Phases;SetPhases(loadedPhases);ConfirmChanges=false;Notify(nameof(ConfirmChanges));PreviewText="Choose a played phase to edit its format or rules.";Error="";Notify(nameof(Error));Notify(nameof(PreviewText));
+        CompetitionId=id;Artwork=new(Context,id,changed);Notify(nameof(Artwork));defaults=FootballRulesViewModel.Effective(Context,id);loadedPhases=FootballCompetitionAdapter.Read(Context,id).Phases;SetPhases(loadedPhases);ConfirmChanges=false;Notify(nameof(ConfirmChanges));PreviewText="Choose a played phase to edit its format or rules.";Error="";Notify(nameof(Error));Notify(nameof(PreviewText));
     }
     public void SetPhases(IEnumerable<FootballPhase> phases,IReadOnlyDictionary<string,string[]>? rules=null)
     {
-        if(rules is not null)defaults=rules;Phases.Clear();foreach(var phase in phases){var vm=new FootballPhaseViewModel(phase,defaults,phase.NativeId is int id?FootballRulesViewModel.Local(Context,id,phase.Kind):null);vm.ConfigureEssentials(Context);vm.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseViewModel.Summary))Invalidate();};Phases.Add(vm);}Selected=Phases.FirstOrDefault();Invalidate();
+        if(rules is not null)defaults=rules;Phases.Clear();foreach(var phase in phases){var vm=new FootballPhaseViewModel(phase,defaults,phase.NativeId is int id?FootballRulesViewModel.Local(Context,id,phase.Kind):null);vm.ConfirmVenueRemoval=message=>ConfirmVenueRemoval?.Invoke(message)==true;vm.ConfigureEssentials(Context);vm.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseViewModel.Summary))Invalidate();};Phases.Add(vm);}Selected=Phases.FirstOrDefault();Invalidate();
     }
     bool updatingChoices;
     void UpdateChoices()
@@ -263,17 +278,17 @@ public sealed class FootballFormatViewModel:FootballNotify
     {
         int input=8;var last=Phases.LastOrDefault();if(last is not null){try{var p=last.Snapshot();input=p.Output;if(input<2){input=Math.Min(8,p.Participants);while((input&(input-1))!=0)input--;if(last.Tables)last.Qualifiers=Math.Max(1,input/Math.Max(1,int.Parse(last.Groups))).ToString();}}catch{}}
         input=Math.Max(2,input);int rounds=1;while((1<<rounds)<input&&rounds<7)rounds++;
-        var phase=new FootballPhaseViewModel(new(){Name="Knockout round",Kind=FootballPhaseKind.Knockout,Participants=input,Rounds=rounds},defaults);phase.ConfigureEssentials(Context);phase.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseViewModel.Summary))Invalidate();};Phases.Add(phase);Selected=phase;Invalidate();
+        var phase=new FootballPhaseViewModel(new(){Name="Knockout round",Kind=FootballPhaseKind.Knockout,Participants=input,Rounds=rounds},defaults);phase.ConfirmVenueRemoval=message=>ConfirmVenueRemoval?.Invoke(message)==true;phase.ConfigureEssentials(Context);phase.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballPhaseViewModel.Summary))Invalidate();};Phases.Add(phase);Selected=phase;Invalidate();
     }
     public void Move(FootballPhaseViewModel phase,int direction){int i=Phases.IndexOf(phase),next=i+direction;if(next>=0&&next<Phases.Count){Phases.Move(i,next);Selected=phase;Invalidate();}}
-    public void Remove(FootballPhaseViewModel phase){if(Existing&&phase.NativeId.HasValue){Error="Removing existing rounds with game-specific links is an Expert operation.";Notify(nameof(Error));return;}Phases.Remove(phase);Selected=Phases.FirstOrDefault();Invalidate();}
+    public void Remove(FootballPhaseViewModel phase){if(Existing&&phase.NativeId.HasValue){Error="Removing existing rounds with game-specific links is an Expert operation.";Notify(nameof(Error));return;}if(phase.HasCustomizedTieVenues&&ConfirmVenueRemoval?.Invoke("Remove this phase and its customized tie stadiums?")!=true)return;Phases.Remove(phase);Selected=Phases.FirstOrDefault();Invalidate();}
     public void Preview()
     {
         try{preview=FootballCompetitionCompiler.Preview(Context,CompetitionId,Snapshot());PreviewText=preview.Description;Error="";}catch(Exception ex){preview=null;Error=ex.Message;}Notify(nameof(PreviewText));Notify(nameof(Error));Notify(nameof(RequiresConfirmation));
     }
     public void Apply()
     {
-        try{if(preview is null){Preview();if(preview is null)return;}Context.Execute("Change football format",()=>FootballCompetitionCompiler.Compile(Context,CompetitionId,preview,ConfirmChanges));changed?.Invoke();Load(CompetitionId);PreviewText="Format applied. Export the project when ready.";Notify(nameof(PreviewText));}
+        try{if(Artwork.HasPending)throw new InvalidDataException("Apply or discard the artwork changes before applying the competition format.");if(preview is null){Preview();if(preview is null)return;}Context.Execute("Change football format",()=>FootballCompetitionCompiler.Compile(Context,CompetitionId,preview,ConfirmChanges));changed?.Invoke();Load(CompetitionId);PreviewText="Format applied. Export the project when ready.";Notify(nameof(PreviewText));}
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
 }

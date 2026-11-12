@@ -1,4 +1,7 @@
 using ATLink.Core;
+if(args.Contains("--link")){LinkProjectChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."));return;}
+if(args.Contains("--fifamod")){FifaModChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."),args.FirstOrDefault(a=>a.StartsWith("--fet-cache="))?[12..]);return;}
+if(args.Contains("--matchups")){MatchupChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--matchups")??"."));return;}
 if(args.Contains("--scheduling")){SchedulingChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--scheduling")??"."));return;}
 if(args.Contains("--phase-settings")){PhaseSettingsChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--phase-settings")??"."));return;}
 if(args.Contains("--competition-parity")){CompetitionParityChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-parity")??"."));return;}

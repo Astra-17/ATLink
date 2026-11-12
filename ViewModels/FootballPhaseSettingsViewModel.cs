@@ -11,6 +11,23 @@ public sealed class FootballPhaseSettingsViewModel:FootballNotify
     CompetitionProjectContext? context;
     readonly FootballPhaseSettings original;
     readonly int? nativeId;
+    readonly List<FootballTieVenueViewModel> ties=[];
+    readonly HashSet<int> discardedTies=[];
+    public IReadOnlyList<FootballTieVenueViewModel> AllTieVenues=>ties;
+    public void DiscardTiesAfter(int count){foreach(var tie in ties.Skip(count))discardedTies.Add(tie.Ordinal);if(ties.Count>count)ties.RemoveRange(count,ties.Count-count);}
+    int tieCount;bool twoLegs;
+    public IReadOnlyList<FootballTieVenueViewModel> TieVenues=>ties.Take(tieCount).ToArray();
+    public void ConfigureTies(int count,bool bothLegs)
+    {
+        tieCount=count;twoLegs=bothLegs;if(context is null)return;
+        while(ties.Count<count)
+        {
+            int index=ties.Count;var tie=new FootballTieVenueViewModel(context,(!discardedTies.Contains(index)?original.TieVenues.FirstOrDefault(t=>t.Ordinal==index):null)??new(index,new()),()=>CurrentVenue,bothLegs);
+            tie.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FootballTieVenueViewModel.Summary)){Notify(nameof(Summary));Notify(nameof(Error));}};ties.Add(tie);
+        }
+        foreach(var tie in ties)tie.TwoLegs=bothLegs;
+    }
+    string CurrentVenue=>SingleStadium?Stadium?.Name??"Choose a stadium":VenueMode.Mode==FootballSettingMode.Inherit?InheritedVenue:NativeVenue;
     public string Name {get;set;}="Phase";
     public bool Supported=>context?.Game=="FC27";
     public string SupportNote=>Supported?"Amounts are native game values. Currency, recipients and cumulative distribution are not confirmed; existing distribution settings stay unchanged.":"These phase settings are not verified for this game. Native values remain preserved in Expert.";
@@ -20,6 +37,10 @@ public sealed class FootballPhaseSettingsViewModel:FootballNotify
     string prize;
     public string Prize{get=>prize;set{prize=value;Updated();}}
     public bool CustomPrize=>PrizeMode.Mode==FootballSettingMode.Value;
+    bool setDrawDate,resetDrawDate;
+    public bool SetDrawDate {get=>setDrawDate;set{setDrawDate=value;if(value)ResetDrawDate=false;Notify();}}
+    public bool ResetDrawDate {get=>resetDrawDate;set{resetDrawDate=value;if(value)SetDrawDate=false;Notify();}}
+    public DateTime? DrawDate {get;set;}
     public string InheritedPrize {get;private set;}="Competition default";
     public string NativePrize {get;private set;}="No local prize override";
     public string NativeVenue {get;private set;}="Usual home grounds";
@@ -50,7 +71,7 @@ public sealed class FootballPhaseSettingsViewModel:FootballNotify
             try{if(context is null||Stadium is null)return "Choose a stadium.";FootballPhaseSettingsAdapter.Validate(context,new(){Stadium=new(FootballSettingMode.Value,Stadium.Id.ToString())},nativeId);return "";}catch(Exception ex){return ex.Message;}
         }
     }
-    public string Summary=>"Prize money: "+(CustomPrize?FootballPhaseSettingsAdapter.Amount(CleanPrize()):PrizeMode.Mode==FootballSettingMode.Inherit?InheritedPrize:NativePrize)+" · Venue: "+(SingleStadium?Stadium?.Name??"Choose a stadium":VenueMode.Mode==FootballSettingMode.Inherit?InheritedVenue:NativeVenue)+" · Existing discipline retained";
+    public string Summary=>"Prize money: "+(CustomPrize?FootballPhaseSettingsAdapter.Amount(CleanPrize()):PrizeMode.Mode==FootballSettingMode.Inherit?InheritedPrize:NativePrize)+" · Venue: "+CurrentVenue+" · Existing discipline retained"+(TieVenues.Count>0?"\n"+string.Join("\n",TieVenues.Select(t=>t.Summary)):"");
     public FootballPhaseSettingsViewModel(FootballPhaseSettings settings,bool created,int? nativeId)
     {
         original=settings;this.nativeId=nativeId;
@@ -60,6 +81,7 @@ public sealed class FootballPhaseSettingsViewModel:FootballNotify
     public void Configure(CompetitionProjectContext c,IReadOnlyDictionary<string,string[]> defaults)
     {
         context=c;stadiums=FootballPhaseSettingsAdapter.Stadiums(c);
+        if(DrawDate is null&&int.TryParse(original.DrawDate.Value,out int offset))DrawDate=c.ReferenceDate.AddDays(offset).ToDateTime(TimeOnly.MinValue);
         if(nativeId is int own&&c.Objects.FirstOrDefault(o=>o.Id==own) is {} obj)defaults=c.EffectiveRules(obj.ParentId).GroupBy(r=>r.Key).ToDictionary(g=>g.Key,g=>g.Select(r=>r.Value).ToArray());
         if(int.TryParse(original.Stadium.Value,out int id))stadium=stadiums.FirstOrDefault(s=>s.Id==id);
         string Venue(string? v)=>int.TryParse(v,out int n)?stadiums.FirstOrDefault(s=>s.Id==n)?.Name??"Unavailable stadium ("+v+")":"Usual home grounds";
@@ -76,14 +98,22 @@ public sealed class FootballPhaseSettingsViewModel:FootballNotify
             DisciplineOrigin=owner is null?"Existing inherited discipline rules":"Discipline managed by "+(int.TryParse(owner,out int n)?c.ObjectName(n):"an existing native reference");
         }
         if(!Supported){prizeMode=PrizeModes[0];venueMode=VenueModes[0];}
+        ConfigureTies(tieCount,twoLegs);
     }
     string CleanPrize()=>Prize.Replace(" ","").Replace("\u00a0","").Replace("\u202f","").Replace(",","");
     public FootballPhaseSettings Snapshot()
     {
-        var result=original with{Prize=new(PrizeMode.Mode,PrizeMode.Mode==FootballSettingMode.Value?CleanPrize():original.Prize.Value),Stadium=new(VenueMode.Mode,VenueMode.Mode==FootballSettingMode.Value?Stadium?.Id.ToString():original.Stadium.Value)};
+        if(ties.Skip(tieCount).Any(t=>t.Snapshot().Stadium is var s&&(s.Mode==FootballSettingMode.Value||s.Value is not null)))throw new InvalidDataException("A removed tie has a selected stadium. Restore it and reset its venue before changing the format.");
+        var result=original with{Prize=new(PrizeMode.Mode,PrizeMode.Mode==FootballSettingMode.Value?CleanPrize():original.Prize.Value),Stadium=new(VenueMode.Mode,VenueMode.Mode==FootballSettingMode.Value?Stadium?.Id.ToString():original.Stadium.Value),TieVenues=context is null?original.TieVenues:TieVenues.Select(t=>t.Snapshot()).ToArray()};
+        if(SetDrawDate)
+        {
+            if(context is null||DrawDate is null)throw new InvalidDataException("Choose a draw date.");
+            result=result with{DrawDate=new(FootballSettingMode.Value,(DateOnly.FromDateTime(DrawDate.Value).DayNumber-context.ReferenceDate.DayNumber).ToString())};
+        }
+        else if(ResetDrawDate)result=result with{DrawDate=new(FootballSettingMode.Inherit)};
         if(context is not null)FootballPhaseSettingsAdapter.Validate(context,result,nativeId);
         else if(CustomPrize&&(!int.TryParse(CleanPrize(),NumberStyles.None,CultureInfo.InvariantCulture,out int n)||n<0))throw new InvalidDataException("Prize money must be a non-negative whole amount.");
         return result;
     }
-    void Updated(){Notify(nameof(Prize));Notify(nameof(PrizeMode));Notify(nameof(VenueMode));Notify(nameof(Stadium));Notify(nameof(CustomPrize));Notify(nameof(SingleStadium));Notify(nameof(Summary));Notify(nameof(Error));Notify(nameof(PrizeError));Notify(nameof(VenueError));}
+    void Updated(){foreach(var tie in ties)tie.RefreshInherited();Notify(nameof(Prize));Notify(nameof(PrizeMode));Notify(nameof(VenueMode));Notify(nameof(Stadium));Notify(nameof(CustomPrize));Notify(nameof(SingleStadium));Notify(nameof(Summary));Notify(nameof(Error));Notify(nameof(PrizeError));Notify(nameof(VenueError));}
 }

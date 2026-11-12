@@ -1,0 +1,3 @@
+<UserControl x:Class="ATLink.Views.FootballLinksPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Background="{DynamicResource BackgroundBrush}" Foreground="{DynamicResource TextBrush}">
+ <DockPanel><Border DockPanel.Dock="Top" Background="{DynamicResource HeaderBrush}" Padding="16"><DockPanel><Button DockPanel.Dock="Right" Content="Back to competitions" Click="Back"/><TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold"/></DockPanel></Border><local:FootballLinksEditor/></DockPanel>
+</UserControl>

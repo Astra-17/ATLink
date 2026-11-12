@@ -11,6 +11,14 @@ internal static class Fc27CompdataChecks
         Check(project.Files.Count==13,"Missing bundled files");Check(CompetitionTools.Choices(project).Count==93,"Native competitions");
         Check(CompetitionEditing.Validate(project).Count==0,"Native validation: "+string.Join(";",CompetitionEditing.Validate(project).Distinct()));
         foreach(var file in project.Files)Check(new CompdataTable(file).Serialize()==file.Text,"Untouched text changed "+file.RelativePath);
+        const string unordered="1951,start,Direct\r\n1926,start,Direct\r\n# keep this comment\r\n1951,start,Q1\r\n1951,start,Q2\r\n1926,end,Save";
+        const string ordered="1926,start,Direct\r\n1926,end,Save\r\n# keep this comment\r\n1951,start,Direct\r\n1951,start,Q1\r\n1951,start,Q2";
+        string Serialized(string path)=>System.Text.Encoding.UTF8.GetString(new CompdataFile
+        {
+            RelativePath=path,Original=[],Encoding=System.Text.Encoding.UTF8,InitialText="",Text=unordered
+        }.Serialize());
+        Check(Serialized("tasks.txt")==ordered,"Task sort changed execution order, comments, encoding or line endings");
+        Check(Serialized("advancement.txt")==unordered,"Advancement order changed");
         string target=Path.Combine(root,"Checks/output/compdata-"+Guid.NewGuid().ToString("N"));
         try{project.SaveAs(target);foreach(var file in project.Files)Check(File.ReadAllBytes(Path.Combine(source,file.RelativePath)).AsSpan().SequenceEqual(File.ReadAllBytes(Path.Combine(target,file.RelativePath))),"Native export changed bytes");}finally{if(Directory.Exists(target))Directory.Delete(target,true);}
         var weather=project.Files.Single(f=>f.RelativePath=="weather.txt");var table=new CompdataTable(weather);Check(table.Data.Columns.Count==9&&table.Data.Columns[7].ColumnName=="sunset","Weather columns");table.Data.Rows[0][7]="1615";weather.Text=table.Serialize();Check(CompetitionEditing.Validate(project).Count==0,"Weather edit rejected");table.Data.Rows[0][2]="101";weather.Text=table.Serialize();Check(CompetitionEditing.Validate(project).Any(e=>e.StartsWith("weather.txt")),"Bad weather accepted");

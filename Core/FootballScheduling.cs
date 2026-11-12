@@ -89,7 +89,7 @@ public static class FootballAvailability
                 if(phaseSlots.Length==0)warnings.Add(root.DisplayName+" · "+phase.Name+": no comparable native calendar was found.");
             }
         }
-        warnings.Add("Relative dates use the illustrative reference season. Career-mode postponements and qualification results cannot be predicted.");
+        warnings.Add(c.CalendarReferenceLabel+" Career-mode postponements and qualification results cannot be predicted.");
         return new(events.GroupBy(e=>e.Id).Select(g=>g.First() with{Teams=g.SelectMany(e=>e.Teams).Distinct().ToArray(),CompetitionName=string.Join(" / ",g.Select(e=>e.CompetitionName).Distinct())}).ToArray(),warnings.Distinct().ToArray(),Fingerprint(c));
     }
 }
@@ -98,32 +98,43 @@ public static class FootballFixtureSimulation
 {
     public static IReadOnlyList<FootballPlannedMatch> Build(IReadOnlyList<FootballPhase> phases,IReadOnlyList<string> participants,Func<string,string> name)
     {
-        var result=new List<FootballPlannedMatch>();var calendar=FootballExactCalendar.Phases(phases);int index=0;
+        var result=new List<FootballPlannedMatch>();var calendar=FootballExactCalendar.Phases(phases);var stages=FootballMatchups.Stages(phases);int index=0;
         foreach(var phase in phases)
         {
             int count=phase.Kind==FootballPhaseKind.Knockout?phase.Rounds:1;
             for(int r=0;r<count;r++,index++)
             {
-                var p=calendar[index];var fixtures=new List<(int Round,string? Home,string? Away,string H,string A)>();
+                var p=calendar[index];var fixtures=new List<(int Round,string? Home,string? Away,string H,string A,IReadOnlyList<string> Possible)>();
+                var seeds=phase.Kind==FootballPhaseKind.Knockout?FootballMatchups.Seats(stages,index,participants):null;
+                string? Club(FootballMatchupSource s)=>s.Kind==FootballMatchupSourceKind.Entry?s.TeamId??(participants.Count==stages[0].Participants?participants.ElementAtOrDefault(s.Ordinal):null):null;
+                IReadOnlyList<string> Possible(FootballMatchupSource s)
+                {
+                    if(Club(s) is {} club)return [club];
+                    var from=stages.FirstOrDefault(t=>t.Key==s.PhaseKey);
+                    if(s.Kind==FootballMatchupSourceKind.Winner&&from is not null){var match=result.FirstOrDefault(m=>m.PhaseIndex==from.Index&&m.Match==s.Ordinal);if(match is not null)return match.Teams.Count>0?match.Teams:match.PossibleTeams;}
+                    if(s.Kind==FootballMatchupSourceKind.GroupRank&&from?.Index==0&&participants.Count==from.Participants)return participants.Skip(s.Ordinal*(from.Participants/from.Phase.Groups)).Take(from.Participants/from.Phase.Groups).ToArray();
+                    return participants.ToArray();
+                }
                 bool concrete=index==0&&participants.Count==phase.Participants;
                 if(concrete&&phase.Kind is FootballPhaseKind.League or FootballPhaseKind.Groups)
                 {
                     int size=phase.Participants/phase.Groups;
-                    for(int g=0;g<phase.Groups;g++)foreach(var f in TournamentBuilder.RoundRobin(participants.Skip(g*size).Take(size).ToArray(),phase.Legs==2))fixtures.Add((f.Round,f.Home,f.Away,name(f.Home),name(f.Away)));
+                    for(int g=0;g<phase.Groups;g++)foreach(var f in TournamentBuilder.RoundRobin(participants.Skip(g*size).Take(size).ToArray(),phase.Legs==2))fixtures.Add((f.Round,f.Home,f.Away,name(f.Home),name(f.Away),[f.Home,f.Away]));
                 }
                 else for(int leg=1;leg<=p.Rounds;leg++)for(int m=0;m<p.Matches;m++)
                 {
-                    string? home=concrete?participants[2*m]:null,away=concrete?participants[2*m+1]:null;
-                    string h=home is null?(index==0?"Participant "+(2*m+1):"Qualifier "+(2*m+1)+" from "+calendar[index-1].Name):name(home);
-                    string a=away is null?(index==0?"Participant "+(2*m+2):"Qualifier "+(2*m+2)+" from "+calendar[index-1].Name):name(away);
-                    fixtures.Add((leg,leg==2?away:home,leg==2?home:away,leg==2?a:h,leg==2?h:a));
+                    string? home=seeds is not null?Club(seeds[2*m]):concrete?participants[2*m]:null,away=seeds is not null?Club(seeds[2*m+1]):concrete?participants[2*m+1]:null;
+                    string h=seeds is not null?FootballMatchups.Label(seeds[2*m],stages,name):home is null?(index==0?"Participant "+(2*m+1):"Qualifier "+(2*m+1)+" from "+calendar[index-1].Name):name(home);
+                    string a=seeds is not null?FootballMatchups.Label(seeds[2*m+1],stages,name):away is null?(index==0?"Participant "+(2*m+2):"Qualifier "+(2*m+2)+" from "+calendar[index-1].Name):name(away);
+                    var possible=seeds is not null?Possible(seeds[2*m]).Concat(Possible(seeds[2*m+1])).Distinct().ToArray():participants.ToArray();
+                    fixtures.Add((leg,leg==2?away:home,leg==2?home:away,leg==2?a:h,leg==2?h:a,possible));
                 }
                 var counters=new Dictionary<int,int>();
                 foreach(var f in fixtures)
                 {
                     int match=counters.GetValueOrDefault(f.Round);counters[f.Round]=match+1;
                     var bytes=System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(p.Key+":"+f.Round+":"+match));
-                    result.Add(new(new Guid(bytes),p.Key,p.Index,f.Round,match,f.H,f.A,f.Home,f.Away,participants.ToArray(),null,"1500"));
+                    result.Add(new(new Guid(bytes),p.Key,p.Index,f.Round,match,f.H,f.A,f.Home,f.Away,f.Possible,null,"1500"));
                 }
             }
         }

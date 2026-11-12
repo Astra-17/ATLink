@@ -29,6 +29,7 @@ public static class FootballRuleCatalogue
         new("rule_offsides","Offside","Match",FootballRuleInput.Toggle,"Apply the offside rule."),
         new("rule_injuries","Injuries","Match",FootballRuleInput.Toggle,"Allow players to be injured during matches."),
         new("match_matchimportance","Match importance","Match",FootballRuleInput.Number,"Game importance rating from 0 to 100."),
+        new("schedule_internationaldependency","Allow matches during men's international windows","Calendar",FootballRuleInput.Toggle,"Allow this competition to use dates reserved for men's international matches. Check player availability separately.",On:"NONE",Off:"MEN"),
         new("match_endruleko1leg","Single-match tie resolution","Knockout",FootballRuleInput.MatchEnding,"Extra time and penalties for a knockout match.",true,KnockoutOnly:true),
         new("match_endruleko2leg1","First leg","Knockout",FootballRuleInput.MatchEnding,"The tie continues in the return match.",KnockoutOnly:true),
         new("match_endruleko2leg2","Return-leg tie resolution","Knockout",FootballRuleInput.MatchEnding,"Use aggregate scores, then the selected tie-resolution rules.",true,KnockoutOnly:true),
@@ -42,7 +43,7 @@ public static class FootballRuleCatalogue
     ];
     public static readonly IReadOnlyDictionary<string,string> Sorts=new Dictionary<string,string>
     {
-        ["POINTS"]="Points",["GOALDIFF"]="Goal difference",["GOALSFOR"]="Goals scored",["WINS"]="Wins",["H2HPOINTS"]="Head-to-head points",["H2HGOALDIFF"]="Head-to-head goal difference",["H2HGOALSFOR"]="Head-to-head goals scored",["TEAMRATING"]="Team rating",["PREVRANK"]="Previous ranking"
+        ["POINTS"]="Points",["GOALDIFF"]="Goal difference",["GOALSFOR"]="Goals scored",["WINS"]="Wins",["GOALSAWAY"]="Away goals scored",["H2HPOINTS"]="Head-to-head points",["H2HGOALDIFF"]="Head-to-head goal difference",["H2HGOALSFOR"]="Head-to-head goals scored",["TEAMRATING"]="Team rating",["PREVRANK"]="Previous ranking"
     };
     public static IEnumerable<FootballRuleEntry> Scalar(FootballPhaseKind? kind)=>Entries.Where(e=>e.Applies(kind)&&e.Input is FootballRuleInput.Number or FootballRuleInput.Toggle&&e.Key!="advance_pointskeeppercentage");
     public static bool IsEditableKey(string key)=>Entries.Any(e=>e.Key==key&&!e.ExpertOnly);
@@ -69,3 +70,4 @@ public static class FootballRuleCatalogue
         foreach(string prefix in new[]{"rule_numgamesbanred","rule_numgamesbandoubleyellow","rule_numgamesbanyellows"})if(Read(prefix+"min") is int min&&Read(prefix+"max") is int max&&min>max)throw new InvalidDataException("A minimum suspension cannot exceed its maximum.");
     }
 }
+

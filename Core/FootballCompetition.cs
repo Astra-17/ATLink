@@ -24,6 +24,7 @@ public sealed record FootballPhase
     public IReadOnlyList<int> NativeGroups {get;init;}=[];
     public bool Special {get;init;}
     public IReadOnlyList<FootballPhaseSettings> RoundSettings {get;init;}=[];
+    public IReadOnlyList<FootballRoundMatchups> Matchups {get;init;}=[];
     public int Output=>Kind==FootballPhaseKind.Knockout?Participants/(1<<Math.Clamp(Rounds,0,16)):Groups*QualifiersPerGroup;
     public string Format=>Kind switch{FootballPhaseKind.League=>"League",FootballPhaseKind.Groups=>"Groups",FootballPhaseKind.Knockout=>"Knockout",_=>"Special round"};
     public string Summary=>Kind==FootballPhaseKind.Knockout?$"{Participants} teams · {Rounds} round(s) · {(Legs==2?"home and away":"single match")}" :$"{Participants} teams · {Groups} group(s) · {(Legs==2?"home and away":"single matches")}";
@@ -82,7 +83,7 @@ public static class FootballCompetitionAdapter
         }
         var phaseIndex=phases.SelectMany((p,i)=>p.NativeGroups.Select(g=>(g,i))).ToDictionary(x=>x.g,x=>x.i);
         bool custom=c.Rows("advancement.txt").Any(r=>phaseIndex.TryGetValue(int.Parse(r[0]),out int from)&&phaseIndex.TryGetValue(int.Parse(r[2]),out int to)&&(to!=from+1||r[1]=="0"));
-        return new(root.Id,root.DisplayName,root.ParentId,phases,objects.Where(o=>scope.Contains(o.Id)&&IsHidden(c,o.Id)).Select(o=>o.Id).ToArray(),custom);
+        return new(root.Id,root.DisplayName,root.ParentId,FootballMatchups.Import(c,competition,phases),objects.Where(o=>scope.Contains(o.Id)&&IsHidden(c,o.Id)).Select(o=>o.Id).ToArray(),custom);
     }
     static int DetermineLegs(CompetitionProjectContext c,int stage,IReadOnlyList<CompetitionObject> groups,Dictionary<int,int> capacities)
     {
@@ -118,6 +119,11 @@ public static class FootballCompetitionAdapter
         foreach(var cup in result.Where(p=>p.Kind==FootballCompetitionKind.Cup).ToArray())
             if(result.Any(p=>p.Kind==FootballCompetitionKind.League&&p.Region==cup.Region)&&!result.Any(p=>p.Kind==FootballCompetitionKind.GroupsAndKnockout&&p.TemplateId==cup.TemplateId))
                 result.Add(cup with{Kind=FootballCompetitionKind.GroupsAndKnockout,Evidence="Native regional league/table and knockout blueprints with a regional cup identity"});
+        // The Community League uses a UEFA competition identity and grouped
+        // Compdata tables, without adding a domestic league to the database.
+        if(!result.Any(p=>p.Region==84&&p.Kind==FootballCompetitionKind.League)&&
+            SelectProfile(c,result,FootballCompetitionKind.Custom,84) is {} european)
+            result.Add(european with{Kind=FootballCompetitionKind.League,Evidence="UEFA competition identity with league tables"});
         return result;
     }
     public static FootballProfile? SelectProfile(CompetitionProjectContext c,IEnumerable<FootballProfile> profiles,FootballCompetitionKind kind,int region)=>profiles.Where(p=>p.Kind==kind&&p.Region==region).OrderByDescending(p=>Read(c,p.TemplateId).Phases.Count).ThenBy(p=>p.TemplateId).FirstOrDefault();
@@ -171,7 +177,7 @@ public static class FootballCompetitionCompiler
         if(teams.Distinct().Count()!=teams.Count||teams.Any(t=>!c.Teams.Any(x=>x.Id==t)))throw new InvalidDataException("Choose distinct teams installed in this game.");
         var profile=FootballCompetitionAdapter.SelectProfile(c,FootballCompetitionAdapter.Profiles(c),kind,region)??throw new InvalidDataException("This format is not yet supported for the selected region. Choose a supported region or duplicate an existing competition in Expert.");
         int Number(string key,int fallback)=>defaults.TryGetValue(key,out var value)&&int.TryParse(value.FirstOrDefault(),out int n)?n:int.TryParse(c.EffectiveRules(profile.TemplateId).FirstOrDefault(s=>s.Key==key).Value,out n)?n:fallback;
-        int id=c.Create(profile.TemplateId,name,TournamentFormat.League,1,phases[0].Participants,[],c.ReferenceDate.AddDays(7),7,"15:00",false,Number("rule_numsubsbench",7),Number("rule_numsubsmatch",5),Number("standings_pointswin",3),Number("standings_pointsdraw",1),Number("standings_pointsloss",0));
+        int id=c.Create(profile.TemplateId,name,TournamentFormat.League,1,phases[0].Participants,[],c.SeasonStart.AddDays(7),7,"15:00",false,Number("rule_numsubsbench",7),Number("rule_numsubsmatch",5),Number("standings_pointswin",3),Number("standings_pointsdraw",1),Number("standings_pointsloss",0));
         var disposable=c.Scope(id);disposable.Remove(id);
         foreach(string file in new[]{"settings.txt","standings.txt","schedule.txt","tasks.txt","advancement.txt"})
             c.Edit(file,t=>{foreach(var row in t.Data.Rows.Cast<DataRow>().Where(r=>disposable.Contains(int.TryParse((string)r[0],out int n)?n:-1)||file=="tasks.txt"&&(string)r[0]==id.ToString()).ToArray())row.Delete();});
@@ -179,18 +185,63 @@ public static class FootballCompetitionCompiler
         foreach(var rule in defaults){FootballRuleCatalogue.Validate(rule.Key,rule.Value,null);c.SetRule(id,rule.Key,rule.Value);}
         c.SetRule(id,"comp_type",[kind==FootballCompetitionKind.League?"LEAGUE":"CUP"]);
         c.SetRule(id,"asset_id",[c.Objects.Single(o=>o.Id==id).Code[1..]]);
-        if(c.Game=="FC27"){c.SetRule(id,"info_prize_money",["0"]);c.SetRule(id,"match_stadium",[]);}
+        if(c.Game=="FC27")
+        {
+
+            c.SetRule(id,"info_prize_money",["0"]);c.SetRule(id,"info_prize_money_drop",[]);c.SetRule(id,"match_stadium",[]);
+            var databaseId=c.Objects.Single(o=>o.Id==id).Code[1..];
+            int row=c.Inserts.FindIndex(entry=>entry.Table=="competition"&&entry.Values["competitionid"]==databaseId);
+            if(row>=0&&c.Inserts[row].Values.ContainsKey("finalstadium"))
+            {
+                var entry=c.Inserts[row];var values=entry.Values.ToDictionary();values["finalstadium"]="0";
+                c.Inserts[row]=entry with{Values=values};
+            }
+        }
         var calendar=behaviour?.Calendar??FootballBehaviour.DefaultCalendar(c,profile.TemplateId);
         Compile(c,id,new(phases.ToArray(),"",false,Fingerprint(c,id)),false,teams.Count==phases[0].Participants?teams:[],calendar);
+        if(kind==FootballCompetitionKind.League)
+            foreach(var phase in FootballCompetitionAdapter.Read(c,id).Phases.Where(p=>p.Kind==FootballPhaseKind.Groups))
+                c.SetRule(phase.NativeId!.Value,"match_matchsituation",["LEAGUE"]);
         FootballBehaviour.ApplyNew(c,id,behaviour,teams);FootballStandingLabels.Sync(c,id);
+        if(c.Game=="FC27")AddCareerObjectives(c,id);
         return id;
     }
+    static void AddCareerObjectives(CompetitionProjectContext context,int competition)
+    {
+        var phases=FootballCompetitionAdapter.Read(context,competition).Phases;
+        var objectives=new List<(int Group,string Code,int Place)>();
+        foreach(var phase in phases)
+        {
+            string? reach=phase.Kind switch
+            {
+                FootballPhaseKind.Groups=>"REACH_GROUPS",
+                FootballPhaseKind.Knockout=>phase.Participants switch
+                {
+                    16=>"REACH_ROUND_OF_16",8=>"REACH_QUARTER_FINALS",4=>"REACH_SEMI_FINALS",2=>"REACH_FINALS",_=>null
+                },
+                _=>null
+            };
+            foreach(int group in phase.NativeGroups)
+            {
+                if(phase==phases[^1]&&phase.NativeGroups.Count==1&&(phase.Kind==FootballPhaseKind.League||reach=="REACH_FINALS"))
+                    objectives.Add((group,"CHAMPION",1));
+                if(reach is not null)objectives.Add((group,reach,0));
+            }
+        }
+        if(objectives.Count>0)context.Edit("objectives.txt",table=>
+        {
+            foreach(var objective in objectives)
+                table.Data.Rows.Add(objective.Group.ToString(),objective.Code,objective.Place.ToString());
+        });
+    }
+
     public static int Duplicate(CompetitionProjectContext c,int source,string name)
     {
         int id=c.Create(source,name,TournamentFormat.League,1,2,[],c.ReferenceDate,7,"15:00",true,9,5,3,1,0,copyStructure:true);
         int oldDb=FootballSeason.DatabaseId(c,source),newDb=FootballSeason.DatabaseId(c,id);
         c.SetRule(id,"asset_id",[newDb.ToString()]);
         c.Edit("tasks.txt",t=>{foreach(System.Data.DataRow row in t.Data.Rows)if((string)row[0]==id.ToString()&&((string)row[2] is "ClearLeagueStats" or "UpdateLeagueStats" or "UpdateLeagueTable")&&(string)row[4]==oldDb.ToString())row[4]=newDb.ToString();});
+        if(c.Artwork.TryGetValue(source,out var artwork))c.SetArtwork(id,artwork);
         return id;
     }
     public static void Compile(CompetitionProjectContext c,int competition,FootballStructurePreview preview,bool confirmed,IReadOnlyList<string>? teams=null,FootballCalendarPlan? calendar=null)
@@ -210,8 +261,10 @@ public static class FootballCompetitionCompiler
                 int id=phase.NativeId!.Value;if(old.Phases.Single(p=>p.NativeId==id).Name!=phase.Name)c.Rename(id,phase.Name);
                 foreach(string key in phase.ResetRules){if(!FootballRuleCatalogue.IsEditableKey(key))throw new InvalidDataException("Unknown phase rule.");c.SetRule(id,key,[]);}
                 foreach(var rule in phase.Rules){FootballRuleCatalogue.Validate(rule.Key,rule.Value,phase.Kind);c.SetRule(id,rule.Key,rule.Value);}
-                if(phase.RoundSettings.Count>0)FootballPhaseSettingsAdapter.Apply(c,id,phase.RoundSettings[0]);
+                if(phase.RoundSettings.Count>0)FootballPhaseSettingsAdapter.Apply(c,id,phase.RoundSettings[0],tieGroups:phase.NativeGroups);
             }
+            var sameStages=FootballMatchups.Stages(preview.Phases);var entrySources=c.Rows("advancement.txt").Where(r=>preview.Phases[0].NativeGroups.Any(g=>r[2]==g.ToString())&&FootballCompetitionAdapter.IsHidden(c,int.Parse(r[0]))).Select(r=>int.Parse(r[0])).Distinct().ToArray();
+            FootballMatchups.Apply(c,competition,preview.Phases,sameStages.Select(s=>s.Phase.NativeGroups.ToArray()).ToArray(),sameStages.Select(s=>s.Phase.NativeId!.Value).ToArray(),teams??[],entrySources.Length==1?entrySources[0]:null,true);
             return;
         }
         Validate(preview.Phases);if(old.Phases.Any(p=>p.Special))throw new InvalidDataException("This special competition keeps its structure in Expert.");
@@ -229,6 +282,13 @@ public static class FootballCompetitionCompiler
         var groupMap=new Dictionary<int,(int Phase,int Index,int OldSize)>();foreach(var p in old.Phases)for(int i=0;i<p.NativeGroups.Count;i++)groupMap[p.NativeGroups[i]]=(p.NativeId!.Value,i,c.Rows("standings.txt").Count(r=>r[0]==p.NativeGroups[i].ToString()));
         int next=c.Objects.Max(o=>o.Id);int NewObject(int type,string code,string label,int parent){int id=++next;c.Edit("compobj.txt",t=>t.Data.Rows.Add(id.ToString(),type.ToString(),code,label,parent.ToString()));return id;}
         bool zero=c.Rows("standings.txt").Any(r=>r[1]=="0");
+        // Allocate preparation first so both object IDs and file order follow S1, S2, ...
+        int? entryPool=null;
+        if(teams is not null)
+        {
+            int setup=NewObject(4,"S1","FCE_Setup_Stage",competition);c.SetRule(setup,"match_stagetype",["SETUP"]);
+            entryPool=NewObject(5,"G1"," ",setup);c.ResizeGroup(entryPool.Value,requested[0].Participants);
+        }
         var generated=new List<(FootballPhase Phase,int Native,List<int> Groups,int Capacity,int Legs)>();
         int ordinal=teams is not null?2:c.Objects.Where(o=>o.ParentId==competition&&o.Kind==4&&FootballCompetitionAdapter.IsHidden(c,o.Id)).Select(o=>int.TryParse(o.Code.TrimStart('S','s'),out int n)?n:0).DefaultIfEmpty(0).Max()+1;
         foreach(var p in requested)
@@ -247,13 +307,15 @@ public static class FootballCompetitionCompiler
                 if(previousGroups.Length>groupCount)throw new InvalidDataException("Reducing the number of existing groups would remove game-specific links. Keep those groups or use Expert.");
                 for(int group=0;group<groupCount;group++)
                 {
-                    int id=group<previousGroups.Length?previousGroups[group]:NewObject(5,"G"+(group+1),p.Kind==FootballPhaseKind.Knockout?"Tie "+(group+1):"Group "+(char)('A'+group),native);
+                    string groupKey="FCE_Group_"+(char)('A'+group);
+                    string groupLabel=p.Kind==FootballPhaseKind.Groups&&group<26&&c.Objects.Any(o=>o.Name==groupKey)?groupKey:" ";
+                    int id=group<previousGroups.Length?previousGroups[group]:NewObject(5,"G"+(group+1),groupLabel,native);
                     ids.Add(id);c.ResizeGroup(id,capacity);c.SetRule(id,"num_games",[legs.ToString()]);
                     if(!p.CarryPoints&&old.Phases.Any(previous=>previous.NativeId==p.NativeId&&previous.CarryPoints))foreach(string key in new[]{"advance_pointskeep","advance_pointskeeppercentage","advance_pointskeeprounding"})c.SetRule(id,key,[]);
                 }
                 foreach(string key in p.ResetRules)c.SetRule(native,key,[]);
                 foreach(var rule in p.Rules){FootballRuleCatalogue.Validate(rule.Key,rule.Value,p.Kind);c.SetRule(native,rule.Key,rule.Value);}
-                FootballPhaseSettingsAdapter.Apply(c,native,p.RoundSettings.ElementAtOrDefault(round)??new(),!existing.HasValue);
+                FootballPhaseSettingsAdapter.Apply(c,native,p.RoundSettings.ElementAtOrDefault(round)??new(),!existing.HasValue,ids);
                 generated.Add((p,native,ids,capacity,legs));ordinal++;participants/=2;
             }
         }
@@ -291,9 +353,11 @@ public static class FootballCompetitionCompiler
         }
         if(teams is not null)
         {
-            int setup=NewObject(4,"S1","Preparation",competition);c.SetRule(setup,"match_stagetype",["SETUP"]);int allocation=NewObject(5,"G1","Allocation",setup);c.ResizeGroup(allocation,requested[0].Participants);
+            int allocation=entryPool!.Value;
             for(int n=0;n<requested[0].Participants;n++){int destination=firstNew.Groups[n/firstNew.Capacity];c.SetProgression(allocation,n+1,destination,n%firstNew.Capacity+1);if(teams.Count>0){string team=teams[n];c.Edit("tasks.txt",t=>t.Data.Rows.Add(competition.ToString(),"start","FillWithTeam",allocation.ToString(),(n+1).ToString(),team,"0"));}}
         }
+        if(entryPool is null){var incoming=c.Rows("advancement.txt").Where(r=>firstNew.Groups.Any(g=>r[2]==g.ToString())&&FootballCompetitionAdapter.IsHidden(c,int.Parse(r[0]))).Select(r=>int.Parse(r[0])).Distinct().ToArray();if(incoming.Length==1)entryPool=incoming[0];}
+        FootballMatchups.Apply(c,competition,requested,generated.Select(g=>g.Groups.ToArray()).ToArray(),generated.Select(g=>g.Native).ToArray(),teams??[],entryPool);
         if(updateManagedResults)
         {
             var final=generated[^1];if(final.Groups.Count!=1)throw new InvalidDataException("A single final table or final match is required to update the generated season results. Configure a custom classification in Season behaviour first.");

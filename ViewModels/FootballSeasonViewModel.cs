@@ -24,6 +24,25 @@ public sealed class FootballSeasonViewModel:FootballNotify
     public IReadOnlyList<FootballChoice> Clubs {get;}
     public IReadOnlyList<FootballChoice> Leagues {get;}
     public IReadOnlyList<FootballChoice> Competitions {get;}
+    public IReadOnlyList<FootballChoice> ExchangeDestinations=>Context.Game=="FC27"&&CompetitionId is int id
+        &&Context.CompetitionMappings.Any(mapping=>mapping.CompdataObjectId==id)
+        ?Competitions.Where(choice=>choice.Id!=id&&Context.CompetitionMappings.Any(mapping=>mapping.CompdataObjectId==choice.Id)).ToArray():[];
+    public bool CanConfigureExchange=>ExchangeDestinations.Count>0;
+    public FootballChoice? ExchangeDestination {get;set;}
+    public void ConfigureExchange()
+    {
+        try
+        {
+            if(HasPending)throw new InvalidDataException("Apply or cancel pending season rules first.");
+            if(CompetitionId is not int id||ExchangeDestination is not {} destination)
+                throw new InvalidDataException("Choose the lower competition.");
+            FootballSeason.ConfigureTwoGroupExchange(Context,id,destination.Id);
+            changed?.Invoke();Load();
+            Preview="Promotion and relegation applied to both competitions. Export and verify the next season in FC27.";
+            Notify(nameof(Preview));
+        }
+        catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
+    }
     public IReadOnlyList<FootballChoice> Countries {get;}
     public IReadOnlyList<FootballChoice> LinkCompetitions {get;}
     public IReadOnlyList<FootballChoice> Months {get;}=[new(0,"Competition default"),..Enumerable.Range(1,12).Select(n=>new FootballChoice(n,System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(n)))];
@@ -39,7 +58,7 @@ public sealed class FootballSeasonViewModel:FootballNotify
     public DateTime? FirstDate {get;set;}
     public IReadOnlyList<string> Intervals {get;}=Enumerable.Range(1,365).Select(n=>n.ToString()).ToArray();public string Interval {get;set;}="7";
     public string Kickoff {get;set;}="15:00";
-    public string ReferenceLabel=>$"Illustrative reference: {Context.ReferenceDate:dd/MM/yyyy}. These are not confirmed game dates.";
+    public string ReferenceLabel=>Context.CalendarReferenceLabel;
     public IReadOnlyList<FootballChoice> PlayedPhases=>CompetitionId is int id?FootballCompetitionAdapter.Read(Context,id).Phases.Where(p=>!p.Special).Select(p=>new FootballChoice(p.NativeId!.Value,p.Name)).ToArray():[];
     public FootballChoice? FixturePhase {get;set;}public FootballChoice? HomeClub {get;set;}public FootballChoice? AwayClub {get;set;}
     public DateTime? FixtureDate {get;set;}public string FixtureKickoff {get;set;}="15:00";public string FixtureMessage {get;private set;}="";
@@ -91,7 +110,7 @@ public sealed class FootballSeasonViewModel:FootballNotify
             if(importedLinks.Playoff is {} reference&&!Competitions.Any(x=>x.Id==reference.Value))Competitions=[..Competitions,new FootballChoice(reference.Value,"Existing playoff (Expert)")];
         }
         Countries=c.Base?.Tables.FirstOrDefault(t=>t.Name=="nations")?.Data.Rows.Cast<System.Data.DataRow>().Select(r=>int.Parse(FootballCatalog.Value(r,"nationid"))).Where(n=>n>0).Select(n=>new FootballChoice(n,c.Project.Labels?.Name(new CompetitionObject(n,2,"","NationName_"+n,0))??"Country "+n)).OrderBy(n=>n.Name).ToArray()??[];
-        FirstDate=c.ReferenceDate.AddDays(7).ToDateTime(TimeOnly.MinValue);Promotion=Relegation=LinkCompetitions[0];Playoff=Competitions[0];StartMonth=Months[0];
+        FirstDate=c.SeasonStart.AddDays(7).ToDateTime(TimeOnly.MinValue);Promotion=Relegation=LinkCompetitions[0];Playoff=Competitions[0];StartMonth=Months[0];
         if(competition.HasValue){Load();FixturePhase=PlayedPhases.FirstOrDefault();FixtureDate=FirstDate;ResultsGroup=ResultsGroups.FirstOrDefault();QualificationKind=QualificationKinds.FirstOrDefault();}
     }
     public void SetCalendar(FootballCalendarPlan plan){FirstDate=plan.FirstDate.ToDateTime(TimeOnly.MinValue);Interval=plan.IntervalDays.ToString();Kickoff=plan.Kickoff.Length==4?plan.Kickoff[..2]+":"+plan.Kickoff[2..]:plan.Kickoff;Notify(nameof(FirstDate));Notify(nameof(Interval));Notify(nameof(Kickoff));}

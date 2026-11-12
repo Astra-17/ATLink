@@ -12,6 +12,9 @@ public static class FootballBehaviour
             var tasks=c.Rows("tasks.txt").Where(r=>r[0]==id.ToString()).ToArray();string name=c.ObjectName(id);
             if(!tasks.Any(r=>r[1]=="start"&&r[2].StartsWith("Fill")))notes.Add(name+": incoming teams are still to be configured; empty places are not automatic byes.");
             var parsed=FootballSeason.Read(c,id);int declared=parsed.Tasks.Where(t=>t.Action.StartsWith("Fill")).Sum(t=>SourceCount(c,t));int capacity=FootballCompetitionAdapter.Read(c,id).ParticipantCount;
+            var scope=c.Scope(id);
+            declared+=c.Rows("advancement.txt").Where(r=>!scope.Contains(int.Parse(r[0]))&&scope.Contains(int.Parse(r[2]))&&r[1]!="0")
+                .Select(r=>(r[2],r[3])).Distinct().Count();
             if(parsed.UnknownCount==0&&declared>0&&declared!=capacity)notes.Add(name+$": entry sources describe {declared} teams for {capacity} places. Review the remaining or excess entries before installation.");
             if(!tasks.Any(r=>r[1]=="end"))notes.Add(name+": no end-of-season result update has been configured.");
             if(c.Calendar(id).Count==0)notes.Add(name+": no calendar slots or assigned matches have been configured yet.");
@@ -28,13 +31,13 @@ public static class FootballBehaviour
         var days=slots.Select(r=>int.Parse(r[1])).Distinct().Order().ToArray();
         int interval=days.Zip(days.Skip(1),(a,b)=>b-a).Where(n=>n>0&&n<=365).DefaultIfEmpty(7).GroupBy(n=>n).OrderByDescending(g=>g.Count()).ThenBy(g=>g.Key).First().Key;
         string time=(slots.FirstOrDefault()?.ElementAtOrDefault(5)??"1500").PadLeft(4,'0');
-        // Reference dates remain illustrative. Import the native time/spacing, never reinterpret the game's epoch.
-        return new(FootballCalendarMode.Generate,c.ReferenceDate.AddDays(7),interval,time);
+        // Import native time/spacing; new seasons start independently of the day-zero origin.
+        return new(FootballCalendarMode.Generate,c.SeasonStart.AddDays(7),interval,time);
     }
     public static FootballCalendarPlan ExistingCalendar(CompetitionProjectContext c,int competition)
     {
         var plan=DefaultCalendar(c,competition);var slots=c.Calendar(competition).Where(s=>s.FixedDate is null&&!FootballCompetitionAdapter.IsHidden(c,s.ObjectId)).ToArray();
-        return plan with{FirstDate=slots.Select(s=>s.Date(c.ReferenceDate)).DefaultIfEmpty(c.ReferenceDate.AddDays(7)).Min()};
+        return plan with{FirstDate=slots.Select(s=>s.Date(c.ReferenceDate)).DefaultIfEmpty(c.SeasonStart.AddDays(7)).Min()};
     }
     public static int SourceCount(CompetitionProjectContext c,FootballSeasonTask task)=>task.Action switch
     {
@@ -72,12 +75,23 @@ public static class FootballBehaviour
             var resolved=task with{Target=new(target),Parameters=parameters,OriginalRow=null};tasks.Add(resolved);nextPlace+=SourceCount(c,resolved);
         }
         bool hasClassification=tasks.Any(t=>t.Action=="UpdateTable");if(plan?.AutomaticResults!=false)foreach(var proposed in FootballSeason.ProposeResults(c,competition))if(!(hasClassification&&proposed.Action=="UpdateTable")&&!tasks.Any(t=>t.Action==proposed.Action&&t.Target==proposed.Target&&t.Parameters.SequenceEqual(proposed.Parameters)))tasks.Add(proposed);
-        if(plan?.AutomaticResults!=false)FootballSeason.ApplyNativeChampionMarkers(c,competition);
+        if(plan?.AutomaticResults!=false||c.Game=="FC27"&&final is {Kind:FootballPhaseKind.Knockout,Participants:2})
+            FootballSeason.ApplyNativeChampionMarkers(c,competition);
         var original=FootballSeason.Read(c,competition);FootballSeason.ApplyTasks(c,competition,original,original.Tasks.Concat(tasks).ToArray());
+        var initialStandings=plan?.InitialStandings??[];
+        if(c.Game=="FC27"&&initialStandings.Count==0)
+        {
+            var namedTeams=fixedTeams.Concat(requested.Where(task=>task.Action=="FillWithTeam").Select(task=>task.Parameters[1].ToString())).ToArray();
+            if(namedTeams.Length==model.Phases[0].Participants)
+                initialStandings=namedTeams.Select((team,position)=>new FootballStandingSeed(team,position)).ToArray();
+        }
+        if(plan is not null||initialStandings.Count>0)
+            FootballSeason.ApplyInitialStandings(c,competition,initialStandings);
         if(plan is not null)
         {
             if(plan.Calendar.SimulationOptions is {} options)c.SchedulingOptions[competition]=options;
-            FootballSeason.ApplyInitialStandings(c,competition,plan.InitialStandings);FootballSeason.ApplyLinks(c,competition,plan.Links);
+            FootballInternationalFriendlies.RemoveSelected(c,plan.Calendar.FriendlyReplacements);
+            FootballSeason.ApplyLinks(c,competition,plan.Links);
             if(plan.Calendar.Mode is FootballCalendarMode.ManualMatchdays or FootballCalendarMode.ExactFixtures)FootballExactCalendar.Apply(c,competition,plan.Calendar);
             if(plan.Calendar.Mode==FootballCalendarMode.AssignedFixtures)GenerateFixtures(c,competition,fixedTeams,plan.Calendar);
         }

@@ -14,6 +14,10 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--competition-artwork")){CompetitionArtworkUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-artwork")??"."));return;}
+        if(args.Contains("--ref55-guided-features")){Ref55GuidedFeatureChecks.RunFromRoot(Path.GetFullPath(args.FirstOrDefault(a=>a!="--ref55-guided-features")??"."));return;}
+        if(args.Contains("--ref55-recreation")){Ref55RecreationUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--ref55-recreation")??"."));return;}
+        if(args.Contains("--linked-competitions")){LinkedCompetitionUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--linked-competitions")??"."));return;}
         if(args.Contains("--football-editor")){FootballEditorUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--football-editor")??"."));return;}
         if(args.Contains("--competition-studio")){CompetitionStudioUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-studio")??"."));return;}
         if(args.Contains("--compdata")){CompdataUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--compdata")??"."));return;}

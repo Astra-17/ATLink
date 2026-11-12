@@ -60,7 +60,7 @@ public static class TournamentBuilder
         }
         for(int i=0;i<draft.Teams.Count;i++)Line("initteams.txt",competition,i,draft.Teams[i]);
         bool zeroBased=Lines(project,"standings.txt").Any(r=>r.Length>=2&&r[1]=="0");
-        int Group(int phase,int number,int slots){int id=Obj(5,"G"+number,"",phase);for(int position=1;position<=slots;position++)Line("standings.txt",id,zeroBased?position-1:position);return id;}
+        int Group(int phase,int number,int slots){int id=Obj(5,"G"+number," ",phase);for(int position=1;position<=slots;position++)Line("standings.txt",id,zeroBased?position-1:position);return id;}
         void Schedule(int phase,int round,int day,int matches)=>Line("schedule.txt",phase,day,round,matches,matches,time);
         int firstDay=draft.FirstMatch.DayNumber-draft.SeasonStart.DayNumber;
         if(draft.Format is TournamentFormat.League or TournamentFormat.Groups)
