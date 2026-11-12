@@ -1555,7 +1555,7 @@
       <field name="field_interceptions" shortname="TQNb" type="DBOFIELDTYPE_INTEGER" depth="8" null="False" rangehigh="255" rangelow="0" />
     </fields>
   </table>
-  <table name="footwear" shortname="IePu" maxupdate="-1" maxinsert="195" maxdelete="195" savegroups="squads">
+  <table name="footwear" shortname="IePu" maxupdate="-1" maxinsert="188" maxdelete="188" savegroups="squads">
     <fields>
       <field name="shoeid" shortname="hzFG" type="DBOFIELDTYPE_INTEGER" depth="14" null="False" rangehigh="10000" rangelow="0" key="True" />
       <field name="clothingtype" shortname="yPLv" type="DBOFIELDTYPE_INTEGER" depth="5" null="False" rangehigh="16" rangelow="0" />
@@ -1981,7 +1981,7 @@
       <field name="modetypestr" shortname="XuPr" type="DBOFIELDTYPE_STRING" depth="512" null="False" rangehigh="0" rangelow="0" update="True" />
     </fields>
   </table>
-  <table name="vanitystoreitemlink" shortname="SizI" maxupdate="-1" maxinsert="2529" maxdelete="2529" savegroups="squads">
+  <table name="vanitystoreitemlink" shortname="SizI" maxupdate="-1" maxinsert="2425" maxdelete="2425" savegroups="squads">
     <fields>
       <field name="itemid" shortname="TsLM" type="DBOFIELDTYPE_INTEGER" depth="19" null="False" rangehigh="500000" rangelow="0" update="True" key="True" />
       <field name="assettype" shortname="jmFE" type="DBOFIELDTYPE_INTEGER" depth="6" null="False" rangehigh="50" rangelow="0" update="True" />
@@ -2888,7 +2888,7 @@
       <field name="gameassetstrid" shortname="Pirg" type="DBOFIELDTYPE_STRING" depth="600" null="False" rangehigh="0" rangelow="0" />
     </fields>
   </table>
-  <table name="tattoo" shortname="yeQw" maxupdate="-1" maxinsert="199" maxdelete="199" savegroups="squads">
+  <table name="tattoo" shortname="yeQw" maxupdate="-1" maxinsert="186" maxdelete="186" savegroups="squads">
     <fields>
       <field name="tattooid" shortname="zNFu" type="DBOFIELDTYPE_INTEGER" depth="11" null="False" rangehigh="2000" rangelow="0" key="True" />
       <field name="tattooback" shortname="HEDC" type="DBOFIELDTYPE_INTEGER" depth="1" null="False" rangehigh="1" rangelow="0" />
@@ -7561,7 +7561,7 @@
       <field name="netpatternid" shortname="MxYU" type="DBOFIELDTYPE_INTEGER" depth="10" null="False" rangehigh="1000" rangelow="0" />
     </fields>
   </table>
-  <table name="outfithairlinks" shortname="QqjW" maxupdate="-1" maxinsert="151" maxdelete="151" savegroups="squads">
+  <table name="outfithairlinks" shortname="QqjW" maxupdate="-1" maxinsert="152" maxdelete="152" savegroups="squads">
     <fields>
       <field name="outfitid" shortname="CRrt" type="DBOFIELDTYPE_INTEGER" depth="20" null="False" rangehigh="1000000" rangelow="0" update="True" key="True" />
       <field name="hairtypecode" shortname="CkYD" type="DBOFIELDTYPE_INTEGER" depth="14" null="False" rangehigh="10000" rangelow="0" update="True" />

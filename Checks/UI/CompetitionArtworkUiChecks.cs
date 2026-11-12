@@ -101,7 +101,14 @@ internal static class CompetitionArtworkUiChecks
         string link=Path.Combine(output,"artwork.link");project.ExportLink(link,"artwork-test");
         using(var reopened=seed.OpenLink(link,"artwork-test"))Check(reopened.Artwork[2011].Fingerprint==art.Fingerprint,"Encrypted .link preserves artwork");
         string cache=@"C:\Users\melvi\Documents\Melvin\UTILITAIRE\FIFA\FIFA Editor Tool v2.2.2\fc27.cache";
-        string mod=output+"-ATLink.fifamod";project.ExportFifaMod(mod,cache,new("Competition artwork control","ATLink","1.0","REF-55-03 with reference artwork on European Super League. Test visuals only; FC27 display not yet verified."));
+        string mod=output+"-ATLink.fifamod";
+        var exportOptions=new FifaModExportWindow("Competition artwork control","ATLink");
+        var exportDetails=exportOptions.Details;
+        // The UI handler captures these values before entering Task.Run as well.
+        var exportTask=Task.Run(()=>project.ExportFifaMod(mod,cache,exportDetails));
+        Wait(exportTask);exportTask.GetAwaiter().GetResult();
+        exportOptions.Close();
+        Check(true,"FIFAMOD exports in background using metadata captured on the UI thread");
         var written=FifaModFile.Read(mod);var graphics=written.Resources.Where(r=>r.Name.StartsWith("data/ui/imgAssets/")).ToArray();
         Check(graphics.Length==10&&graphics.All(r=>r.Name.EndsWith("/l2.dds")),"Ten resources use asset_id, not the Compdata object ID");
         Check(graphics.Select(r=>r.Name).Order().SequenceEqual(native.Resources.Select(r=>r.Name).Order()),"Generated paths match FET reference");

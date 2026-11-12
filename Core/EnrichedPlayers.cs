@@ -27,7 +27,7 @@ public sealed class EnrichedPlayers
     {
         string? file=path;
         if(string.IsNullOrWhiteSpace(file)||!File.Exists(file))
-            file=Path.Combine(AppContext.BaseDirectory,"Data","players_enrich.json");
+            file=Path.Combine(RuntimeData.Root,"players_enrich.json");
         if(!File.Exists(file))
             file=Path.Combine(Directory.GetCurrentDirectory(),"files","players_enrich.json");
         if(!File.Exists(file))throw new FileNotFoundException("players_enrich.json is required to match Transfermarkt names.");

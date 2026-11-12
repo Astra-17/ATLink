@@ -15,19 +15,21 @@ public sealed class StudioData
     public string Root {get;}
     public string PreferencesPath {get;}
     public string Game {get;}
-    public StudioData(string root,string? preferencesPath=null,string game="FC26")
+    readonly GameConfiguration? configuration;
+    public StudioData(string root,string? preferencesPath=null,string game="FC26",GameConfiguration? configuration=null)
     {
         if(game is not ("FC26" or "FC27"))throw new ArgumentException("Unsupported game.",nameof(game));
-        Game=game;
+        Game=game;this.configuration=configuration;
         string installedRoot=Path.GetFullPath(root);
         Root=game=="FC27"?Path.Combine(installedRoot,"FC27"):installedRoot;
         PreferencesPath=preferencesPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ATLink",game=="FC26"?"settings.json":"settings-FC27.json");
     }
-    public string BaseDatabase=>Require("fifa_ng_db.db");
-    public string Metadata=>Require("fifa_ng_db-meta.xml");
-    public string CompdataFolder=>Path.Combine(Root,"compdata");
+    public string BaseDatabase=>configuration is null?Require("fifa_ng_db.db"):RequirePath(configuration.DatabasePath);
+    public string Metadata=>configuration is null?Require("fifa_ng_db-meta.xml"):RequirePath(configuration.MetadataPath);
+    public string CompdataFolder=>configuration?.CompdataFolder??Path.Combine(Root,"compdata");
+    static string RequirePath(string path)=>File.Exists(path)?path:throw new FileNotFoundException("Configured file is missing: "+path,path);
     string Require(string file){string path=Path.Combine(Root,file);return File.Exists(path)?path:throw new FileNotFoundException("Fichier intégré manquant. Réinstaller les données ATLink : "+file,path);}
-    public IReadOnlyList<DatabaseLanguage> Languages=>new[]{Root,Path.Combine(Root,"loc")}.Where(Directory.Exists)
+    public IReadOnlyList<DatabaseLanguage> Languages=>(configuration?.LanguageFolders??new[]{Root,Path.Combine(Root,"loc")}).Where(Directory.Exists)
         .SelectMany(folder=>Directory.EnumerateFiles(folder,"*-meta.xml"))
         .Select(path=>new DatabaseLanguage(Path.GetFileName(path)[..^9],"",path[..^9]+".db",path))
         .Where(language=>language.Code!="fifa_ng_db"&&File.Exists(language.DatabasePath))
@@ -50,6 +52,7 @@ public sealed class StudioData
     }
     public StudioPreferences? ReadPreferences()
     {
+        if(configuration is not null)return string.IsNullOrWhiteSpace(configuration.DatabaseLanguage)?null:new(configuration.DatabaseLanguage);
         if(!File.Exists(PreferencesPath))return null;
         try{return JsonSerializer.Deserialize<StudioPreferences>(File.ReadAllText(PreferencesPath));}
         catch(JsonException){return null;}
@@ -88,6 +91,7 @@ public sealed class StudioData
     }
     public void SaveLanguage(string code)
     {
+        if(configuration is not null)throw new InvalidOperationException("Save the language through the application configuration.");
         if(!Languages.Any(l=>l.Code==code))throw new InvalidDataException("Cette langue n'est pas installée.");
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(PreferencesPath))!);
         string temporary=PreferencesPath+"."+Guid.NewGuid().ToString("N")+".tmp";

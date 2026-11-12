@@ -1,17 +1,16 @@
 # FIFAMOD export (FC27)
 
-In Competition studio, choose **Export FIFAMOD**, enter the mod name, author and
-version, and select `fc27.cache` from the FIFA Editor Tool installation folder.
-Open the current game installation in FIFA Editor Tool first to create/update
-that cache. Choose a **new** output filename.
+In Competition studio, choose **Export project → Exporter un FIFAMOD**, enter the mod name, author and
+version and description. The export automatically uses `Data/FC27/fc27.cache`
+distributed with ATLink. No cache picker or path setting is needed. Choose a
+**new** output filename. Cache updates are distributed through updated ATLink resources.
 
 The export includes changed Compdata files and the modified localization
 databases. The main game database is always excluded from the FIFAMOD.
 Localization retains its existing encryption and packaging.
 
-Open **Translations** in Competition studio to edit the selected competition's
-full or abbreviated name in any installed language. Clear **Selected competition
-names** to search the other localized texts by key, hash or current text. Save
+Open **Overview → Translations**, beside **Apply name**, to edit the selected competition's
+full or abbreviated name in any installed language. Other localized texts are not exposed. Save
 each text to the project before switching languages. **Export project** preserves
 these edits for reopening and writes additional language databases under `loc`.
 
@@ -25,10 +24,9 @@ does not dismiss the unsaved-project warning.
   supplied `test sl.fifamod` (FIFA Editor Tool 2.2.1).
 - Uses a FETC v4 cache for the game build, existing resource names and collector
   manifest references. The cache must match the installed game update; ATLink
-  cannot independently establish that the selected cache is current.
+  cannot independently establish that the integrated cache matches a newer game update.
 - Every FC27 FIFAMOD export includes `LIVE_EDITOR_LIMITS.json`. The export
-  uses the profile next to the source `compdata` folder, then the bundled
-  FC27 profile, then the project's own profile. If the resource is absent from
+  uses the integrated `Data/FC27/LIVE_EDITOR_LIMITS.json` profile in the desktop app. If the resource is absent from
   the game cache, the export adds it through the FC27 launch collector.
   FC27 Live Editor applies the profile in game.
 - Competition artwork adds the ten supported legacy DDS resources through the launch collector. See COMPETITION-ARTWORK.md for the PNG imports and generated formats. Other Compdata and localization paths must already exist in the cache.

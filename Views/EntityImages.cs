@@ -22,9 +22,9 @@ public static class EntityImages
     {
         bool valid=long.TryParse(id,NumberStyles.None,CultureInfo.InvariantCulture,out var number)&&number>0;
         string filename=valid?number.ToString(CultureInfo.InvariantCulture):"notfound";
-        string key=folder+"/"+filename;
+        string key=RuntimeData.Root+"/"+folder+"/"+filename;
         if(cache.TryGetValue(key,out var cached))return cached;
-        string directory=Path.Combine(AppContext.BaseDirectory,"Data",folder);
+        string directory=Path.Combine(RuntimeData.Root,folder);
         ImageSource result=TemplateImage.Current;
         foreach(string path in new[]{Path.Combine(directory,filename+".png"),Path.Combine(directory,"notfound.png")}.Distinct())
         if(File.Exists(path))

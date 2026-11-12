@@ -1,15 +1,20 @@
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using ATLink.Core;
 
 namespace ATLink.Views;
 
 public static class PlayerMarketValues
 {
-    static readonly Lazy<IReadOnlyDictionary<string, decimal>> Values = new(Load);
+    static string? loadedRoot;
+    static IReadOnlyDictionary<string, decimal> values=new Dictionary<string,decimal>();
 
     public static decimal? For(string playerId)
-        => Values.Value.TryGetValue(playerId, out decimal value) && value > 0 ? value : null;
+    {
+        if(loadedRoot!=RuntimeData.Root){values=Load();loadedRoot=RuntimeData.Root;}
+        return values.TryGetValue(playerId,out decimal value)&&value>0?value:null;
+    }
 
     public static string Format(decimal? value)
     {
@@ -24,7 +29,7 @@ public static class PlayerMarketValues
     static IReadOnlyDictionary<string, decimal> Load()
     {
         var result = new Dictionary<string, decimal>(StringComparer.Ordinal);
-        string path = Path.Combine(AppContext.BaseDirectory, "Data", "players_enrich.json");
+        string path = Path.Combine(RuntimeData.Root, "players_enrich.json");
         if (!File.Exists(path)) return result;
         try
         {

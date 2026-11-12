@@ -15,6 +15,9 @@ public sealed class CompetitionArtworkViewModel:FootballNotify
     public BitmapSource? LogoPreview {get;private set;}
     public BitmapSource? TitlePreview {get;private set;}
     public BitmapSource? TinyPreview {get;private set;}
+    public BitmapSource? OverviewLogo=>LogoPreview??IntegratedCompetitionLogos.Load(context,competition,"league1024");
+    public BitmapSource? OverviewSmallLogo=>LogoPreview??IntegratedCompetitionLogos.Load(context,competition,"league128");
+    public BitmapSource? OverviewTinyLogo=>TinyPreview??IntegratedCompetitionLogos.Load(context,competition,"leaguetiny");
     public bool Supported=>context.Game=="FC27";
     public bool Existing=>competition.HasValue;
     public bool Busy {get;private set;}
@@ -76,5 +79,5 @@ public sealed class CompetitionArtworkViewModel:FootballNotify
         }
         catch(Exception ex){Error=ex.Message;Changed();}
     }
-    void Changed(){foreach(string key in new[]{nameof(LogoPreview),nameof(TitlePreview),nameof(TinyPreview),nameof(Busy),nameof(CanEdit),nameof(Progress),nameof(Error),nameof(HasPending),nameof(Summary)})Notify(key);}
+    void Changed(){foreach(string key in new[]{nameof(LogoPreview),nameof(TitlePreview),nameof(TinyPreview),nameof(OverviewLogo),nameof(OverviewSmallLogo),nameof(OverviewTinyLogo),nameof(Busy),nameof(CanEdit),nameof(Progress),nameof(Error),nameof(HasPending),nameof(Summary)})Notify(key);}
 }

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resource/ATLink.ico</ApplicationIcon>
     <!-- Exclude generated trees before SDK globs run, including implicit None items. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;**/artifacts/**;**/bin/**;**/obj/**;.vs/**;files/**;Checks/output/**</DefaultItemExcludes>
     <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);artifacts/**;**/artifacts/**;**/bin/**;**/obj/**;.vs/**;files/**;Checks/output/**</DefaultItemExcludesInProjectFolder>
@@ -14,6 +15,7 @@
   <ItemGroup><Compile Remove="Core/**/*.cs;Checks/**/*.cs;artifacts/**/*.cs"/><ProjectReference Include="Core/ATLink.Core.csproj"/></ItemGroup>
   <ItemGroup><PackageReference Include="BCnEncoder.Net" Version="2.3.0" /></ItemGroup>
   <ItemGroup><Page Remove="artifacts/**/*.xaml"/></ItemGroup>
+  <ItemGroup><Resource Include="Resource/ATLink.ico" /><Resource Include="Resource/ATLink.png" /></ItemGroup>
 <ItemGroup>
   <Content Include="docs/fifarating-LICENSE.txt" Link="fifarating-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="docs/UTILISATION.md" Link="UTILISATION.md" CopyToOutputDirectory="PreserveNewest" />
@@ -30,6 +32,10 @@
 <ItemGroup Condition="'$(DesignTimeBuild)' != 'true'">
   <Content Include="files/FC27/*.db;files/FC27/*-meta.xml" Link="Data/FC27/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   <Content Include="files/FC27/LIVE_EDITOR_LIMITS.json" Link="Data/FC27/LIVE_EDITOR_LIMITS.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  <Content Include="files/FC27/fc27.cache" Link="Data/FC27/fc27.cache" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  <Content Include="files/FC27/league1024/**/*.png" Link="Data/FC27/league1024/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  <Content Include="files/FC27/league128/**/*.png" Link="Data/FC27/league128/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  <Content Include="files/FC27/leaguetiny/**/*.png" Link="Data/FC27/leaguetiny/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   <Content Include="files/FC27/loc/*.db;files/FC27/loc/*-meta.xml" Link="Data/FC27/loc/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   <Content Include="files/FC27/compdata/**/*" Link="Data/FC27/compdata/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   <Content Include="files/fifa_ng_db.db;files/fifa_ng_db-meta.xml;files/eng_us.db;files/eng_us-meta.xml;files/fre_fr.db;files/fre_fr-meta.xml;files/FC26_NATIONAL_TEAM_IDS.csv" Link="Data/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

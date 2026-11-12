@@ -11,9 +11,9 @@ internal static class LinkProjectFile
     const ulong MaxExpanded = 2UL * 1024 * 1024 * 1024;
     static readonly UTF8Encoding Utf8 = new(false, true);
 
-    internal static void Write(string folder, string path, string password, bool replace, Action<bool>? fault)
+    internal static void Write(string folder, string path, string? password, bool replace, Action<bool>? fault)
     {
-        ValidatePassword(password);
+        if(password is not null)ValidatePassword(password);
         using var compressed = new LimitedBuffer();
         var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
         if (files.Length is 0 or > MaxFiles) throw new InvalidDataException("Invalid project file count.");
@@ -41,7 +41,7 @@ internal static class LinkProjectFile
 
         byte[] header = new byte[HeaderSize];
         "ATLK"u8.CopyTo(header);
-        header[4] = 1;
+        header[4] = password is null?(byte)2:(byte)1;
         RandomNumberGenerator.Fill(header.AsSpan(5));
         byte[] cipher = new byte[checked((int)compressed.Length)];
         byte[] tag = new byte[TagSize];
@@ -73,16 +73,20 @@ internal static class LinkProjectFile
         finally { if (created) File.Delete(temporary); }
     }
 
-    internal static void Extract(string path, string folder, string password)
+    internal static void Extract(string path, string folder, string? password)
     {
-        ValidatePassword(password);
         using var input = File.OpenRead(path);
         long size = input.Length - HeaderSize - TagSize;
         if (size <= 0 || size > MaxCiphertext) throw new InvalidDataException("Invalid .link file size.");
         byte[] header = new byte[HeaderSize];
         input.ReadExactly(header);
         if (!header.AsSpan(0, 4).SequenceEqual("ATLK"u8)) throw new InvalidDataException("This is not an ATLink project.");
-        if (header[4] != 1) throw new InvalidDataException("Unsupported .link version: " + header[4]);
+        if (header[4] is not (1 or 2)) throw new InvalidDataException("Unsupported .link version: " + header[4]);
+        if(header[4]==1)
+        {
+            if(password is null)throw new InvalidDataException("This old password-protected .link format is no longer supported. Export a new project with the current ATLink version.");
+            ValidatePassword(password);
+        }
         byte[] cipher = new byte[(int)size];
         byte[] tag = new byte[TagSize];
         input.ReadExactly(cipher);
@@ -93,7 +97,7 @@ internal static class LinkProjectFile
             try { Transform(password, header, cipher, tag, plaintext, encrypt: false); }
             catch (AuthenticationTagMismatchException)
             {
-                throw new InvalidDataException("Incorrect password or damaged .link file.");
+                throw new InvalidDataException(header[4]==2?"Damaged .link file.":"Incorrect password or damaged .link file.");
             }
             using var compressed = new MemoryStream(plaintext, writable: false);
             using var deflate = new DeflateStream(compressed, CompressionMode.Decompress);
@@ -132,13 +136,15 @@ internal static class LinkProjectFile
         finally { CryptographicOperations.ZeroMemory(plaintext); }
     }
 
-    static void Transform(string password, byte[] header, Span<byte> cipher, Span<byte> tag, Span<byte> plaintext, bool encrypt)
+    static void Transform(string? password, byte[] header, Span<byte> cipher, Span<byte> tag, Span<byte> plaintext, bool encrypt)
     {
-        byte[] passwordBytes = Utf8.GetBytes(password);
+        byte[] passwordBytes = Utf8.GetBytes(password??"");
         Span<byte> key = stackalloc byte[32];
         try
         {
-            Rfc2898DeriveBytes.Pbkdf2(passwordBytes, header.AsSpan(5, 16), key, 600_000, HashAlgorithmName.SHA256);
+            // V2 is automatically readable by ATLink, not protected by a user secret.
+            if(header[4]==2)SHA256.HashData([.."ATLink.link.v2.automatic-key"u8,..header.AsSpan(5,16)],key);
+            else Rfc2898DeriveBytes.Pbkdf2(passwordBytes, header.AsSpan(5, 16), key, 600_000, HashAlgorithmName.SHA256);
             using var aes = new AesGcm(key, TagSize);
             var nonce = header.AsSpan(21, 12);
             if (encrypt) aes.Encrypt(nonce, plaintext, cipher, tag, header);

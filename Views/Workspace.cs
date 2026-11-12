@@ -21,6 +21,8 @@ public sealed class WorkspaceController
     string returnScreen="Editing";
     public static WorkspaceController? Current { get; set; }
     public Window Shell {get;}
+    public ApplicationConfigurationStore? Configuration {get;set;}
+    public Func<string,bool>? ConfigureGame {get;set;}
     public WorkspaceController(MainViewModel model,Window shell){this.model=model;Shell=shell;Current=this;}
     public static void Open(UserControl page)=>Current?.Push(page);
     public void Push(UserControl page)

@@ -12,13 +12,17 @@ public sealed partial class CompetitionProjectContext : IDisposable
                               (DatabaseDocument? Document, string Metadata) Localization);
     string? installedCompdata;
     string? extractedLink;
+    string? configuredLimits;
 
     public void SetInstalledCompdata(string folder) => installedCompdata = Path.GetFullPath(folder);
+    public void SetConfiguredLimits(string path) => configuredLimits = path;
 
     public void ExportLink(string path, string password, bool replace = false) =>
         ExportLink(path, password, replace, null);
 
-    internal void ExportLink(string path, string password, bool replace, Action<bool>? fault)
+    public void ExportLink(string path,bool replace=false)=>ExportLink(path,null,replace,null);
+
+    internal void ExportLink(string path, string? password, bool replace, Action<bool>? fault)
     {
         using var temporary = new LinkTemporaryDirectory();
         string projectFolder = Path.Combine(temporary.Path, "project");
@@ -41,7 +45,7 @@ public sealed partial class CompetitionProjectContext : IDisposable
         MarkExported();
     }
 
-    public CompetitionProjectContext OpenLink(string path, string password)
+    public CompetitionProjectContext OpenLink(string path, string? password=null)
     {
         using var temporary = new LinkTemporaryDirectory();
         LinkProjectFile.Extract(path, temporary.Path, password);

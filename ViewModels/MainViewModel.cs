@@ -182,7 +182,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Notify(); Notify(nameof(WindowTitle));
         }
     }
-    public string WindowTitle => HasDocument ? "ATLink · " + DocumentTitle : "ATLink · Database Studio";
+    public string WindowTitle => "ATLink";
     private bool busy;
     public bool Busy { get => busy; set { busy = value; Notify(); CommandManager.InvalidateRequerySuggested(); } }
     private Action? displayNameHandler;

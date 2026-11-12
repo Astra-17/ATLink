@@ -96,14 +96,14 @@ public sealed partial class CompetitionProjectContext
         var loc=locMeta is not null?DatabaseDocument.Open(locMeta.Replace("-meta.xml",".db"),locMeta):locSource.Document;
         var project=verifiedSource is not null?CompdataProject.ApplyOverlay(verifiedSource,compdata):
             compdataSource is null?CompdataProject.Open(compdata):CompdataProject.OpenOverlay(compdataSource,compdata);
-        var context=new CompetitionProjectContext(project,Game,db,loc,meta,locMeta??locSource.Metadata){ReferenceDate=reference,ReferenceConfirmed=confirmed,databaseSource=databaseSource,localizationSource=locSource.Document is null?localizationSource:locSource,installedCompdata=installedCompdata};
+        var context=new CompetitionProjectContext(project,Game,db,loc,meta,locMeta??locSource.Metadata){ReferenceDate=reference,ReferenceConfirmed=confirmed,databaseSource=databaseSource,localizationSource=locSource.Document is null?localizationSource:locSource,installedCompdata=installedCompdata,configuredLimits=configuredLimits};
         context.importedDatabase=File.Exists(dbPath)&&(databaseSource.Document is null||!db!.Serialize().AsSpan().SequenceEqual(databaseSource.Document.Serialize()));
         context.importedLocalization=locMeta is not null&&(localizationSource.Document is null||!loc!.Serialize().AsSpan().SequenceEqual(localizationSource.Document.Serialize()));
         if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));if(saved.RootElement.TryGetProperty("SchedulingOptions",out var options))context.SchedulingOptions=options.Deserialize<Dictionary<int,FootballSchedulingOptions>>()??[];}
         if(File.Exists(manifest)){using var matchupsJson=JsonDocument.Parse(File.ReadAllText(manifest));if(matchupsJson.RootElement.TryGetProperty("MatchupSettings",out var stored))context.MatchupSettings=stored.Deserialize<Dictionary<int,IReadOnlyList<FootballMatchupMetadata>>>()??[];}
         context.languageSources=languageSources;
         if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));if(saved.RootElement.TryGetProperty("Translations",out var edits))context.translations=edits.Deserialize<CompetitionTranslation[]>()??[];}
-        if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));context.ReadArtwork(root,saved.RootElement);}
+        if(File.Exists(manifest)){using var saved=JsonDocument.Parse(File.ReadAllText(manifest));context.ReadArtwork(root,saved.RootElement);context.ReadLogoReferences(saved.RootElement);}
         context.importedMappings=mappings;context.checkpoint=context.Capture();context.exportedCheckpoint=context.checkpoint;return context;
     }
     State Capture()=>new(Project.Files.Select(f=>(f,f.Text)).ToArray(),Inserts.ToArray(),ReferenceDate,ReferenceConfirmed,new(SchedulingOptions),new(MatchupSettings),translations,new(artwork));
@@ -346,7 +346,7 @@ public sealed partial class CompetitionProjectContext
         string limitsPath=Path.GetFullPath(Path.Combine(Project.SourceFolder,"..",limitsName));
         string installedLimitsPath=Path.Combine(AppContext.BaseDirectory,"Data","FC27",limitsName);
         var projectLimits=Project.Files.SingleOrDefault(f=>f.RelativePath.Equals(limitsName,StringComparison.OrdinalIgnoreCase));
-        byte[]? limits=File.Exists(limitsPath)?File.ReadAllBytes(limitsPath)
+        byte[]? limits=configuredLimits is not null?File.ReadAllBytes(configuredLimits):File.Exists(limitsPath)?File.ReadAllBytes(limitsPath)
             :File.Exists(installedLimitsPath)?File.ReadAllBytes(installedLimitsPath):projectLimits?.Serialize();
         if(limits is null)throw new InvalidDataException("The FC27 Live Editor limits profile is missing: "+limitsPath);
         files.Add(new(FifaModFile.CompdataPath+limitsName,limits));
@@ -384,7 +384,7 @@ public sealed partial class CompetitionProjectContext
                 File.Copy(loc.Metadata,Path.Combine(folder,Path.GetFileName(loc.Metadata)));
             }
             var savedArtwork=WriteArtwork(temporary);
-            File.WriteAllText(Path.Combine(temporary,"project.json"),JsonSerializer.Serialize(new{Artwork=savedArtwork,Game,CompdataSource=Project.SourceFolder,ReferenceDate,ReferenceConfirmed,SchedulingOptions,MatchupSettings,Translations=translations,ValidationLevels=new{DBMReference="1828c34e9650875a5b6befdf493854f8e4fbcfe1; native FC27 adaptations",Files="Validated on export",InGame="Not performed"},Notes=ExportNotes,CompetitionMappings,DatabaseChanges=Inserts.Select(i=>new{i.Table,Values=i.Values}),ChangedFiles=Project.Files.Where(f=>f.Changed).Select(f=>f.RelativePath)},new JsonSerializerOptions{WriteIndented=true}));
+            File.WriteAllText(Path.Combine(temporary,"project.json"),JsonSerializer.Serialize(new{Artwork=savedArtwork,LogoReferences=WriteLogoReferences(),Game,CompdataSource=Project.SourceFolder,ReferenceDate,ReferenceConfirmed,SchedulingOptions,MatchupSettings,Translations=translations,ValidationLevels=new{DBMReference="1828c34e9650875a5b6befdf493854f8e4fbcfe1; native FC27 adaptations",Files="Validated on export",InGame="Not performed"},Notes=ExportNotes,CompetitionMappings,DatabaseChanges=Inserts.Select(i=>new{i.Table,Values=i.Values}),ChangedFiles=Project.Files.Where(f=>f.Changed).Select(f=>f.RelativePath)},new JsonSerializerOptions{WriteIndented=true}));
             Directory.Move(temporary,target);
             if(markSaved) MarkExported();
         }

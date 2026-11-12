@@ -1,6 +1,6 @@
 # Competition artwork
 
-FC27 competition creation and editing now include **Competition artwork** in **Format**.
+FC27 competition creation includes **Competition artwork** in **Format**; existing competitions use **Overview**.
 The same control is available for qualifying competitions in **Linked competitions**.
 
 ## Import and edit

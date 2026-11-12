@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ATLink.Core;
 
 namespace ATLink.Views;
 
@@ -32,12 +33,12 @@ public static class NationFlags
         };
         if(code.Length!=2&&!new[]{"gb-eng","gb-sct","gb-wls","gb-nir"}.Contains(code))return null;
         if(code.Any(c=>!char.IsAsciiLetter(c)&&c!='-'))return null;
-        if(cache.TryGetValue(code,out var value))return value;
-        string path=Path.Combine(AppContext.BaseDirectory,"Data","flags",code+".png");
+        string path=Path.Combine(RuntimeData.Root,"flags",code+".png");
+        if(cache.TryGetValue(path,out var value))return value;
         ImageSource? result=null;
         if(File.Exists(path))try{
             var image=new BitmapImage();image.BeginInit();image.UriSource=new Uri(path);image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=96;image.EndInit();image.Freeze();result=image;
         }catch(Exception ex)when(ex is IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException){}
-        cache[code]=result;return result;
+        cache[path]=result;return result;
     }
 }

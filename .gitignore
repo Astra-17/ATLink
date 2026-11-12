@@ -11,3 +11,7 @@ files/Squads*
 files/**/*.db
 files/**/Squads*
 artifacts/
+files/FC27/league1024/
+files/FC27/league128/
+files/FC27/leaguetiny/
+files/FC27/fc27.cache

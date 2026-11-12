@@ -4,7 +4,7 @@
   <Style x:Key="EditingScreen" TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Screen}" Value="Editing"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
   <Style x:Key="LauncherScreen" TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Screen}" Value="Launcher"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
   <Style x:Key="TableScreen" TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Screen}" Value="Tables"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
-  <Style x:Key="PageScreen" TargetType="ContentControl"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Screen}" Value="Page"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
+  <Style x:Key="PageScreen" TargetType="ContentControl"><Setter Property="Focusable" Value="False"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Screen}" Value="Page"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
  </ResourceDictionary></Window.Resources>
  <Grid Background="{StaticResource BackgroundBrush}">
   <Grid Style="{StaticResource EditingScreen}" Background="{DynamicResource HomeBackgroundBrush}">

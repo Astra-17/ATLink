@@ -14,6 +14,10 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--window-chrome")){WindowChromeUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--window-chrome")??"."));return;}
+        if(args.Contains("--competition-logos")){CompetitionLogosUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-logos")??"."));return;}
+        if(args.Contains("--project-actions")){ProjectActionsUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--project-actions")??"."));return;}
+        if(args.Contains("--configuration")){ConfigurationUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--configuration")??"."));return;}
         if(args.Contains("--competition-artwork")){CompetitionArtworkUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-artwork")??"."));return;}
         if(args.Contains("--ref55-guided-features")){Ref55GuidedFeatureChecks.RunFromRoot(Path.GetFullPath(args.FirstOrDefault(a=>a!="--ref55-guided-features")??"."));return;}
         if(args.Contains("--ref55-recreation")){Ref55RecreationUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--ref55-recreation")??"."));return;}

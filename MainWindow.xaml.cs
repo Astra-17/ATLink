@@ -15,23 +15,37 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel model=new();
     private readonly Views.WorkspaceController workspace;
-    private StudioData studioData=new(Path.Combine(AppContext.BaseDirectory,"Data"));
-    private bool changingGame;
+    private readonly ApplicationConfigurationStore configuration=new();
+    private StudioData studioData;
+    private bool changingGame=true;
     private void GameChanged(object sender,SelectionChangedEventArgs e)
     {
         if(changingGame||!IsInitialized||GamePicker.SelectedItem is not ComboBoxItem {Tag:string game}||game==studioData.Game)return;
         if(model.Busy||!MayDiscard())
         {
-            changingGame=true;GamePicker.SelectedIndex=studioData.Game=="FC26"?0:1;changingGame=false;return;
+            RestoreGamePicker();return;
         }
-        model.Close();
-        studioData=new StudioData(Path.Combine(AppContext.BaseDirectory,"Data"),game:game);
-        model.Status=game+" selected. Choose a database.";
+        try
+        {
+            if(!configuration.Game(game).Configured)
+            {
+                if(!ConfigureGame(game))RestoreGamePicker();
+                return;
+            }
+            configuration.Save(configuration.Current with {LastSelectedGame=game});
+            model.Close();
+            ApplyConfiguration();
+        }
+        catch(Exception ex){RestoreGamePicker();Error(ex);}
     }
     public MainWindow()
     {
+        studioData=configuration.CreateData(configuration.Current.LastSelectedGame);
         InitializeComponent();DataContext=model;Closing+=OnClosing;model.PropertyChanged+=ModelChanged;
         workspace=new Views.WorkspaceController(model,this);model.ResetWorkspace=workspace.Clear;
+        workspace.Configuration=configuration;
+        workspace.ConfigureGame=game=>ConfigureGame(game);
+        ApplyConfiguration();
         Closed+=(_,_)=>workspace.Clear();
         Loaded+=FirstLaunch;
     }
@@ -41,13 +55,8 @@ public partial class MainWindow : Window
         if(DesignerProperties.GetIsInDesignMode(this))return;
         try
         {
-            if(studioData.NeedsLanguageChoice)
-            {
-                // An installer choice is an explicit default; portable launches use the welcome page.
-                string installed=Path.Combine(studioData.Root,"default-language.txt");
-                if(File.Exists(installed)&&studioData.Languages.Any(l=>l.Code==File.ReadAllText(installed).Trim()))studioData.SaveLanguage(File.ReadAllText(installed).Trim());
-                else OpenSettings(true);
-            }
+            if(configuration.LoadError is not null||!configuration.Game(studioData.Game).Configured)
+                ConfigureGame(studioData.Game,initial:true,problem:configuration.LoadError);
         }
         catch(Exception ex){Error(ex);}
     }
@@ -68,26 +77,57 @@ public partial class MainWindow : Window
     }
     private void OpenSettings(bool initial)
     {
-        OpenPage(new Views.SettingsPage(studioData,initial,async code=>
+        ConfigureGame(studioData.Game,initial);
+    }
+
+    void RestoreGamePicker()
+    {
+        changingGame=true;
+        GamePicker.SelectedIndex=studioData.Game=="FC26"?0:1;
+        changingGame=false;
+    }
+
+    void ApplyConfiguration()
+    {
+        RuntimeData.Root=configuration.Current.CommonDataRoot;
+        studioData=configuration.CreateData(configuration.Current.LastSelectedGame);
+        RestoreGamePicker();
+        model.Status=studioData.Game+" selected. Choose a database.";
+    }
+
+    bool ConfigureGame(string game,bool initial=false,string? problem=null)
+    {
+        var dialog=new Views.ConfigurationWindow(configuration,game,initial,candidate=>
         {
-            if(model.Localization?.HasChanges==true&&MessageBox.Show(this,"Abandonner les modifications de la langue actuelle ? Les modifications de la DB seront conservées.","Changer de langue",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)throw new OperationCanceledException("La langue actuelle a été conservée.");
-            model.Busy=true;
-            try
-            {
-                var localization=await Task.Run(()=>studioData.OpenLocalization(code));
-                studioData.SaveLanguage(code);
-                if(model.Document is not null)model.SetLocalization(localization);
-                model.Status="Database language: "+studioData.Languages.Single(l=>l.Code==code).Name;
-            }
-            finally{model.Busy=false;}
-        }));
+            var previous=configuration.Game(studioData.Game);
+            var next=candidate.Games[candidate.LastSelectedGame];
+            bool sourcesChanged=candidate.LastSelectedGame!=studioData.Game||candidate.CommonDataRoot!=configuration.Current.CommonDataRoot||
+                previous.DatabasePath!=next.DatabasePath||previous.MetadataPath!=next.MetadataPath||
+                previous.CompdataFolder!=next.CompdataFolder||previous.DatabaseLanguage!=next.DatabaseLanguage||
+                previous.LimitsPath!=next.LimitsPath||!previous.LanguageFolders.SequenceEqual(next.LanguageFolders);
+            if(sourcesChanged&&!MayDiscard())return false;
+            configuration.Save(candidate);
+            if(sourcesChanged)model.Close();
+            ApplyConfiguration();
+            return true;
+        },problem){Owner=this};
+        return dialog.ShowDialog()==true;
+    }
+
+    bool EnsureConfigured(DataPurpose purpose=DataPurpose.Database)
+    {
+        if(!configuration.Game(studioData.Game).Configured&&!ConfigureGame(studioData.Game))return false;
+        string? problem=configuration.FindProblem(studioData.Game,purpose:purpose);
+        if(problem is null)return true;
+        MessageBox.Show(this,problem,"Integrated resources",MessageBoxButton.OK,MessageBoxImage.Warning);
+        return false;
     }
     private async void BaseDbClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy||!MayDiscard())return;
         try
         {
-            if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}
+            if(!EnsureConfigured())return;
             model.Busy=true;model.Status="Opening the included database…";
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenBase(code));
@@ -272,12 +312,8 @@ public partial class MainWindow : Window
         if(model.Busy)return;
         try
         {
+            if(!EnsureConfigured(DataPurpose.Competition))return;
             string folder=studioData.CompdataFolder;
-            if(!File.Exists(Path.Combine(folder,"compobj.txt")))
-            {
-                var dialog=new OpenFolderDialog{Title="Open "+studioData.Game+" Compdata folder"};if(dialog.ShowDialog(this)!=true)return;
-                folder=dialog.FolderName;
-            }
             model.Busy=true;model.Status="Opening competition project…";
             var data=studioData;string code=data.SuggestedLanguage().Code;var language=data.Languages.Single(l=>l.Code==code);
             var loadedBase=model.Document is {IsSquad:false}?model.Document:null;var loadedLoc=model.Localization;
@@ -289,6 +325,7 @@ public partial class MainWindow : Window
                 var context = new CompetitionProjectContext(project,data.Game,database,localization,data.Metadata,language.MetadataPath);
                 context.SetLanguages(data.Languages);
                 context.SetInstalledCompdata(data.CompdataFolder);
+                context.SetConfiguredLimits(configuration.Game(data.Game).LimitsPath);
                 return context;
             });
             OpenPage(new ATLink.Views.CompetitionStudio(context));
@@ -305,11 +342,10 @@ public partial class MainWindow : Window
     private async void SquadClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy||!MayDiscard())return;
-        try{if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}}catch(Exception ex){Error(ex);return;}
+        try{if(!EnsureConfigured())return;}catch(Exception ex){Error(ex);return;}
         var file=new OpenFileDialog{Title="Ouvrir un Squad FBCHUNKS",Filter="Squad|*|Tous|*.*"};if(file.ShowDialog(this)!=true)return;
         try
         {
-            if(studioData.NeedsLanguageChoice){OpenSettings(true);return;}
             model.Busy=true;model.Status="Lecture du conteneur Squad…";
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenSquad(file.FileName,code));

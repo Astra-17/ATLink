@@ -155,6 +155,7 @@
   <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#C42B45"/></Trigger></Style.Triggers>
  </Style>
  <Style TargetType="Window">
+  <Setter Property="Icon" Value="/ATLink;component/Resource/ATLink.png"/>
   <Setter Property="WindowStyle" Value="None"/>
   <Setter Property="views:WindowAppearance.Enabled" Value="True"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Window">
@@ -163,7 +164,7 @@
      <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Grid Background="{StaticResource TitleBarBrush}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <TextBlock Text="{TemplateBinding Title}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="14,0" TextTrimming="CharacterEllipsis"/>
+      <DockPanel Margin="12,0" VerticalAlignment="Center"><Image DockPanel.Dock="Left" Source="{TemplateBinding Icon}" Width="24" Height="24" Margin="0,0,8,0"/><TextBlock Text="{TemplateBinding Title}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/></DockPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal">
        <Button x:Name="Minimize" Style="{StaticResource WindowCaptionButton}" Command="{x:Static SystemCommands.MinimizeWindowCommand}" CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" ToolTip="Minimize" AutomationProperties.Name="Minimize">
         <Path Data="M 0,0 L 10,0" Stroke="{StaticResource TextBrush}" StrokeThickness="1"/>
@@ -181,6 +182,7 @@
    </Border>
    <ControlTemplate.Triggers>
     <Trigger Property="ResizeMode" Value="NoResize"><Setter TargetName="Minimize" Property="Visibility" Value="Collapsed"/><Setter TargetName="Maximize" Property="Visibility" Value="Collapsed"/></Trigger>
+    <Trigger Property="ResizeMode" Value="CanMinimize"><Setter TargetName="Maximize" Property="Visibility" Value="Collapsed"/></Trigger>
     <Trigger Property="WindowState" Value="Maximized"><Setter TargetName="MaxIcon" Property="Data" Value="M 2,0 L 10,0 10,8 M 0,2 L 8,2 8,10 0,10 Z"/></Trigger>
    </ControlTemplate.Triggers>
   </ControlTemplate></Setter.Value></Setter>

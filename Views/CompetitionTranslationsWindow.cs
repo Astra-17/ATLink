@@ -13,7 +13,6 @@ public sealed class CompetitionTranslationsWindow : Window
     readonly CompetitionProjectContext context;
     readonly string[] competitionKeys;
     readonly ComboBox language = new() { DisplayMemberPath = "Name" };
-    readonly CheckBox competitionOnly = new() { Content = "Selected competition names", Margin = new Thickness(0, 8, 0, 8) };
     readonly TextBox search = new();
     readonly ListBox results = new() { DisplayMemberPath = "Key" };
     readonly TextBox translation = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 96 };
@@ -21,11 +20,12 @@ public sealed class CompetitionTranslationsWindow : Window
     readonly Button save = new() { Content = "Save text to project", IsEnabled = false };
     Entry[] entries = [];
 
-    public CompetitionTranslationsWindow(CompetitionProjectContext context, CompetitionObject? competition)
+    public CompetitionTranslationsWindow(CompetitionProjectContext context, CompetitionObject competition)
     {
         this.context = context;
-        competitionKeys = competition is null ? [] : context.CompetitionTranslationKeys(competition);
-        Title = "Translations";
+        ArgumentNullException.ThrowIfNull(competition);
+        competitionKeys = context.CompetitionTranslationKeys(competition);
+        Title = "Translations · "+competition.Name;
         Width = 680;
         Height = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -37,10 +37,8 @@ public sealed class CompetitionTranslationsWindow : Window
         root.Children.Add(top);
         top.Children.Add(new TextBlock { Text = "Language" });
         top.Children.Add(language);
-        competitionOnly.Visibility = competitionKeys.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        competitionOnly.IsChecked = competitionKeys.Length > 0;
-        top.Children.Add(competitionOnly);
-        top.Children.Add(new TextBlock { Text = "Search by key, hash or text" });
+        top.Children.Add(new TextBlock { Text = "Full and abbreviated names of "+competition.Name, TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,8) });
+        top.Children.Add(new TextBlock { Text = "Search competition names" });
         top.Children.Add(search);
 
         var bottom = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
@@ -53,8 +51,6 @@ public sealed class CompetitionTranslationsWindow : Window
         root.Children.Add(results);
 
         search.TextChanged += (_, _) => Filter();
-        competitionOnly.Checked += (_, _) => Filter();
-        competitionOnly.Unchecked += (_, _) => Filter();
         results.SelectionChanged += (_, _) =>
         {
             translation.Text = (results.SelectedItem as Entry)?.Text ?? "";
@@ -90,9 +86,7 @@ public sealed class CompetitionTranslationsWindow : Window
     void Filter(string? previousKey = null)
     {
         string query = search.Text.Trim();
-        IEnumerable<Entry> source = entries;
-        if (competitionOnly.IsChecked == true)
-            source = competitionKeys.Select(key =>
+        IEnumerable<Entry> source = competitionKeys.Select(key =>
             {
                 var candidate = new Entry(key, "");
                 var existing = entries.FirstOrDefault(entry => entry.Hash == candidate.Hash);
@@ -109,6 +103,7 @@ public sealed class CompetitionTranslationsWindow : Window
     async Task Save()
     {
         if (language.SelectedItem is not DatabaseLanguage selected || results.SelectedItem is not Entry entry) return;
+        if(!competitionKeys.Contains(entry.Key,StringComparer.Ordinal))return;
         string text = translation.Text;
         IsEnabled = false;
         try

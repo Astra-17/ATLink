@@ -13,7 +13,7 @@ public static class TransferContracts
         {
             foreach(string candidate in new[]
             {
-                Path.Combine(AppContext.BaseDirectory,"Data","transfer_contracts.json"),
+                Path.Combine(RuntimeData.Root,"transfer_contracts.json"),
                 Path.Combine(Directory.GetCurrentDirectory(),"files","transfer_contracts.json")
             })
                 if(File.Exists(candidate)){file=candidate;break;}

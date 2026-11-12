@@ -1,7 +1,7 @@
 # Competition studio
 
 Choose FC26 or FC27, then Competition editing. FC27 opens the bundled Compdata;
-FC26 requests its extracted Compdata when none is installed.
+FC26 competition editing is unavailable until matching Compdata is distributed with ATLink.
 
 The seven sections are Overview, Teams, Format & qualification, Calendar, Rules, Settings and
 Expert. Names are resolved using the selected game's LOC. Club IDs stay behind
@@ -10,11 +10,30 @@ separate entries; dynamic qualifying rules are not flattened into fixed clubs.
 
 ## Editing and history
 
-Section buttons stage changes in the project. Undo and Redo cover file changes,
-team sources, qualification links and integrated creation. Apply establishes a
-checkpoint; Cancel draft returns to that checkpoint. Neither writes the source
-files. Edited rules are staged when changing competition/scope or pressing Apply.
+Section buttons stage changes in the project without writing the source files.
+Internal history remains available to the editing services; the main toolbar exposes
+only Back, Open project and Export project. Edited rules are staged when changing
+competition/scope or using the section's Apply rules button.
 Unknown settings and unknown rule values are retained in Expert.
+
+Add competition sits between the search field and competition list with 20px spacing.
+In Overview, Translations sits beside Apply name and only edits the selected
+competition's full and abbreviated names in the available languages.
+
+FC27 Overview displays the integrated league1024, league128 and leaguetiny PNGs
+using the competition's effective asset_id. Custom project artwork takes priority;
+native previews use dark then light and show « Image indisponible » when unavailable.
+These previews do not change the project or add resources to exports. The image
+import editor remains available beneath the previews.
+Project exports also record portable competition-to-logo associations in the
+manifest. Reopening a .link or folder restores these references and resolves the
+images from ATLink's integrated resources, without retaining paths from the exporting PC.
+Custom images remain embedded in the project as before.
+
+Open project offers an automatic .link (no password) or a Compdata/exported-project folder.
+Export project offers .link, a Compdata folder or FIFAMOD (FC27 only). The folder option
+keeps the complete existing project export: manifest, Compdata, translations and any
+exported DB data. Cancelling the format chooser does not change the project.
 
 ## Calendar
 
@@ -37,9 +56,9 @@ table with available capacity. Existing domestic club memberships are not moved.
 Known ball/weather and sponsor presentation links are copied from the template;
 other unknown game-specific configuration remains a separate integration step.
 
-Export project writes a new folder containing Compdata, the full base database,
+Export project → Exporter un dossier Compdata writes a new folder containing Compdata, the full base database,
 LOC, metadata and project.json. The manifest lists changes, ID mappings, the
-reference season and integration notes. Open project reopens that folder without
+reference season and integration notes. Open project → Ouvrir un dossier Compdata reopens that folder without
 reapplying its already-serialized DB additions. A different-game project is refused.
 
 Assets such as graphics, trophies and broadcast presentation, and registration in

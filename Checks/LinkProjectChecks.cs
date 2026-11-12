@@ -17,14 +17,18 @@ static class LinkProjectChecks
 
     static void Run(string root, string work)
     {
-        var data = new StudioData(Path.Combine(root, "files"), game: "FC27");
+        var store = new ApplicationConfigurationStore(Path.Combine(work,"configuration.json"),Path.Combine(root,"files"));
+        string limits = store.Game("FC27").LimitsPath;
+        var configured = store.Current.WithGame("FC27",store.Game("FC27") with
+        { Configured=true,DatabaseLanguage="eng_us" });
+        var data = store.CreateData("FC27",configured);
         string source = Path.Combine(work, "original");
         string installed = Path.Combine(work, "second-machine");
         CopyCompdata(data.CompdataFolder, source);
         CopyCompdata(source, installed);
         using var origin = MakeContext(source);
         string fixture = Path.Combine(work, "fixture");
-        CopyCompdata(Path.Combine(root, "files/export/SuperLeague-FC27-J-November"), fixture);
+        CopyCompdata(Path.Combine(root, "files/export/SuperLeague-FC27-O-InitialTeams"), fixture);
         string manifestPath = Path.Combine(fixture, "project.json");
         var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsObject();
         manifest["CompdataSource"] = source;
@@ -104,6 +108,14 @@ static class LinkProjectChecks
             Assert(reopened.ReadTranslations("eng_us").Any(row => row.Key == key && row.Text == "Super League LINK"), "English round trip");
             Assert(reopened.ReadTranslations("fre_fr").Any(row => row.Key == key && row.Text == "Super Ligue Élite LINK"), "French round trip");
             Assert(reopened.PrepareFifaModFiles().All(file => !file.GamePath.StartsWith("data/db/")), "Main database remains excluded from FIFAMOD");
+            Assert(reopened.PrepareFifaModFiles().Single(file=>file.GamePath.EndsWith(CompdataProject.LimitsFileName)).Data.SequenceEqual(File.ReadAllBytes(limits)), "Integrated limits survive link reopening");
+            string mod=Path.Combine(work,"integrated.fifamod");
+            reopened.ExportFifaMod(mod,store.Game("FC27").FifaModCachePath,new("Integrated sources test","ATLink","1.0",""));
+            var packaged=FifaModFile.Read(mod);
+            Assert(packaged.GameBuild.SequenceEqual(FifaModCacheSelection.ReadBuild(store.Game("FC27").FifaModCachePath)),"FIFAMOD uses the integrated cache build");
+            Assert(packaged.Resources.All(resource=>!resource.Name.StartsWith("data/db/",StringComparison.OrdinalIgnoreCase)),"Generated FIFAMOD excludes the main database");
+            foreach(var input in reopened.PrepareFifaModFiles())
+                Assert(packaged.ExtractStoredFile(mod,packaged.Resources.Single(resource=>resource.Name==input.GamePath)).SequenceEqual(input.Data),"Integrated export bytes: "+input.GamePath);
             reopened.Execute("Rename French", () => reopened.SetTranslation("fre_fr", key, "Réexport"));
             reopened.ExportLink(second, Password, replace: true);
             using var again = receiver.OpenLink(second, Password);
@@ -123,6 +135,7 @@ static class LinkProjectChecks
                 data.OpenLocalization(language.Code), data.Metadata, language.MetadataPath);
             context.SetLanguages(data.Languages);
             context.SetInstalledCompdata(path);
+            context.SetConfiguredLimits(limits);
             return context;
         }
     }
