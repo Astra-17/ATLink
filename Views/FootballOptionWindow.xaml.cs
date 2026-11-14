@@ -19,9 +19,9 @@ public partial class FootballOptionWindow:Window
         if(Values is null||Selected is not {} entry)return;Help.Text=entry.Help;
         bool scalar=entry.Input is FootballRuleInput.Number or FootballRuleInput.Toggle;Values.Visibility=scalar?Visibility.Visible:Visibility.Collapsed;
         Values.DisplayMemberPath="Label";Values.SelectedValuePath="Value";
-        Values.ItemsSource=entry.Input==FootballRuleInput.Toggle?new[]{new Choice(entry.On,"Enabled"),new Choice(entry.Off,"Disabled")}:Enumerable.Range(entry.Minimum,entry.Maximum-entry.Minimum+1).Select(n=>new Choice(n.ToString(),n.ToString())).ToArray();Values.SelectedIndex=0;
-        if(!scalar)Help.Text+=" Continue to configure this option in the phase editor.";
+        Values.ItemsSource=entry.Input==FootballRuleInput.Toggle?new[]{new Choice(entry.On,ATLink.Core.UiText.Get("Enabled")),new Choice(entry.Off,ATLink.Core.UiText.Get("Disabled"))}:Enumerable.Range(entry.Minimum,entry.Maximum-entry.Minimum+1).Select(n=>new Choice(n.ToString(),n.ToString())).ToArray();Values.SelectedIndex=0;
+        if(!scalar)Help.Text+=ATLink.Core.UiText.Get(" Continue to configure this option in the phase editor.");
     }
-    void Confirm(object sender,RoutedEventArgs e){if(Selected is null){ErrorText.Text="Choose an option.";return;}if(validate?.Invoke(Selected,SelectedValue) is string error){ErrorText.Text=error;return;}DialogResult=true;}
+    void Confirm(object sender,RoutedEventArgs e){if(Selected is null){ErrorText.Text=ATLink.Core.UiText.Get("Choose an option.");return;}if(validate?.Invoke(Selected,SelectedValue) is string error){ErrorText.Text=error;return;}DialogResult=true;}
     void Cancel(object sender,RoutedEventArgs e)=>DialogResult=false;
 }

@@ -33,10 +33,10 @@ public sealed class FormationEditor
     public FormationEditor(FootballCatalog catalog,string teamId)
     {
         this.catalog=catalog;this.teamId=teamId;
-        DataRow Required(string table)=>catalog.Rows(table).SingleOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId)??throw new InvalidDataException($"Données de formation absentes pour cette équipe ({teamId}) : {table}.");
+        DataRow Required(string table)=>catalog.Rows(table).SingleOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId)??throw new InvalidDataException(ATLink.Core.UiText.Format("Données de formation absentes pour cette équipe ({0}) : {1}.", teamId, table));
         Sheet=Required("default_teamsheets");Formation=Required("formations");TeamData=catalog.Rows("defaultteamdata").SingleOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId);
         Mentalities=catalog.Rows("default_mentalities").Where(r=>FootballCatalog.Value(r,"teamid")==teamId).ById(r=>FootballCatalog.Value(r,"mentalityid")).ToArray();
-        if(Mentalities.Count==0)throw new InvalidDataException("Aucune tactique trouvée pour cette équipe.");Mentality=Mentalities[0];
+        if(Mentalities.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Aucune tactique trouvée pour cette équipe."));Mentality=Mentalities[0];
         Templates=catalog.Rows("formations").Where(r=>FootballCatalog.Value(r,"teamid")=="-1").ById(r=>FootballCatalog.Value(r,"formationid")).ToArray();
         var ids=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"teamid")==teamId).Select(r=>FootballCatalog.Value(r,"playerid")).ToHashSet();
         playersById=catalog.Entities("players").ToDictionary(p=>p.Id);
@@ -68,23 +68,23 @@ public sealed class FormationEditor
     private static double Number(DataRow row,string column)=>double.TryParse(FootballCatalog.Value(row,column),NumberStyles.Float,CultureInfo.InvariantCulture,out double value)?value:0.5;
     public void SelectTemplate(DataRow row)
     {
-        if(!Templates.Contains(row))throw new InvalidOperationException("Modèle global inconnu.");Template=row;
+        if(!Templates.Contains(row))throw new InvalidOperationException(ATLink.Core.UiText.Get("Modèle global inconnu."));Template=row;
         foreach(var slot in Slots.Where(s=>s.Index<11)){int i=slot.Index;slot.Position=FootballCatalog.Value(row,$"position{i}");slot.Role=FootballCatalog.Value(row,$"pos{i}role");slot.X=Number(row,$"offset{i}x");slot.Y=Number(row,$"offset{i}y");}
     }
     public void Apply(bool validateOnly=false)
     {
         var ids=Players.Select(p=>p.Id).ToHashSet();var populated=Slots.Where(s=>s.PlayerId!="-1"&&s.PlayerId!="0"&&s.PlayerId!="").ToArray();
-        if(populated.Any(s=>!ids.Contains(s.PlayerId)))throw new InvalidDataException("Un joueur sélectionné ne fait pas partie de cette équipe.");
-        if(populated.Select(s=>s.PlayerId).Distinct().Count()!=populated.Length)throw new InvalidDataException("Un joueur occupe plusieurs emplacements.");
+        if(populated.Any(s=>!ids.Contains(s.PlayerId)))throw new InvalidDataException(ATLink.Core.UiText.Get("Un joueur sélectionné ne fait pas partie de cette équipe."));
+        if(populated.Select(s=>s.PlayerId).Distinct().Count()!=populated.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Un joueur occupe plusieurs emplacements."));
 
-        foreach(var value in Takers.Values)if(value!="-1"&&value!="0"&&!ids.Contains(value))throw new InvalidDataException("Capitaine ou tireur absent de l'équipe.");
+        foreach(var value in Takers.Values)if(value!="-1"&&value!="0"&&!ids.Contains(value))throw new InvalidDataException(ATLink.Core.UiText.Get("Capitaine ou tireur absent de l'équipe."));
         var changes=new List<(DataRow Row,string Column,string Value)>();
         void Set(DataRow row,string column,string value){if(!row.Table.Columns.Contains(column))return;var f=catalog.Table(row.Table.TableName).Fields.Single(f=>f.Name==column);if(value==FootballCatalog.Value(row,column))return;DatabaseDocument.ValidateValue(f,value);changes.Add((row,column,value));}
         foreach(var slot in Slots)
         {
             int i=slot.Index;Set(Sheet,$"playerid{i}",slot.PlayerId);if(i>=11)continue;
             Set(Mentality,$"playerid{i}",slot.PlayerId);
-            if(!double.IsFinite(slot.X)||!double.IsFinite(slot.Y)||slot.X<0||slot.X>1||slot.Y<0||slot.Y>1)throw new InvalidDataException("Les positions doivent rester entre 0 et 1.");
+            if(!double.IsFinite(slot.X)||!double.IsFinite(slot.Y)||slot.X<0||slot.X>1||slot.Y<0||slot.Y>1)throw new InvalidDataException(ATLink.Core.UiText.Get("Les positions doivent rester entre 0 et 1."));
             foreach(var row in new[]{Formation,Mentality,TeamData}.OfType<DataRow>()){Set(row,$"position{i}",slot.Position);Set(row,$"offset{i}x",slot.X.ToString("R",CultureInfo.InvariantCulture));Set(row,$"offset{i}y",slot.Y.ToString("R",CultureInfo.InvariantCulture));if(row!=TeamData)Set(row,$"pos{i}role",slot.Role);}
         }
         foreach(var pair in Takers)Set(Sheet,pair.Key,pair.Value);

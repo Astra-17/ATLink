@@ -26,8 +26,8 @@ public sealed record FootballPhase
     public IReadOnlyList<FootballPhaseSettings> RoundSettings {get;init;}=[];
     public IReadOnlyList<FootballRoundMatchups> Matchups {get;init;}=[];
     public int Output=>Kind==FootballPhaseKind.Knockout?Participants/(1<<Math.Clamp(Rounds,0,16)):Groups*QualifiersPerGroup;
-    public string Format=>Kind switch{FootballPhaseKind.League=>"League",FootballPhaseKind.Groups=>"Groups",FootballPhaseKind.Knockout=>"Knockout",_=>"Special round"};
-    public string Summary=>Kind==FootballPhaseKind.Knockout?$"{Participants} teams · {Rounds} round(s) · {(Legs==2?"home and away":"single match")}" :$"{Participants} teams · {Groups} group(s) · {(Legs==2?"home and away":"single matches")}";
+    public string Format=>UiText.Get(Kind switch{FootballPhaseKind.League=>"League",FootballPhaseKind.Groups=>"Groups",FootballPhaseKind.Knockout=>"Knockout",_=>"Special round"});
+    public string Summary=>Kind==FootballPhaseKind.Knockout?ATLink.Core.UiText.Format("{0} teams · {1} round(s) · {2}", Participants, Rounds, UiText.Get(Legs==2?"home and away":"single match")) :ATLink.Core.UiText.Format("{0} teams · {1} group(s) · {2}", Participants, Groups, UiText.Get(Legs==2?"home and away":"single matches"));
 }
 public sealed record FootballCompetition(int Id,string Name,int Region,IReadOnlyList<FootballPhase> Phases,IReadOnlyList<int> HiddenObjects,bool HasCustomConnections)
 {
@@ -119,8 +119,8 @@ public static class FootballCompetitionAdapter
         foreach(var cup in result.Where(p=>p.Kind==FootballCompetitionKind.Cup).ToArray())
             if(result.Any(p=>p.Kind==FootballCompetitionKind.League&&p.Region==cup.Region)&&!result.Any(p=>p.Kind==FootballCompetitionKind.GroupsAndKnockout&&p.TemplateId==cup.TemplateId))
                 result.Add(cup with{Kind=FootballCompetitionKind.GroupsAndKnockout,Evidence="Native regional league/table and knockout blueprints with a regional cup identity"});
-        // The Community League uses a UEFA competition identity and grouped
-        // Compdata tables, without adding a domestic league to the database.
+        // Regional table competitions can use a UEFA competition identity
+        // without adding a domestic league to the database.
         if(!result.Any(p=>p.Region==84&&p.Kind==FootballCompetitionKind.League)&&
             SelectProfile(c,result,FootballCompetitionKind.Custom,84) is {} european)
             result.Add(european with{Kind=FootballCompetitionKind.League,Evidence="UEFA competition identity with league tables"});
@@ -133,38 +133,38 @@ public static class FootballCompetitionCompiler
 {
     public static void Validate(IReadOnlyList<FootballPhase> phases)
     {
-        if(phases.Count==0)throw new InvalidDataException("Add at least one played phase.");
-        var native=phases.Where(p=>p.NativeId.HasValue).Select(p=>p.NativeId).ToArray();if(native.Distinct().Count()!=native.Length)throw new InvalidDataException("A played phase can appear only once in the path.");
+        if(phases.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Add at least one played phase."));
+        var native=phases.Where(p=>p.NativeId.HasValue).Select(p=>p.NativeId).ToArray();if(native.Distinct().Count()!=native.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("A played phase can appear only once in the path."));
         for(int i=0;i<phases.Count;i++)
         {
-            var p=phases[i];if(string.IsNullOrWhiteSpace(p.Name)||p.Name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException("Give every phase a name without commas or line breaks.");
-            if(p.Special)throw new InvalidDataException(p.Name+" has a special game format. Its structure is preserved in Expert.");
-            if(p.Participants is <2 or >128||p.Legs is not(1 or 2)||p.FinalLegs is not(1 or 2))throw new InvalidDataException(p.Name+": choose 2–128 teams and one or two legs.");
+            var p=phases[i];if(string.IsNullOrWhiteSpace(p.Name)||p.Name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Give every phase a name without commas or line breaks."));
+            if(p.Special)throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(" has a special game format. Its structure is preserved in Expert.")));
+            if(p.Participants is <2 or >128||p.Legs is not(1 or 2)||p.FinalLegs is not(1 or 2))throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": choose 2–128 teams and one or two legs.")));
             if(p.Kind==FootballPhaseKind.Knockout)
             {
-                if((p.Participants&(p.Participants-1))!=0)throw new InvalidDataException(p.Name+": knockout rounds need 2, 4, 8, 16, 32, 64 or 128 teams. Unassigned teams are not byes.");
-                if(p.Rounds<1||p.Rounds>(int)Math.Log2(p.Participants))throw new InvalidDataException(p.Name+": choose a number of rounds that leaves at least one winner.");
+                if((p.Participants&(p.Participants-1))!=0)throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": knockout rounds need 2, 4, 8, 16, 32, 64 or 128 teams. Unassigned teams are not byes.")));
+                if(p.Rounds<1||p.Rounds>(int)Math.Log2(p.Participants))throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": choose a number of rounds that leaves at least one winner.")));
             }
             else
             {
-                if(p.Groups<1||p.Groups>64||p.Participants%p.Groups!=0||p.Participants/p.Groups<2)throw new InvalidDataException(p.Name+": distribute the teams evenly, with at least two per group.");
-                if(p.Kind==FootballPhaseKind.League&&p.Groups!=1)throw new InvalidDataException("A league phase has one table. Choose Groups for several tables.");
-                if(p.QualifiersPerGroup<0||p.QualifiersPerGroup>p.Participants/p.Groups)throw new InvalidDataException(p.Name+": check the number of qualifiers per group.");
+                if(p.Groups<1||p.Groups>64||p.Participants%p.Groups!=0||p.Participants/p.Groups<2)throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": distribute the teams evenly, with at least two per group.")));
+                if(p.Kind==FootballPhaseKind.League&&p.Groups!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("A league phase has one table. Choose Groups for several tables."));
+                if(p.QualifiersPerGroup<0||p.QualifiersPerGroup>p.Participants/p.Groups)throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": check the number of qualifiers per group.")));
             }
-            if(i+1<phases.Count&&p.Output!=phases[i+1].Participants)throw new InvalidDataException($"{p.Name} sends {p.Output} teams forward, but {phases[i+1].Name} needs {phases[i+1].Participants}. Adjust the qualifiers or next phase's team count.");
-            if(p.CarryPoints&&(i==0||p.Kind==FootballPhaseKind.Knockout||phases[i-1].Kind==FootballPhaseKind.Knockout||p.Groups!=phases[i-1].Groups))throw new InvalidDataException(p.Name+": points can only be carried between table phases with matching groups.");
-            if(p.CarryPercentage is <0 or >100||p.CarryRounding is not("UP" or "DOWN"))throw new InvalidDataException("Points carryover must be 0–100%, rounded up or down.");
+            if(i+1<phases.Count&&p.Output!=phases[i+1].Participants)throw new InvalidDataException(ATLink.Core.UiText.Format("{0} sends {1} teams forward, but {2} needs {3}. Adjust the qualifiers or next phase's team count.", p.Name, p.Output, phases[i+1].Name, phases[i+1].Participants));
+            if(p.CarryPoints&&(i==0||p.Kind==FootballPhaseKind.Knockout||phases[i-1].Kind==FootballPhaseKind.Knockout||p.Groups!=phases[i-1].Groups))throw new InvalidDataException(ATLink.Core.UiText.Concat(p.Name, ATLink.Core.UiText.Get(": points can only be carried between table phases with matching groups.")));
+            if(p.CarryPercentage is <0 or >100||p.CarryRounding is not("UP" or "DOWN"))throw new InvalidDataException(ATLink.Core.UiText.Get("Points carryover must be 0–100%, rounded up or down."));
             foreach(var rule in p.Rules)FootballRuleCatalogue.Validate(rule.Key,rule.Value,p.Kind);
         }
     }
     public static FootballStructurePreview Preview(CompetitionProjectContext c,int competition,IReadOnlyList<FootballPhase> phases)
     {
         var old=FootballCompetitionAdapter.Read(c,competition);bool same=SameStructure(old.Phases,phases);if(!same)Validate(phases);
-        string text=string.Join(" → ",phases.Select(p=>$"{p.Name}: {p.Participants} teams"));
-        text+="\n"+string.Join("\n",phases.Select(p=>$"• {p.Name}: {p.Format}, {(p.Legs==2?"home and away":"single matches")}, "+(p.Output>0?$"{p.Output} advance":"final standings")));
-        text+=same?"\nOnly names and phase rules change. Existing qualifications and matchdays stay intact.":"\nRound connections and the order of scheduled matchdays will be rebuilt. Labels for removed qualifying places will be updated; unrelated customized markers stay preserved. Existing preparation data and unrecognized settings are preserved.";
-        if(!same)text+="\nKnown entry pools and generated final-results mappings are adjusted to the new capacity. Existing team-selection sources remain; review any unassigned or excess places before export.";
-        if(old.HasCustomConnections)text+="\nThis competition has customized qualification routes. Applying replaces its internal played-round routes with this proposed path.";
+        string text=string.Join(" → ",phases.Select(p=>ATLink.Core.UiText.Format("{0}: {1} teams", p.Name, p.Participants)));
+        text+="\n"+string.Join("\n",phases.Select(p=>$"• {p.Name}: {p.Format}, {(p.Legs==2?ATLink.Core.UiText.Get("home and away"):ATLink.Core.UiText.Get("single matches"))}, "+(p.Output>0?ATLink.Core.UiText.Format("{0} advance", p.Output):ATLink.Core.UiText.Get("final standings"))));
+        text+=same?ATLink.Core.UiText.Get("\nOnly names and phase rules change. Existing qualifications and matchdays stay intact."):ATLink.Core.UiText.Get("\nRound connections and the order of scheduled matchdays will be rebuilt. Labels for removed qualifying places will be updated; unrelated customized markers stay preserved. Existing preparation data and unrecognized settings are preserved.");
+        if(!same)text+=ATLink.Core.UiText.Get("\nKnown entry pools and generated final-results mappings are adjusted to the new capacity. Existing team-selection sources remain; review any unassigned or excess places before export.");
+        if(old.HasCustomConnections)text+=ATLink.Core.UiText.Get("\nThis competition has customized qualification routes. Applying replaces its internal played-round routes with this proposed path.");
         return new(phases.ToArray(),text,!same&&(c.Rows("advancement.txt").Any(r=>c.Scope(competition).Contains(int.Parse(r[0])))||c.Calendar(competition).Count>0),Fingerprint(c,competition));
     }
     public static bool SameStructure(IReadOnlyList<FootballPhase> before,IReadOnlyList<FootballPhase> after)=>before.Count==after.Count&&before.Zip(after).All(pair=>pair.First.NativeId==pair.Second.NativeId&&pair.First.Kind==pair.Second.Kind&&pair.First.Participants==pair.Second.Participants&&pair.First.Groups==pair.Second.Groups&&pair.First.QualifiersPerGroup==pair.Second.QualifiersPerGroup&&pair.First.Rounds==pair.Second.Rounds&&pair.First.Legs==pair.Second.Legs&&pair.First.FinalLegs==pair.Second.FinalLegs&&pair.First.CarryPoints==pair.Second.CarryPoints&&pair.First.CarryPercentage==pair.Second.CarryPercentage&&pair.First.CarryRounding==pair.Second.CarryRounding);
@@ -172,10 +172,10 @@ public static class FootballCompetitionCompiler
     public static int Create(CompetitionProjectContext c,FootballCompetitionKind kind,int region,string name,IReadOnlyList<FootballPhase> phases,IReadOnlyList<string> teams,IReadOnlyDictionary<string,string[]> defaults,FootballBehaviourPlan? behaviour=null)
     {
         foreach(var settings in phases.SelectMany(p=>p.RoundSettings))FootballPhaseSettingsAdapter.Validate(c,settings);
-        Validate(phases);if(behaviour is null&&teams.Count!=0&&teams.Count!=phases[0].Participants)throw new InvalidDataException($"Select {phases[0].Participants} distinct teams, or leave participants to be configured later.");
-        if(kind is FootballCompetitionKind.Cup or FootballCompetitionKind.GroupsAndKnockout&&phases[^1].Output!=1)throw new InvalidDataException("Add enough knockout rounds to reach one winner, including the final.");
-        if(teams.Distinct().Count()!=teams.Count||teams.Any(t=>!c.Teams.Any(x=>x.Id==t)))throw new InvalidDataException("Choose distinct teams installed in this game.");
-        var profile=FootballCompetitionAdapter.SelectProfile(c,FootballCompetitionAdapter.Profiles(c),kind,region)??throw new InvalidDataException("This format is not yet supported for the selected region. Choose a supported region or duplicate an existing competition in Expert.");
+        Validate(phases);if(behaviour is null&&teams.Count!=0&&teams.Count!=phases[0].Participants)throw new InvalidDataException(ATLink.Core.UiText.Format("Select {0} distinct teams, or leave participants to be configured later.", phases[0].Participants));
+        if(kind is FootballCompetitionKind.Cup or FootballCompetitionKind.GroupsAndKnockout&&phases[^1].Output!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("Add enough knockout rounds to reach one winner, including the final."));
+        if(teams.Distinct().Count()!=teams.Count||teams.Any(t=>!c.Teams.Any(x=>x.Id==t)))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose distinct teams installed in this game."));
+        var profile=FootballCompetitionAdapter.SelectProfile(c,FootballCompetitionAdapter.Profiles(c),kind,region)??throw new InvalidDataException(ATLink.Core.UiText.Get("This format is not yet supported for the selected region. Choose a supported region or duplicate an existing competition in Expert."));
         int Number(string key,int fallback)=>defaults.TryGetValue(key,out var value)&&int.TryParse(value.FirstOrDefault(),out int n)?n:int.TryParse(c.EffectiveRules(profile.TemplateId).FirstOrDefault(s=>s.Key==key).Value,out n)?n:fallback;
         int id=c.Create(profile.TemplateId,name,TournamentFormat.League,1,phases[0].Participants,[],c.SeasonStart.AddDays(7),7,"15:00",false,Number("rule_numsubsbench",7),Number("rule_numsubsmatch",5),Number("standings_pointswin",3),Number("standings_pointsdraw",1),Number("standings_pointsloss",0));
         var disposable=c.Scope(id);disposable.Remove(id);
@@ -248,18 +248,18 @@ public static class FootballCompetitionCompiler
     {
         foreach(var phase in preview.Phases)
         {
-            if(phase.RoundSettings.Count>(phase.Kind==FootballPhaseKind.Knockout?phase.Rounds:1))throw new InvalidDataException("A removed round still has phase settings. Review its prize and venue before changing the format.");
+            if(phase.RoundSettings.Count>(phase.Kind==FootballPhaseKind.Knockout?phase.Rounds:1))throw new InvalidDataException(ATLink.Core.UiText.Get("A removed round still has phase settings. Review its prize and venue before changing the format."));
             foreach(var settings in phase.RoundSettings)FootballPhaseSettingsAdapter.Validate(c,settings);
         }
-        if(preview.Fingerprint!=Fingerprint(c,competition))throw new InvalidDataException("The competition changed. Refresh the format preview before applying it.");
-        if(preview.RequiresConfirmation&&!confirmed)throw new InvalidDataException("Review and confirm the proposed path before changing qualifications or matchdays.");
+        if(preview.Fingerprint!=Fingerprint(c,competition))throw new InvalidDataException(ATLink.Core.UiText.Get("The competition changed. Refresh the format preview before applying it."));
+        if(preview.RequiresConfirmation&&!confirmed)throw new InvalidDataException(ATLink.Core.UiText.Get("Review and confirm the proposed path before changing qualifications or matchdays."));
         var old=FootballCompetitionAdapter.Read(c,competition);
         if(SameStructure(old.Phases,preview.Phases))
         {
             foreach(var phase in preview.Phases)
             {
                 int id=phase.NativeId!.Value;if(old.Phases.Single(p=>p.NativeId==id).Name!=phase.Name)c.Rename(id,phase.Name);
-                foreach(string key in phase.ResetRules){if(!FootballRuleCatalogue.IsEditableKey(key))throw new InvalidDataException("Unknown phase rule.");c.SetRule(id,key,[]);}
+                foreach(string key in phase.ResetRules){if(!FootballRuleCatalogue.IsEditableKey(key))throw new InvalidDataException(ATLink.Core.UiText.Get("Unknown phase rule."));c.SetRule(id,key,[]);}
                 foreach(var rule in phase.Rules){FootballRuleCatalogue.Validate(rule.Key,rule.Value,phase.Kind);c.SetRule(id,rule.Key,rule.Value);}
                 if(phase.RoundSettings.Count>0)FootballPhaseSettingsAdapter.Apply(c,id,phase.RoundSettings[0],tieGroups:phase.NativeGroups);
             }
@@ -267,18 +267,18 @@ public static class FootballCompetitionCompiler
             FootballMatchups.Apply(c,competition,preview.Phases,sameStages.Select(s=>s.Phase.NativeGroups.ToArray()).ToArray(),sameStages.Select(s=>s.Phase.NativeId!.Value).ToArray(),teams??[],entrySources.Length==1?entrySources[0]:null,true);
             return;
         }
-        Validate(preview.Phases);if(old.Phases.Any(p=>p.Special))throw new InvalidDataException("This special competition keeps its structure in Expert.");
+        Validate(preview.Phases);if(old.Phases.Any(p=>p.Special))throw new InvalidDataException(ATLink.Core.UiText.Get("This special competition keeps its structure in Expert."));
         var previousLabels=FootballStandingLabels.Read(c,competition);
         var oldSeason=FootballSeason.Read(c,competition);
-        if(old.Phases.Count>0&&oldSeason.UnknownCount>0)throw new InvalidDataException("This competition has special native automation. Preserve it and edit the structure in Expert; phase rules remain editable here.");
+        if(old.Phases.Count>0&&oldSeason.UnknownCount>0)throw new InvalidDataException(ATLink.Core.UiText.Get("This competition has special native automation. Preserve it and edit the structure in Expert; phase rules remain editable here."));
         var previousFinal=old.Phases.LastOrDefault();int previousSize=previousFinal?.NativeGroups.Count==1?c.Rows("standings.txt").Count(r=>r[0]==previousFinal.NativeGroups[0].ToString()):0;
         var previousResults=oldSeason.Tasks.Where(t=>t.Action=="UpdateTable").ToArray();
         bool updateManagedResults=c.CompetitionMappings.Any(m=>m.CompdataObjectId==competition)&&previousSize>0&&previousResults.Length==previousSize&&previousResults.All(t=>t.Target.Value==competition&&t.Parameters[0]==previousFinal!.NativeGroups[0]&&t.Parameters[1]==t.Parameters[2])&&previousResults.Select(t=>t.Parameters[1]).Order().SequenceEqual(Enumerable.Range(1,previousSize));
-        if(new Dictionary<string,int>{{"standings.txt",2},{"advancement.txt",4},{"schedule.txt",6}}.Any(p=>c.Rows(p.Key).Any(row=>row.Length!=p.Value)))throw new InvalidDataException("Additional game-specific round data is preserved in Expert. Its structure cannot be regenerated here.");
+        if(new Dictionary<string,int>{{"standings.txt",2},{"advancement.txt",4},{"schedule.txt",6}}.Any(p=>c.Rows(p.Key).Any(row=>row.Length!=p.Value)))throw new InvalidDataException(ATLink.Core.UiText.Get("Additional game-specific round data is preserved in Expert. Its structure cannot be regenerated here."));
         var requested=preview.Phases;var retained=requested.Where(p=>p.NativeId.HasValue).Select(p=>p.NativeId!.Value).ToHashSet();
-        if(old.Phases.Any(p=>!retained.Contains(p.NativeId!.Value)))throw new InvalidDataException("Keep existing played phases when editing their structure. Removing a round with game-specific links is an Expert operation.");
+        if(old.Phases.Any(p=>!retained.Contains(p.NativeId!.Value)))throw new InvalidDataException(ATLink.Core.UiText.Get("Keep existing played phases when editing their structure. Removing a round with game-specific links is an Expert operation."));
         var own=c.Scope(competition);var oldPlayed=old.Phases.SelectMany(p=>p.NativeGroups.Append(p.NativeId!.Value)).ToHashSet();
-        if(c.Rows("settings.txt").Any(r=>own.Contains(int.Parse(r[0]))&&r[1]=="schedule_use_dates_comp")||c.Project.Files.Any(f=>Path.GetFileName(f.RelativePath).StartsWith(c.Objects.Single(o=>o.Id==competition).Code+"_",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("This competition shares dates or has assigned fixtures. Its structural scheduling must be edited in Expert; its rules remain editable here.");
+        if(c.Rows("settings.txt").Any(r=>own.Contains(int.Parse(r[0]))&&r[1]=="schedule_use_dates_comp")||c.Project.Files.Any(f=>Path.GetFileName(f.RelativePath).StartsWith(c.Objects.Single(o=>o.Id==competition).Code+"_",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException(ATLink.Core.UiText.Get("This competition shares dates or has assigned fixtures. Its structural scheduling must be edited in Expert; its rules remain editable here."));
         var groupMap=new Dictionary<int,(int Phase,int Index,int OldSize)>();foreach(var p in old.Phases)for(int i=0;i<p.NativeGroups.Count;i++)groupMap[p.NativeGroups[i]]=(p.NativeId!.Value,i,c.Rows("standings.txt").Count(r=>r[0]==p.NativeGroups[i].ToString()));
         int next=c.Objects.Max(o=>o.Id);int NewObject(int type,string code,string label,int parent){int id=++next;c.Edit("compobj.txt",t=>t.Data.Rows.Add(id.ToString(),type.ToString(),code,label,parent.ToString()));return id;}
         bool zero=c.Rows("standings.txt").Any(r=>r[1]=="0");
@@ -304,7 +304,7 @@ public static class FootballCompetitionCompiler
                 c.SetRule(native,"match_matchsituation",[p.Kind==FootballPhaseKind.Knockout?participants switch{2=>"FINAL",4=>"SEMI",8=>"QUARTER",16=>"ROUND16",32=>"ROUND32",_=>"ROUNDX"}:p.Kind==FootballPhaseKind.Groups?"GROUP":"LEAGUE"]);
                 int groupCount=p.Kind==FootballPhaseKind.Knockout?participants/2:p.Groups,capacity=p.Kind==FootballPhaseKind.Knockout?2:participants/p.Groups;
                 var ids=new List<int>();var previousGroups=existing.HasValue?c.Objects.Where(o=>o.ParentId==existing&&o.Kind==5).OrderBy(o=>o.Id).Select(o=>o.Id).ToArray():[];
-                if(previousGroups.Length>groupCount)throw new InvalidDataException("Reducing the number of existing groups would remove game-specific links. Keep those groups or use Expert.");
+                if(previousGroups.Length>groupCount)throw new InvalidDataException(ATLink.Core.UiText.Get("Reducing the number of existing groups would remove game-specific links. Keep those groups or use Expert."));
                 for(int group=0;group<groupCount;group++)
                 {
                     string groupKey="FCE_Group_"+(char)('A'+group);
@@ -328,24 +328,25 @@ public static class FootballCompetitionCompiler
             {
                 var pools=inbound.Select(r=>int.Parse(r[0])).Distinct().ToArray();
                 bool canonical=pools.Length==1&&FootballCompetitionAdapter.IsHidden(c,pools[0])&&c.Rows("standings.txt").Count(r=>r[0]==pools[0].ToString())==firstOld.Participants&&inbound.Select(r=>int.Parse(r[1])).Order().SequenceEqual(Enumerable.Range(1,firstOld.Participants));
-                if(!canonical)throw new InvalidDataException("These incoming qualification pools have a custom structure. Keep their participant count or adjust the pools in Expert.");
+                if(!canonical)throw new InvalidDataException(ATLink.Core.UiText.Get("These incoming qualification pools have a custom structure. Keep their participant count or adjust the pools in Expert."));
                 c.ResizeGroup(pools[0],firstNew.Phase.Participants);
                 inbound=Enumerable.Range(1,firstNew.Phase.Participants).Select(rank=>new[]{pools[0].ToString(),rank.ToString(),firstOld.NativeGroups[0].ToString(),"1"}).ToArray();
             }
             if(inbound.Length>0)
             {
                 c.Edit("advancement.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>firstOld.NativeGroups.Contains(int.Parse((string)r[2]))&&!oldPlayed.Contains(int.Parse((string)r[0]))).ToArray())r.Delete();});
-                int place=0;foreach(var route in inbound){if(place>=firstNew.Groups.Count*firstNew.Capacity)throw new InvalidDataException("The new first phase has fewer places than its existing qualifiers.");int group=firstNew.Groups[place/firstNew.Capacity],position=place%firstNew.Capacity+1;c.Edit("advancement.txt",t=>t.Data.Rows.Add(route[0],route[1],group.ToString(),position.ToString()));place++;}
+                int place=0;foreach(var route in inbound){if(place>=firstNew.Groups.Count*firstNew.Capacity)throw new InvalidDataException(ATLink.Core.UiText.Get("The new first phase has fewer places than its existing qualifiers."));int group=firstNew.Groups[place/firstNew.Capacity],position=place%firstNew.Capacity+1;c.Edit("advancement.txt",t=>t.Data.Rows.Add(route[0],route[1],group.ToString(),position.ToString()));place++;}
             }
         }
         var playedGroups=generated.SelectMany(g=>g.Groups).Concat(old.Phases.SelectMany(p=>p.NativeGroups)).ToHashSet();
-        if(c.Rows("advancement.txt").Any(r=>playedGroups.Contains(int.Parse(r[0]))&&!own.Contains(int.Parse(r[2]))))throw new InvalidDataException("This competition sends teams directly to another competition. Its cross-competition route must be preserved in Expert.");
+        if(c.Rows("advancement.txt").Any(r=>playedGroups.Contains(int.Parse(r[0]))&&!own.Contains(int.Parse(r[2]))))throw new InvalidDataException(ATLink.Core.UiText.Get("This competition sends teams directly to another competition. Its cross-competition route must be preserved in Expert."));
         c.Edit("advancement.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>oldPlayed.Contains(int.Parse((string)r[0]))&&own.Contains(int.Parse((string)r[2]))||playedGroups.Contains(int.Parse((string)r[0]))&&playedGroups.Contains(int.Parse((string)r[2]))).ToArray())r.Delete();});
         for(int i=0;i+1<generated.Count;i++)
         {
             var from=generated[i];var to=generated[i+1];int qualifiers=from.Phase.Kind==FootballPhaseKind.Knockout?1:from.Phase.QualifiersPerGroup;
             var seeds=Enumerable.Range(1,qualifiers).SelectMany(rank=>from.Groups.Select(g=>(Group:g,Rank:rank))).ToArray();
-            if(seeds.Length!=to.Groups.Count*to.Capacity)throw new InvalidDataException("The qualifying places do not fill the next round.");
+            if(to.Phase.CarryPoints)seeds=seeds.OrderBy(s=>from.Groups.IndexOf(s.Group)).ThenBy(s=>s.Rank).ToArray();
+            if(seeds.Length!=to.Groups.Count*to.Capacity)throw new InvalidDataException(ATLink.Core.UiText.Get("The qualifying places do not fill the next round."));
             if(to.Phase.Kind==FootballPhaseKind.Knockout&&from.Phase.Kind!=FootballPhaseKind.Knockout)seeds=Enumerable.Range(0,seeds.Length/2).SelectMany(n=>new[]{seeds[n],seeds[seeds.Length-1-n]}).ToArray();
             for(int n=0;n<seeds.Length;n++){var seed=seeds[n];int group=to.Groups[n/to.Capacity],place=n%to.Capacity+1;c.SetProgression(seed.Group,seed.Rank,group,place);}
             if(to.Phase.CarryPoints)
@@ -360,7 +361,7 @@ public static class FootballCompetitionCompiler
         FootballMatchups.Apply(c,competition,requested,generated.Select(g=>g.Groups.ToArray()).ToArray(),generated.Select(g=>g.Native).ToArray(),teams??[],entryPool);
         if(updateManagedResults)
         {
-            var final=generated[^1];if(final.Groups.Count!=1)throw new InvalidDataException("A single final table or final match is required to update the generated season results. Configure a custom classification in Season behaviour first.");
+            var final=generated[^1];if(final.Groups.Count!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("A single final table or final match is required to update the generated season results. Configure a custom classification in Season behaviour first."));
             int insertion=oldSeason.Tasks.ToList().FindIndex(t=>t.Action=="UpdateTable");var revised=oldSeason.Tasks.Where(t=>t.Action!="UpdateTable").ToList();
             revised.InsertRange(Math.Min(insertion,revised.Count),Enumerable.Range(1,final.Capacity).Select(rank=>new FootballSeasonTask("UpdateTable",new(competition),[final.Groups[0],rank,rank])));
             FootballSeason.ApplyTasks(c,competition,oldSeason,revised);
@@ -379,7 +380,7 @@ public static class FootballCompetitionCompiler
             c.Edit("schedule.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>oldPlayed.Contains(int.Parse((string)r[0]))).ToArray())r.Delete();});return;
         }
         day=calendar.FirstDate.DayNumber-c.ReferenceDate.DayNumber;
-        if(calendar.IntervalDays is <1 or >365||day<0)throw new InvalidDataException("Choose a valid calendar start and interval.");
+        if(calendar.IntervalDays is <1 or >365||day<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a valid calendar start and interval."));
         string kickoff=TournamentBuilder.Time(calendar.Kickoff);
         c.Edit("schedule.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>oldPlayed.Contains(int.Parse((string)r[0]))).ToArray())r.Delete();});
         foreach(var round in generated)

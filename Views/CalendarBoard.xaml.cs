@@ -5,7 +5,7 @@ namespace ATLink.Views;
 public partial class CalendarBoard:UserControl
 {
     CalendarBoardViewModel? Model=>DataContext as CalendarBoardViewModel;
-    public CalendarBoard(){InitializeComponent();Loaded+=(_,_)=>{try{Model?.Synchronize();}catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Calendar",MessageBoxButton.OK);}};}
+    public CalendarBoard(){InitializeComponent();Loaded+=(_,_)=>{try{Model?.Synchronize();}catch(Exception ex){ShellDialogs.Message(this,ex.Message,ATLink.Core.UiText.Get("Calendar"),MessageBoxButton.OK);}};}
     void Previous(object sender,RoutedEventArgs e)=>Model?.ChangeMonth(-1);void Next(object sender,RoutedEventArgs e)=>Model?.ChangeMonth(1);void FirstMonth(object sender,RoutedEventArgs e)=>Model?.FirstMonth();
     async void LoadAvailability(object sender,RoutedEventArgs e){if(Model is {} model)await model.LoadAvailability();}
     void CancelWork(object sender,RoutedEventArgs e)=>Model?.CancelLoad();
@@ -24,7 +24,7 @@ public partial class CalendarBoard:UserControl
     {
         if(Model is not {} model||(sender as FrameworkElement)?.DataContext is not CalendarMonthDay day)return;
         try{await model.LoadAvailability();if(model.Busy)return;model.Synchronize();var parent=FindCalendar();if(parent is null)return;var dialog=new CalendarDayWindow(new(model,parent.Phases,day.Date,model.HasProposal)){Owner=Window.GetWindow(this)};dialog.ShowDialog();}
-        catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Calendar",MessageBoxButton.OK);}
+        catch(Exception ex){ShellDialogs.Message(this,ex.Message,ATLink.Core.UiText.Get("Calendar"),MessageBoxButton.OK);}
     }
     ATLink.ViewModels.CreationCalendarViewModel? FindCalendar()
     {
@@ -33,6 +33,6 @@ public partial class CalendarBoard:UserControl
     async void UseFixtures(object sender,RoutedEventArgs e)
     {
         if(Model is not {} model)return;
-        try{await model.LoadAvailability();model.ValidateFixtureAssignment();var preview=new CalendarFixturesReview(model.Matches.Where(m=>m.Home is not null&&m.Away is not null&&m.Date.HasValue)){Owner=Window.GetWindow(this)};if(preview.ShowDialog()==true)model.UseFixtures();}catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Calendar",MessageBoxButton.OK);}
+        try{await model.LoadAvailability();model.ValidateFixtureAssignment();var preview=new CalendarFixturesReview(model.Matches.Where(m=>m.Home is not null&&m.Away is not null&&m.Date.HasValue)){Owner=Window.GetWindow(this)};if(preview.ShowDialog()==true)model.UseFixtures();}catch(Exception ex){ShellDialogs.Message(this,ex.Message,ATLink.Core.UiText.Get("Calendar"),MessageBoxButton.OK);}
     }
 }

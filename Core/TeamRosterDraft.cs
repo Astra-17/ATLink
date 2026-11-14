@@ -32,8 +32,8 @@ public sealed class TeamRosterDraft
     }
     public void Add(string playerId)
     {
-        if(rows.Any(r=>FootballCatalog.Value(r,"playerid")==playerId))throw new InvalidOperationException("This player is already linked to this team.");
-        if(!catalog.Rows("players").Any(r=>FootballCatalog.Value(r,"playerid")==playerId))throw new InvalidOperationException("Selected player was not found.");
+        if(rows.Any(r=>FootballCatalog.Value(r,"playerid")==playerId))throw new InvalidOperationException(ATLink.Core.UiText.Get("This player is already linked to this team."));
+        if(!catalog.Rows("players").Any(r=>FootballCatalog.Value(r,"playerid")==playerId))throw new InvalidOperationException(ATLink.Core.UiText.Get("Selected player was not found."));
         var copy=draftTable.NewRow();
         var template=catalog.Rows("teamplayerlinks").FirstOrDefault();
         foreach(var field in table.Fields)
@@ -44,12 +44,12 @@ public sealed class TeamRosterDraft
     }
     public void Remove(DataRow row)
     {
-        if(catalog.NationalTeamIds.Contains(teamId))throw new InvalidOperationException("Cannot remove players from a national team.");
+        if(catalog.NationalTeamIds.Contains(teamId))throw new InvalidOperationException(ATLink.Core.UiText.Get("Cannot remove players from a national team."));
         if(rows.Remove(row))Changed=true;
     }
     public void Validate()
     {
-        if(rows.Select(r=>FootballCatalog.Value(r,"playerid")).Distinct().Count()!=rows.Count)throw new InvalidDataException("Duplicate players in roster.");
+        if(rows.Select(r=>FootballCatalog.Value(r,"playerid")).Distinct().Count()!=rows.Count)throw new InvalidDataException(ATLink.Core.UiText.Get("Duplicate players in roster."));
         foreach(var row in rows)
             foreach(var field in table.Fields.Where(f=>!f.IsKey))
                 DatabaseDocument.ValidateValue(field,FootballCatalog.Value(row,field.Name));

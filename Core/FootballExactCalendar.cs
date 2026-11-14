@@ -3,7 +3,7 @@ public static class FootballExactCalendar
 {
     public static string Time(string value)
     {
-        if(value is null||!System.Text.RegularExpressions.Regex.IsMatch(value,@"^(?:[01]\d|2[0-3]):?[0-5]\d$"))throw new InvalidDataException("Enter a valid kick-off time in HH:mm format.");
+        if(value is null||!System.Text.RegularExpressions.Regex.IsMatch(value,@"^(?:[01]\d|2[0-3]):?[0-5]\d$"))throw new InvalidDataException(ATLink.Core.UiText.Get("Enter a valid kick-off time in HH:mm format."));
         return TournamentBuilder.Time(value);
     }
     public static IReadOnlyList<FootballCalendarPhase> Phases(IReadOnlyList<FootballPhase> phases)
@@ -23,35 +23,35 @@ public static class FootballExactCalendar
     {
         if(plan.Mode==FootballCalendarMode.ManualMatchdays)
         {
-            if(plan.Matchdays.Count==0)throw new InvalidDataException("Choose a date for every matchday.");
+            if(plan.Matchdays.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a date for every matchday."));
             foreach(var row in plan.Matchdays)
             {
-                var phase=phases.SingleOrDefault(p=>p.Index==row.PhaseIndex)??throw new InvalidDataException("The competition format changed. Update the calendar phases.");
-                if(row.Round<1||row.Round>phase.Rounds)throw new InvalidDataException(phase.Name+": choose an existing matchday.");
-                if(row.Date<c.ReferenceDate)throw new InvalidDataException(phase.Name+": choose a date on or after the illustrative reference date.");
-                if(row.Minimum<0||row.Maximum<row.Minimum||row.Maximum>phase.Matches)throw new InvalidDataException(phase.Name+": check the match capacity for this time slot.");
+                var phase=phases.SingleOrDefault(p=>p.Index==row.PhaseIndex)??throw new InvalidDataException(ATLink.Core.UiText.Get("The competition format changed. Update the calendar phases."));
+                if(row.Round<1||row.Round>phase.Rounds)throw new InvalidDataException(ATLink.Core.UiText.Concat(phase.Name, ATLink.Core.UiText.Get(": choose an existing matchday.")));
+                if(row.Date<c.ReferenceDate)throw new InvalidDataException(ATLink.Core.UiText.Concat(phase.Name, ATLink.Core.UiText.Get(": choose a date on or after the illustrative reference date.")));
+                if(row.Minimum<0||row.Maximum<row.Minimum||row.Maximum>phase.Matches)throw new InvalidDataException(ATLink.Core.UiText.Concat(phase.Name, ATLink.Core.UiText.Get(": check the match capacity for this time slot.")));
                 _=Time(row.Kickoff);
             }
-            if(plan.Matchdays.GroupBy(r=>(r.PhaseIndex,r.Round,r.Date,Time:Time(r.Kickoff))).Any(g=>g.Count()>1))throw new InvalidDataException("The same matchday time slot appears twice.");
+            if(plan.Matchdays.GroupBy(r=>(r.PhaseIndex,r.Round,r.Date,Time:Time(r.Kickoff))).Any(g=>g.Count()>1))throw new InvalidDataException(ATLink.Core.UiText.Get("The same matchday time slot appears twice."));
             foreach(var phase in phases)for(int round=1;round<=phase.Rounds;round++)
             {
                 var slots=plan.Matchdays.Where(r=>r.PhaseIndex==phase.Index&&r.Round==round).ToArray();
-                if(slots.Length==0||slots.Sum(s=>s.Maximum)<phase.Matches||slots.Sum(s=>s.Minimum)>phase.Matches)throw new InvalidDataException($"{phase.Name} · Matchday {round}: provide enough available places for {phase.Matches} matches.");
+                if(slots.Length==0||slots.Sum(s=>s.Maximum)<phase.Matches||slots.Sum(s=>s.Minimum)>phase.Matches)throw new InvalidDataException(ATLink.Core.UiText.Format("{0} · Matchday {1}: provide enough available places for {2} matches.", phase.Name, round, phase.Matches));
             }
         }
         if(plan.Mode==FootballCalendarMode.ExactFixtures||plan.Fixtures.Count>0)
         {
-            if(plan.Fixtures.Count==0)throw new InvalidDataException("Add at least one exact fixture, or choose a matchday calendar.");
+            if(plan.Fixtures.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Add at least one exact fixture, or choose a matchday calendar."));
             foreach(var fixture in plan.Fixtures)
             {
-                if(!phases.Any(p=>p.Index==fixture.PhaseIndex))throw new InvalidDataException("A fixture refers to a phase that is no longer in this format.");
-                if(fixture.Home==fixture.Away||!c.Teams.Any(t=>t.Id==fixture.Home)||!c.Teams.Any(t=>t.Id==fixture.Away))throw new InvalidDataException("Choose two different installed clubs for each fixture.");
+                if(!phases.Any(p=>p.Index==fixture.PhaseIndex))throw new InvalidDataException(ATLink.Core.UiText.Get("A fixture refers to a phase that is no longer in this format."));
+                if(fixture.Home==fixture.Away||!c.Teams.Any(t=>t.Id==fixture.Home)||!c.Teams.Any(t=>t.Id==fixture.Away))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose two different installed clubs for each fixture."));
                 _=Time(fixture.Kickoff);
-                if(plan.Mode==FootballCalendarMode.ManualMatchdays&&!plan.Matchdays.Any(r=>r.PhaseIndex==fixture.PhaseIndex&&r.Date==fixture.Date&&Time(r.Kickoff)==Time(fixture.Kickoff)))throw new InvalidDataException("Add a matchday time slot matching each assigned fixture's phase, date and kick-off.");
+                if(plan.Mode==FootballCalendarMode.ManualMatchdays&&!plan.Matchdays.Any(r=>r.PhaseIndex==fixture.PhaseIndex&&r.Date==fixture.Date&&Time(r.Kickoff)==Time(fixture.Kickoff)))throw new InvalidDataException(ATLink.Core.UiText.Get("Add a matchday time slot matching each assigned fixture's phase, date and kick-off."));
             }
-            if(plan.Fixtures.SelectMany(f=>new[]{(f.Date,Team:f.Home),(f.Date,Team:f.Away)}).GroupBy(x=>x).Any(g=>g.Count()>1))throw new InvalidDataException("A club cannot play two fixtures on the same day.");
-            foreach(var phase in phases)if(plan.Fixtures.Count(f=>f.PhaseIndex==phase.Index)>phase.Rounds*phase.Matches)throw new InvalidDataException(phase.Name+": too many fixtures for this format.");
-            if(plan.Mode==FootballCalendarMode.ManualMatchdays)foreach(var group in plan.Fixtures.GroupBy(f=>(f.PhaseIndex,f.Date,Time:Time(f.Kickoff))))if(group.Count()>plan.Matchdays.Where(r=>r.PhaseIndex==group.Key.PhaseIndex&&r.Date==group.Key.Date&&Time(r.Kickoff)==group.Key.Time).Sum(r=>r.Maximum))throw new InvalidDataException("Assigned fixtures exceed the capacity of their matchday time slot.");
+            if(plan.Fixtures.SelectMany(f=>new[]{(f.Date,Team:f.Home),(f.Date,Team:f.Away)}).GroupBy(x=>x).Any(g=>g.Count()>1))throw new InvalidDataException(ATLink.Core.UiText.Get("A club cannot play two fixtures on the same day."));
+            foreach(var phase in phases)if(plan.Fixtures.Count(f=>f.PhaseIndex==phase.Index)>phase.Rounds*phase.Matches)throw new InvalidDataException(ATLink.Core.UiText.Concat(phase.Name, ATLink.Core.UiText.Get(": too many fixtures for this format.")));
+            if(plan.Mode==FootballCalendarMode.ManualMatchdays)foreach(var group in plan.Fixtures.GroupBy(f=>(f.PhaseIndex,f.Date,Time:Time(f.Kickoff))))if(group.Count()>plan.Matchdays.Where(r=>r.PhaseIndex==group.Key.PhaseIndex&&r.Date==group.Key.Date&&Time(r.Kickoff)==group.Key.Time).Sum(r=>r.Maximum))throw new InvalidDataException(ATLink.Core.UiText.Get("Assigned fixtures exceed the capacity of their matchday time slot."));
         }
     }
     public static void Apply(CompetitionProjectContext c,int competition,FootballCalendarPlan plan)

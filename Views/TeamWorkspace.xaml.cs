@@ -38,18 +38,18 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         InitializeComponent();
         this.catalog=catalog;this.team=team;row=team.Row;teamId=team.Id;roster=new(catalog,teamId);
-        Crest.Source=EntityImages.Crest(teamId);TeamKicker.Text="Team "+teamId;TeamTitle.Text=team.Name;
-        foreach(var (label,field) in new[]{("OVR","overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
+        Crest.Source=EntityImages.Crest(teamId);TeamKicker.Text=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Team "), teamId);TeamTitle.Text=team.Name;
+        foreach(var (label,field) in new[]{(ATLink.Core.UiText.Get("OVR"),"overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
             Badges.Children.Add(Badge(label+" "+FootballCatalog.Value(row,field)));
         foreach(string name in new[]{"Identity","Ratings","Club","Tactics","Set Pieces","Visuals","Players","Formations","Countries","Rivals","Stadiums","Kits"})
         {
-            var button=new Button{Content=name,Tag=name,Style=(Style)FindResource("TeamTab")};
+            var button=new Button{Content=UiText.Get(name),Tag=name,Style=(Style)FindResource("TeamTab")};
             button.Click+=(_,_)=>Show(name);TabBar.Children.Add(button);
         }
-        pages["Identity"]=GridFields(("teamid","Team ID"),("teamname","Team name"),("assetid","Asset ID"),("foundationyear","Foundation year"),("gender","Gender"),("cityid","City ID"),("teamstadiumcapacity","Stadium capacity"));
+        pages["Identity"]=GridFields(("teamid",ATLink.Core.UiText.Get("Team ID")),("teamname",ATLink.Core.UiText.Get("Team name")),("assetid",ATLink.Core.UiText.Get("Asset ID")),("foundationyear",ATLink.Core.UiText.Get("Foundation year")),("gender",ATLink.Core.UiText.Get("Gender")),("cityid",ATLink.Core.UiText.Get("City ID")),("teamstadiumcapacity",ATLink.Core.UiText.Get("Stadium capacity")));
         pages["Ratings"]=RatingsPage();
-        pages["Club"]=GridFields(("domesticprestige","Domestic prestige"),("internationalprestige","International prestige"),("popularity","Popularity"),("clubworth","Club worth"),("youthdevelopment","Youth development"),("profitability","Profitability"),("form","Form"),("leaguetitles","League titles"),("domesticcups","Domestic cups"),("uefa_cl_wins","UEFA CL wins"),("uefa_el_wins","UEFA EL wins"),("uefa_uecl_wins","UEFA UECL wins"));
-        pages["Tactics"]=GridFields(("buildupplay","Build up play"),("defensivedepth","Defensive depth"),("opponentweakthreshold","Opponent weak threshold"),("opponentstrongthreshold","Opponent strong threshold"),("trait1vweak","Trait weak"),("trait1vequal","Trait equal"),("trait1vstrong","Trait strong"),("personalityid","Personality"));
+        pages["Club"]=GridFields(("domesticprestige",ATLink.Core.UiText.Get("Domestic prestige")),("internationalprestige",ATLink.Core.UiText.Get("International prestige")),("popularity",ATLink.Core.UiText.Get("Popularity")),("clubworth",ATLink.Core.UiText.Get("Club worth")),("youthdevelopment",ATLink.Core.UiText.Get("Youth development")),("profitability",ATLink.Core.UiText.Get("Profitability")),("form",ATLink.Core.UiText.Get("Form")),("leaguetitles",ATLink.Core.UiText.Get("League titles")),("domesticcups",ATLink.Core.UiText.Get("Domestic cups")),("uefa_cl_wins",ATLink.Core.UiText.Get("UEFA CL wins")),("uefa_el_wins",ATLink.Core.UiText.Get("UEFA EL wins")),("uefa_uecl_wins",ATLink.Core.UiText.Get("UEFA UECL wins")));
+        pages["Tactics"]=GridFields(("buildupplay",ATLink.Core.UiText.Get("Build up play")),("defensivedepth",ATLink.Core.UiText.Get("Defensive depth")),("opponentweakthreshold",ATLink.Core.UiText.Get("Opponent weak threshold")),("opponentstrongthreshold",ATLink.Core.UiText.Get("Opponent strong threshold")),("trait1vweak",ATLink.Core.UiText.Get("Trait weak")),("trait1vequal",ATLink.Core.UiText.Get("Trait equal")),("trait1vstrong",ATLink.Core.UiText.Get("Trait strong")),("personalityid",ATLink.Core.UiText.Get("Personality")));
         pages["Set Pieces"]=SetPiecesPage();
         pages["Visuals"]=VisualsPage();
         pages["Players"]=PlayersPage();
@@ -63,13 +63,13 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     void Show(string name)
     {
         tab=name;Host.Content=pages[name];
-        Host.VerticalScrollBarVisibility=name=="Formations"?ScrollBarVisibility.Disabled:ScrollBarVisibility.Auto;
+        Host.VerticalScrollBarVisibility=ATLink.Core.UiText.Source(name)=="Formations"?ScrollBarVisibility.Disabled:ScrollBarVisibility.Auto;
         foreach(Button button in TabBar.Children)
         {
             bool on=(string)button.Tag==name;
             button.BorderBrush=on?accent:line;button.Foreground=StudioPalette.Get("TextBrush");button.Background=StudioPalette.Get(on?"AccentBrush":"PanelBrush");
         }
-        if(name=="Formations")DrawPitch();
+        if(ATLink.Core.UiText.Source(name)=="Formations")DrawPitch();
     }
     Border Badge(string text)=>new(){CornerRadius=new CornerRadius(11),BorderBrush=line,BorderThickness=new Thickness(1),Padding=new Thickness(8,2,8,2),Margin=new Thickness(0,0,6,0),Child=new TextBlock{Text=text,Foreground=muted,FontSize=12}};
     UIElement GridFields(params (string Field,string Label)[] fields)
@@ -81,7 +81,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     UIElement RatingsPage()
     {
         var wrap=new WrapPanel{Margin=new Thickness(4)};
-        foreach(var (field,label,locked) in new (string Field,string Label,bool Locked)[]{("overallrating","Overall",true),("matchdayoverallrating","Matchday overall",true),("attackrating","Attack",false),("midfieldrating","Midfield",false),("defenserating","Defense",false),("matchdayattackrating","Matchday attack",false),("matchdaymidfieldrating","Matchday midfield",false),("matchdaydefenserating","Matchday defense",false)})
+        foreach(var (field,label,locked) in new (string Field,string Label,bool Locked)[]{("overallrating",ATLink.Core.UiText.Get("Overall"),true),("matchdayoverallrating",ATLink.Core.UiText.Get("Matchday overall"),true),("attackrating",ATLink.Core.UiText.Get("Attack"),false),("midfieldrating",ATLink.Core.UiText.Get("Midfield"),false),("defenserating",ATLink.Core.UiText.Get("Defense"),false),("matchdayattackrating",ATLink.Core.UiText.Get("Matchday attack"),false),("matchdaymidfieldrating",ATLink.Core.UiText.Get("Matchday midfield"),false),("matchdaydefenserating",ATLink.Core.UiText.Get("Matchday defense"),false)})
         {
             if(!row.Table.Columns.Contains(field))continue;
             wrap.Children.Add(FieldCard(row,catalog.Table("teams").Fields.Single(f=>f.Name==field),label,210,locked,box=>
@@ -97,7 +97,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         if(AverageRating(out int overall,"attackrating","midfieldrating","defenserating")&&ratingBoxes.TryGetValue("overallrating",out var overallBox))overallBox.Text=overall.ToString();
         if(AverageRating(out int matchday,"matchdayattackrating","matchdaymidfieldrating","matchdaydefenserating")&&ratingBoxes.TryGetValue("matchdayoverallrating",out var matchdayBox))matchdayBox.Text=matchday.ToString();
         Badges.Children.Clear();
-        foreach(var (label,field) in new[]{("OVR","overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
+        foreach(var (label,field) in new[]{(ATLink.Core.UiText.Get("OVR"),"overallrating"),("ATT","attackrating"),("MID","midfieldrating"),("DEF","defenserating")})
             Badges.Children.Add(Badge(label+" "+(ratingBoxes.TryGetValue(field,out var box)?box.Text:FootballCatalog.Value(row,field))));
     }
     bool AverageRating(out int value,params string[] fields)
@@ -123,10 +123,10 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     UIElement VisualsPage()
     {
         var wrap=new WrapPanel{Margin=new Thickness(4)};
-        wrap.Children.Add(ColorCard("Team color 1","teamcolor1r","teamcolor1g","teamcolor1b"));
-        wrap.Children.Add(ColorCard("Team color 2","teamcolor2r","teamcolor2g","teamcolor2b"));
-        wrap.Children.Add(ColorCard("Team color 3","teamcolor3r","teamcolor3g","teamcolor3b"));
-        foreach(var (field,label) in new[]{("jerseytype","Jersey type"),("ballid","Ball ID"),("pitchcolor","Pitch color"),("pitchwear","Pitch wear")})
+        wrap.Children.Add(ColorCard(ATLink.Core.UiText.Get("Team color 1"),"teamcolor1r","teamcolor1g","teamcolor1b"));
+        wrap.Children.Add(ColorCard(ATLink.Core.UiText.Get("Team color 2"),"teamcolor2r","teamcolor2g","teamcolor2b"));
+        wrap.Children.Add(ColorCard(ATLink.Core.UiText.Get("Team color 3"),"teamcolor3r","teamcolor3g","teamcolor3b"));
+        foreach(var (field,label) in new[]{("jerseytype",ATLink.Core.UiText.Get("Jersey type")),("ballid",ATLink.Core.UiText.Get("Ball ID")),("pitchcolor",ATLink.Core.UiText.Get("Pitch color")),("pitchwear",ATLink.Core.UiText.Get("Pitch wear"))})
             if(row.Table.Columns.Contains(field))wrap.Children.Add(FieldCard(row,catalog.Table("teams").Fields.Single(f=>f.Name==field),label,180));
         return wrap;
     }
@@ -156,7 +156,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         DataRow? sheet=catalog.Rows("default_teamsheets").FirstOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId);
         var players=catalog.Squad(teamId).Select(p=>new{p.Id,p.Name}).ToArray();
         var stack=new StackPanel{MaxWidth=720};
-        foreach(var (field,label) in new[]{("captainid","Captain"),("penaltytakerid","Penalty taker"),("freekicktakerid","Free kick taker"),("leftfreekicktakerid","Left free kick"),("rightfreekicktakerid","Right free kick"),("leftcornerkicktakerid","Left corner"),("rightcornerkicktakerid","Right corner"),("longkicktakerid","Long kick taker")})
+        foreach(var (field,label) in new[]{("captainid",ATLink.Core.UiText.Get("Captain")),("penaltytakerid",ATLink.Core.UiText.Get("Penalty taker")),("freekicktakerid",ATLink.Core.UiText.Get("Free kick taker")),("leftfreekicktakerid",ATLink.Core.UiText.Get("Left free kick")),("rightfreekicktakerid",ATLink.Core.UiText.Get("Right free kick")),("leftcornerkicktakerid",ATLink.Core.UiText.Get("Left corner")),("rightcornerkicktakerid",ATLink.Core.UiText.Get("Right corner")),("longkicktakerid",ATLink.Core.UiText.Get("Long kick taker"))})
         {
             var target=sheet is not null&&sheet.Table.Columns.Contains(field)?sheet:row.Table.Columns.Contains(field)?row:null;
             if(target is null)continue;
@@ -173,9 +173,9 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         var root=new DockPanel();
         var bar=new DockPanel{Margin=new Thickness(0,0,0,12)};
-        var add=new Button{Content="+ Add Player",Style=(Style)FindResource("AddButton"),Width=180};DockPanel.SetDock(add,Dock.Right);
-        playerSearch=new TextBox();playerSearch.GotFocus+=(_,_)=>{if(playerSearch.Text=="Search player to add")playerSearch.Text="";};
-        playerSearch.Text="Search player to add";playerSearch.Foreground=muted;bar.Children.Add(add);bar.Children.Add(playerSearch);root.Children.Add(bar);DockPanel.SetDock(bar,Dock.Top);
+        var add=new Button{Content=ATLink.Core.UiText.Get("+ Add Player"),Style=(Style)FindResource("AddButton"),Width=180};DockPanel.SetDock(add,Dock.Right);
+        playerSearch=new TextBox();playerSearch.GotFocus+=(_,_)=>{if(ATLink.Core.UiText.Source(playerSearch.Text)=="Search player to add")playerSearch.Text="";};
+        playerSearch.Text=ATLink.Core.UiText.Get("Search player to add");playerSearch.Foreground=muted;bar.Children.Add(add);bar.Children.Add(playerSearch);root.Children.Add(bar);DockPanel.SetDock(bar,Dock.Top);
         add.Click+=(_,_)=>AddPlayer();
         playerList=ListHost();root.Children.Add(playerList);RefreshPlayers();return root;
     }
@@ -185,9 +185,9 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         var bar=new DockPanel{Margin=new Thickness(0,0,0,12)};
         var add=new Button{Style=(Style)FindResource("AddButton"),Width=180};DockPanel.SetDock(add,Dock.Right);
         var input=new TextBox();
-        if(kind=="rival"){rivalSearch=input;add.Content="+ Add Rival";add.Click+=(_,_)=>AddRival();rivalList=ListHost();}
-        else if(kind=="stadium"){stadiumSearch=input;add.Content="+ Link Stadium";add.Click+=(_,_)=>AddStadium();stadiumList=ListHost();}
-        else{nationSearch=input;add.Content="+ Add Nation";add.Click+=(_,_)=>AddNation();nationList=ListHost();}
+        if(kind=="rival"){rivalSearch=input;add.Content=ATLink.Core.UiText.Get("+ Add Rival");add.Click+=(_,_)=>AddRival();rivalList=ListHost();}
+        else if(kind=="stadium"){stadiumSearch=input;add.Content=ATLink.Core.UiText.Get("+ Link Stadium");add.Click+=(_,_)=>AddStadium();stadiumList=ListHost();}
+        else{nationSearch=input;add.Content=ATLink.Core.UiText.Get("+ Add Nation");add.Click+=(_,_)=>AddNation();nationList=ListHost();}
         bar.Children.Add(add);bar.Children.Add(input);DockPanel.SetDock(bar,Dock.Top);root.Children.Add(bar);
         var list=kind=="rival"?rivalList:kind=="stadium"?stadiumList:nationList;root.Children.Add(list!);
         if(kind=="rival")RefreshRivals();else if(kind=="stadium")RefreshStadiums();else RefreshNations();
@@ -209,25 +209,25 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         header.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
         var pick=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
         formationPick=new ComboBox{Width=220,DisplayMemberPath="Name"};
-        pick.Children.Add(new TextBlock{Text="Formation",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0)});
+        pick.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Formation"),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0)});
         pick.Children.Add(formationPick);
         formationTitle=new TextBlock{FontSize=18,FontWeight=FontWeights.Bold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
-        var revert=new Button{Content="Revert"};revert.Click+=(_,_)=>RevertFormation();
+        var revert=new Button{Content=ATLink.Core.UiText.Get("Revert")};revert.Click+=(_,_)=>RevertFormation();
         Grid.SetColumn(pick,0);header.Children.Add(pick);
         Grid.SetColumn(formationTitle,1);header.Children.Add(formationTitle);
         Grid.SetColumn(revert,2);header.Children.Add(revert);
         Grid.SetColumnSpan(header,2);root.Children.Add(header);
-        var hint=new TextBlock{Text="Click one player and then another to swap them. Formation positions remain fixed.",Foreground=muted,TextAlignment=TextAlignment.Center,Margin=new Thickness(0,0,0,8),TextWrapping=TextWrapping.Wrap};
+        var hint=new TextBlock{Text=ATLink.Core.UiText.Get("Click one player and then another to swap them. Formation positions remain fixed."),Foreground=muted,TextAlignment=TextAlignment.Center,Margin=new Thickness(0,0,0,8),TextWrapping=TextWrapping.Wrap};
         Grid.SetRow(hint,1);Grid.SetColumnSpan(hint,2);root.Children.Add(hint);
         pitch=new Canvas{Background=StudioPalette.Get("PitchBrush"),ClipToBounds=true};
         pitch.SizeChanged+=(_,_)=>DrawPitch();
         Grid.SetRow(pitch,2);Grid.SetColumn(pitch,0);root.Children.Add(pitch);
         var right=new DockPanel{Margin=new Thickness(16,0,0,0)};
-        benchSearch=new TextBox{Margin=new Thickness(0,0,0,8),Foreground=muted,Text="Search player or position"};
-        benchSearch.GotFocus+=(_,_)=>{if(benchSearch.Text=="Search player or position"){benchSearch.Text="";benchSearch.Foreground=StudioPalette.Get("TextBrush");}};
-        benchSearch.LostFocus+=(_,_)=>{if(string.IsNullOrWhiteSpace(benchSearch.Text)){benchSearch.Text="Search player or position";benchSearch.Foreground=muted;}};
+        benchSearch=new TextBox{Margin=new Thickness(0,0,0,8),Foreground=muted,Text=ATLink.Core.UiText.Get("Search player or position")};
+        benchSearch.GotFocus+=(_,_)=>{if(ATLink.Core.UiText.Source(benchSearch.Text)=="Search player or position"){benchSearch.Text="";benchSearch.Foreground=StudioPalette.Get("TextBrush");}};
+        benchSearch.LostFocus+=(_,_)=>{if(string.IsNullOrWhiteSpace(benchSearch.Text)){benchSearch.Text=ATLink.Core.UiText.Get("Search player or position");benchSearch.Foreground=muted;}};
         DockPanel.SetDock(benchSearch,Dock.Top);right.Children.Add(benchSearch);benchSearch.TextChanged+=(_,_)=>RefreshBench();
-        var benchLabel=new TextBlock{Text="Bench",FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)};DockPanel.SetDock(benchLabel,Dock.Top);right.Children.Add(benchLabel);
+        var benchLabel=new TextBlock{Text=ATLink.Core.UiText.Get("Bench"),FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,8)};DockPanel.SetDock(benchLabel,Dock.Top);right.Children.Add(benchLabel);
         benchList=ListHost();
         var scroller=new ScrollViewer{Content=benchList,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Padding=new Thickness(0,0,10,0)};
         right.Children.Add(new Border{BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("PanelBrush"),Padding=new Thickness(10,10,16,10),Child=scroller});
@@ -264,9 +264,9 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         var root=new DockPanel();
         var bar=new DockPanel{Margin=new Thickness(0,0,0,12)};
-        var add=new Button{Content="+ Add Extra Kit",Style=(Style)FindResource("AddButton"),Width=180};DockPanel.SetDock(add,Dock.Right);add.Click+=(_,_)=>AddKit();
+        var add=new Button{Content=ATLink.Core.UiText.Get("+ Add Extra Kit"),Style=(Style)FindResource("AddButton"),Width=180};DockPanel.SetDock(add,Dock.Right);add.Click+=(_,_)=>AddKit();
         kitFilter=new TextBox{Width=80,Margin=new Thickness(8,0,0,0)};
-        var type=new StackPanel{Orientation=Orientation.Horizontal};type.Children.Add(new TextBlock{Text="Kit type",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0),Foreground=muted});type.Children.Add(kitFilter);
+        var type=new StackPanel{Orientation=Orientation.Horizontal};type.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Kit type"),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0),Foreground=muted});type.Children.Add(kitFilter);
         bar.Children.Add(add);bar.Children.Add(type);DockPanel.SetDock(bar,Dock.Top);root.Children.Add(bar);
         kitFilter.TextChanged+=(_,_)=>RefreshKits();kitList=ListHost();root.Children.Add(kitList);RefreshKits();return root;
     }
@@ -278,10 +278,10 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         foreach(var link in roster.Rows)
         {
             string id=FootballCatalog.Value(link,"playerid");
-            var player=new {Id=id,Name=playersById.TryGetValue(id,out var data)?catalog.PlayerName(data,playerNames):"Player "+id,Link=link};
+            var player=new {Id=id,Name=playersById.TryGetValue(id,out var data)?catalog.PlayerName(data,playerNames):ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Player "), id),Link=link};
             var card=RowCard();
             var dock=new DockPanel();
-            var remove=new Button{Content="Remove",Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);
+            var remove=new Button{Content=ATLink.Core.UiText.Get("Remove"),Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);
             remove.IsEnabled=!catalog.NationalTeamIds.Contains(teamId);
             remove.Click+=(_,_)=>{try{CommitRosterInputs();roster.Remove(link);SyncRoster();RefreshPlayers();}catch(Exception ex){ErrorText.Text=ex.Message;}};
             dock.Children.Add(remove);
@@ -292,7 +292,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             names.Children.Add(new TextBlock{Text="ID "+player.Id,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             identity.Children.Add(names);dock.Children.Add(identity);
             var fields=new WrapPanel{Margin=new Thickness(12,0,0,0),VerticalAlignment=VerticalAlignment.Center};
-            foreach(var (column,label) in new[]{("jerseynumber","Jersey"),("form","Form"),("injury","Injury"),("leagueappearances","Apps"),("leaguegoals","Goals")})
+            foreach(var (column,label) in new[]{("jerseynumber",ATLink.Core.UiText.Get("Jersey")),("form",ATLink.Core.UiText.Get("Form")),("injury",ATLink.Core.UiText.Get("Injury")),("leagueappearances",ATLink.Core.UiText.Get("Apps")),("leaguegoals",ATLink.Core.UiText.Get("Goals"))})
                 if(player.Link.Table.Columns.Contains(column))fields.Children.Add(MiniField(player.Link,catalog.Table("teamplayerlinks").Fields.Single(f=>f.Name==column),label));
             dock.Children.Add(fields);card.Child=dock;playerList.Items.Add(card);
         }
@@ -306,14 +306,14 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             var otherTeam=catalog.Rows("teams").FirstOrDefault(r=>FootballCatalog.Value(r,"teamid")==other);
             string name=otherTeam is null?other:FootballCatalog.Value(otherTeam,"teamname");
             var card=RowCard();var dock=new DockPanel();
-            var remove=new Button{Content="Remove",Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);remove.Click+=(_,_)=>{link.Delete();RefreshRivals();};
+            var remove=new Button{Content=ATLink.Core.UiText.Get("Remove"),Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);remove.Click+=(_,_)=>{link.Delete();RefreshRivals();};
             dock.Children.Add(remove);
             var names=new StackPanel{Width=180,VerticalAlignment=VerticalAlignment.Center};
             names.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold});names.Children.Add(new TextBlock{Text="ID "+other,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             dock.Children.Add(names);
             var fields=new WrapPanel{Margin=new Thickness(12,0,0,0)};
-            fields.Children.Add(MiniField(link,catalog.Table("rivals").Fields.Single(f=>f.Name=="teamid2"),"Team",140));
-            fields.Children.Add(MiniField(link,catalog.Table("rivals").Fields.Single(f=>f.Name=="rivaltype"),"Type",80));
+            fields.Children.Add(MiniField(link,catalog.Table("rivals").Fields.Single(f=>f.Name=="teamid2"),ATLink.Core.UiText.Get("Team"),140));
+            fields.Children.Add(MiniField(link,catalog.Table("rivals").Fields.Single(f=>f.Name=="rivaltype"),ATLink.Core.UiText.Get("Type"),80));
             dock.Children.Add(fields);card.Child=dock;rivalList.Items.Add(card);
         }
     }
@@ -326,13 +326,13 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             var stadium=catalog.Entities("stadiums").FirstOrDefault(s=>s.Id==id);
             var card=RowCard();var dock=new DockPanel();
             var names=new StackPanel{Width=220,VerticalAlignment=VerticalAlignment.Center};
-            names.Children.Add(new TextBlock{Text=stadium?.Name??("Stadium "+id),FontWeight=FontWeights.SemiBold});
-            names.Children.Add(new TextBlock{Text=(stadium?.Name??("Stadium "+id))+" / ID "+id,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
+            names.Children.Add(new TextBlock{Text=stadium?.Name??(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Stadium "), id)),FontWeight=FontWeights.SemiBold});
+            names.Children.Add(new TextBlock{Text=(stadium?.Name??(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Stadium "), id)))+" / ID "+id,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             dock.Children.Add(names);
             var fields=new WrapPanel{Margin=new Thickness(12,0,0,0)};
-            if(stadium is not null&&stadium.Row.Table.Columns.Contains("name"))fields.Children.Add(MiniField(stadium.Row,catalog.Table(stadium.Row.Table.TableName).Fields.Single(f=>f.Name=="name"),"Custom name",180));
-            fields.Children.Add(MiniField(link,catalog.Table("teamstadiumlinks").Fields.Single(f=>f.Name=="swapcrowdplacement"),"Swap crowd",90));
-            fields.Children.Add(MiniField(link,catalog.Table("teamstadiumlinks").Fields.Single(f=>f.Name=="forcedhome"),"Forced home",90));
+            if(stadium is not null&&stadium.Row.Table.Columns.Contains("name"))fields.Children.Add(MiniField(stadium.Row,catalog.Table(stadium.Row.Table.TableName).Fields.Single(f=>f.Name=="name"),ATLink.Core.UiText.Get("Custom name"),180));
+            fields.Children.Add(MiniField(link,catalog.Table("teamstadiumlinks").Fields.Single(f=>f.Name=="swapcrowdplacement"),ATLink.Core.UiText.Get("Swap crowd"),90));
+            fields.Children.Add(MiniField(link,catalog.Table("teamstadiumlinks").Fields.Single(f=>f.Name=="forcedhome"),ATLink.Core.UiText.Get("Forced home"),90));
             dock.Children.Add(fields);card.Child=dock;stadiumList.Items.Add(card);
         }
     }
@@ -344,15 +344,15 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             string id=FootballCatalog.Value(link,"nationid");
             var nation=catalog.Rows("nations").FirstOrDefault(r=>FootballCatalog.Value(r,"nationid")==id);
             var card=RowCard();var dock=new DockPanel();
-            var remove=new Button{Content="Remove",Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);remove.Click+=(_,_)=>{link.Delete();RefreshNations();};
+            var remove=new Button{Content=ATLink.Core.UiText.Get("Remove"),Style=(Style)FindResource("RemoveButton")};DockPanel.SetDock(remove,Dock.Right);remove.Click+=(_,_)=>{link.Delete();RefreshNations();};
             dock.Children.Add(remove);
             var names=new StackPanel{Width=220,VerticalAlignment=VerticalAlignment.Center};
             names.Children.Add(new TextBlock{Text=nation is null?id:FootballCatalog.Value(nation,"nationname"),FontWeight=FontWeights.SemiBold});
             names.Children.Add(new TextBlock{Text="ID "+id,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             dock.Children.Add(names);
             var fields=new WrapPanel{Margin=new Thickness(12,0,0,0)};
-            fields.Children.Add(MiniField(link,catalog.Table("teamnationlinks").Fields.Single(f=>f.Name=="nationid"),"Nation",100));
-            fields.Children.Add(MiniField(link,catalog.Table("teamnationlinks").Fields.Single(f=>f.Name=="leagueid"),"League",100));
+            fields.Children.Add(MiniField(link,catalog.Table("teamnationlinks").Fields.Single(f=>f.Name=="nationid"),ATLink.Core.UiText.Get("Nation"),100));
+            fields.Children.Add(MiniField(link,catalog.Table("teamnationlinks").Fields.Single(f=>f.Name=="leagueid"),ATLink.Core.UiText.Get("League"),100));
             dock.Children.Add(fields);card.Child=dock;nationList.Items.Add(card);
         }
     }
@@ -365,15 +365,15 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         foreach(var kit in kits)
         {
             string type=FootballCatalog.Value(kit,"teamkittypetechid");
-            string title=KitLabel(type)+" kit "+FootballCatalog.Value(kit,"teamkitid");
+            string title=ATLink.Core.UiText.Concat(KitLabel(type), ATLink.Core.UiText.Get(" kit "), FootballCatalog.Value(kit,"teamkitid"));
             var card=new Border{Margin=new Thickness(0,0,0,12),Padding=new Thickness(12),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1),Background=StudioPalette.Get("PanelBrush")};
             var stack=new StackPanel();stack.Children.Add(new TextBlock{Text=title,FontWeight=FontWeights.Bold,FontSize=16,Margin=new Thickness(0,0,0,10)});
             var wrap=new WrapPanel();
-            foreach(var (field,label) in new[]{("teamkitid","Kit ID"),("teamkittypetechid","Kit type"),("teamtechid","Team tech ID"),("powid","POW ID"),("year","Year"),("chestbadge","Chest badge"),("jerseyleftsleevebadge","Left sleeve badge"),("jerseyrightsleevebadge","Right sleeve badge"),("numberfonttype","Number font"),("jerseynamefonttype","Name font"),("shortsnumberfonttype","Shorts number font"),("captainarmband","Captain armband"),("armbandtype","Armband type"),("shortstyle","Shorts style"),("jerseyfit","Jersey fit"),("jerseyrestriction","Jersey restriction"),("islocked","Locked"),("isembargoed","Embargoed"),("hasadvertisingkit","Advertising kit"),("isinheritbasedetailmap","Inherit detail map"),("dlc","DLC")})
+            foreach(var (field,label) in new[]{("teamkitid",ATLink.Core.UiText.Get("Kit ID")),("teamkittypetechid",ATLink.Core.UiText.Get("Kit type")),("teamtechid",ATLink.Core.UiText.Get("Team tech ID")),("powid","POW ID"),("year",ATLink.Core.UiText.Get("Year")),("chestbadge",ATLink.Core.UiText.Get("Chest badge")),("jerseyleftsleevebadge",ATLink.Core.UiText.Get("Left sleeve badge")),("jerseyrightsleevebadge",ATLink.Core.UiText.Get("Right sleeve badge")),("numberfonttype",ATLink.Core.UiText.Get("Number font")),("jerseynamefonttype",ATLink.Core.UiText.Get("Name font")),("shortsnumberfonttype",ATLink.Core.UiText.Get("Shorts number font")),("captainarmband",ATLink.Core.UiText.Get("Captain armband")),("armbandtype",ATLink.Core.UiText.Get("Armband type")),("shortstyle",ATLink.Core.UiText.Get("Shorts style")),("jerseyfit",ATLink.Core.UiText.Get("Jersey fit")),("jerseyrestriction",ATLink.Core.UiText.Get("Jersey restriction")),("islocked",ATLink.Core.UiText.Get("Locked")),("isembargoed",ATLink.Core.UiText.Get("Embargoed")),("hasadvertisingkit",ATLink.Core.UiText.Get("Advertising kit")),("isinheritbasedetailmap",ATLink.Core.UiText.Get("Inherit detail map")),("dlc","DLC")})
                 if(kit.Table.Columns.Contains(field))wrap.Children.Add(FieldCard(kit,catalog.Table("teamkits").Fields.Single(f=>f.Name==field),label,160));
             stack.Children.Add(wrap);
             var colors=new WrapPanel{Margin=new Thickness(0,8,0,0)};
-            foreach(var (label,r,g,b) in new[]{("Team primary","teamcolorprimr","teamcolorprimg","teamcolorprimb"),("Team secondary","teamcolorsecr","teamcolorsecg","teamcolorsecb"),("Team tertiary","teamcolortertr","teamcolortertg","teamcolortertb"),("Number primary","jerseynumbercolorprimr","jerseynumbercolorprimg","jerseynumbercolorprimb"),("Number secondary","jerseynumbercolorsecr","jerseynumbercolorsecg","jerseynumbercolorsecb"),("Jersey name","jerseynamecolorr","jerseynamecolorg","jerseynamecolorb"),("Name outline","jerseynameoutlinecolorr","jerseynameoutlinecolorg","jerseynameoutlinecolorb"),("Shorts number","shortsnumbercolorprimr","shortsnumbercolorprimg","shortsnumbercolorprimb")})
+            foreach(var (label,r,g,b) in new[]{(ATLink.Core.UiText.Get("Team primary"),"teamcolorprimr","teamcolorprimg","teamcolorprimb"),(ATLink.Core.UiText.Get("Team secondary"),"teamcolorsecr","teamcolorsecg","teamcolorsecb"),(ATLink.Core.UiText.Get("Team tertiary"),"teamcolortertr","teamcolortertg","teamcolortertb"),(ATLink.Core.UiText.Get("Number primary"),"jerseynumbercolorprimr","jerseynumbercolorprimg","jerseynumbercolorprimb"),(ATLink.Core.UiText.Get("Number secondary"),"jerseynumbercolorsecr","jerseynumbercolorsecg","jerseynumbercolorsecb"),(ATLink.Core.UiText.Get("Jersey name"),"jerseynamecolorr","jerseynamecolorg","jerseynamecolorb"),(ATLink.Core.UiText.Get("Name outline"),"jerseynameoutlinecolorr","jerseynameoutlinecolorg","jerseynameoutlinecolorb"),(ATLink.Core.UiText.Get("Shorts number"),"shortsnumbercolorprimr","shortsnumbercolorprimg","shortsnumbercolorprimb")})
                 if(kit.Table.Columns.Contains(r))colors.Children.Add(KitColor(kit,label,r,g,b));
             stack.Children.Add(colors);card.Child=stack;kitList.Items.Add(card);
         }
@@ -389,7 +389,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         var card=new Border{Margin=new Thickness(0,0,10,10),Padding=new Thickness(8),CornerRadius=new CornerRadius(8),BorderBrush=line,BorderThickness=new Thickness(1)};
         var stack=new StackPanel();stack.Children.Add(new TextBlock{Text=label,Foreground=muted,FontSize=11,Margin=new Thickness(0,0,0,6)});stack.Children.Add(rgb);card.Child=stack;return card;
     }
-    static string KitLabel(string type)=>type switch{"0"=>"Home","1"=>"Away","2"=>"Third","3"=>"GK","4"=>"GK away",_=>"Kit"};
+    static string KitLabel(string type)=>type switch{"0"=>ATLink.Core.UiText.Get("Home"),"1"=>ATLink.Core.UiText.Get("Away"),"2"=>ATLink.Core.UiText.Get("Third"),"3"=>"GK","4"=>ATLink.Core.UiText.Get("GK away"),_=>ATLink.Core.UiText.Get("Kit")};
     void DrawPitch()
     {
         if(drawing||pitch is null||formation is null)return;drawing=true;
@@ -442,7 +442,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         if(benchList is null||formation is null)return;benchList.Items.Clear();
         string filter=benchSearch?.Text??"";
-        if(filter=="Search player or position")filter="";
+        if(ATLink.Core.UiText.Source(filter)=="Search player or position")filter="";
         foreach(var slot in formation.BenchSlots)
         {
             if(slot.PlayerId is "-1" or "0" or "")continue;
@@ -459,7 +459,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
             left.Children.Add(Portrait(slot.PlayerId,55));
             var names=new StackPanel{VerticalAlignment=VerticalAlignment.Center};
             names.Children.Add(new TextBlock{Text=name,FontWeight=FontWeights.SemiBold});
-            names.Children.Add(new TextBlock{Text=pos+(slot.Index<0?" · Available":" · Slot "+slot.Index),Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
+            names.Children.Add(new TextBlock{Text=pos+(slot.Index<0?ATLink.Core.UiText.Get(" · Available"):ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get(" · Slot "), slot.Index)),Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
             left.Children.Add(names);dock.Children.Add(left);card.Child=dock;card.Tag=slot;card.Cursor=Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>Swap(slot);
             benchList.Items.Add(card);
         }
@@ -474,10 +474,10 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     Border Portrait(string playerId,double size=65)=>new(){Width=size,Height=size,CornerRadius=new CornerRadius(8),Background=StudioPalette.Get("RailBrush"),Margin=new Thickness(0,0,10,0),Child=new Image{Source=EntityImages.Player(playerId),Stretch=Stretch.Uniform,Margin=new Thickness(3)}};
     void AddPlayer()
     {
-        string text=(playerSearch?.Text??"").Trim();if(text.Length==0||text=="Search player to add"){ErrorText.Text="Search a player by name or ID.";return;}
+        string text=(playerSearch?.Text??"").Trim();if(text.Length==0||ATLink.Core.UiText.Source(text)=="Search player to add"){ErrorText.Text=ATLink.Core.UiText.Get("Search a player by name or ID.");return;}
         var names=catalog.Names();
         var match=catalog.Rows("players").Select(r=>new{Row=r,Id=FootballCatalog.Value(r,"playerid"),Name=catalog.PlayerName(r,names)}).FirstOrDefault(p=>p.Id==text||p.Name.Contains(text,StringComparison.CurrentCultureIgnoreCase));
-        if(match is null){ErrorText.Text="No player matches that search.";return;}
+        if(match is null){ErrorText.Text=ATLink.Core.UiText.Get("No player matches that search.");return;}
         try{CommitRosterInputs();roster.Add(match.Id);SyncRoster();RefreshPlayers();ErrorText.Text="";}
         catch(Exception ex){ErrorText.Text=ex.Message;}
     }
@@ -499,9 +499,9 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         string text=rivalSearch?.Text.Trim()??"";
         var match=catalog.Rows("teams").FirstOrDefault(r=>FootballCatalog.Value(r,"teamid")==text||FootballCatalog.Value(r,"teamname").Contains(text,StringComparison.CurrentCultureIgnoreCase));
-        if(match is null){ErrorText.Text="No rival team matches that search.";return;}
-        string id=FootballCatalog.Value(match,"teamid");if(id==teamId){ErrorText.Text="A team cannot be its own rival.";return;}
-        if(catalog.Rows("rivals").Any(r=>(FootballCatalog.Value(r,"teamid1")==teamId&&FootballCatalog.Value(r,"teamid2")==id)||(FootballCatalog.Value(r,"teamid2")==teamId&&FootballCatalog.Value(r,"teamid1")==id))){ErrorText.Text="That rival is already listed.";return;}
+        if(match is null){ErrorText.Text=ATLink.Core.UiText.Get("No rival team matches that search.");return;}
+        string id=FootballCatalog.Value(match,"teamid");if(id==teamId){ErrorText.Text=ATLink.Core.UiText.Get("A team cannot be its own rival.");return;}
+        if(catalog.Rows("rivals").Any(r=>(FootballCatalog.Value(r,"teamid1")==teamId&&FootballCatalog.Value(r,"teamid2")==id)||(FootballCatalog.Value(r,"teamid2")==teamId&&FootballCatalog.Value(r,"teamid1")==id))){ErrorText.Text=ATLink.Core.UiText.Get("That rival is already listed.");return;}
         var table=catalog.Table("rivals");var created=table.Data.NewRow();
         foreach(var f in table.Fields)created[f.Name]=f.Name=="teamid1"?teamId:f.Name=="teamid2"?id:f.Name=="rivaltype"?"0":f.Type==3?f.Minimum.ToString(CultureInfo.InvariantCulture):"";
         foreach(var f in table.Fields)DatabaseDocument.ValidateValue(f,(string)created[f.Name]);table.Data.Rows.Add(created);RefreshRivals();ErrorText.Text="";
@@ -510,7 +510,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         string text=stadiumSearch?.Text.Trim()??"";
         var match=catalog.Entities("stadiums").FirstOrDefault(s=>s.Id==text||s.Name.Contains(text,StringComparison.CurrentCultureIgnoreCase));
-        if(match is null){ErrorText.Text="No stadium matches that search.";return;}
+        if(match is null){ErrorText.Text=ATLink.Core.UiText.Get("No stadium matches that search.");return;}
         var existing=catalog.Rows("teamstadiumlinks").FirstOrDefault(r=>FootballCatalog.Value(r,"teamid")==teamId);
         if(existing is not null){existing["stadiumid"]=match.Id;RefreshStadiums();return;}
         var table=catalog.Table("teamstadiumlinks");var created=TableEditing.Add(table);created["teamid"]=teamId;created["stadiumid"]=match.Id;RefreshStadiums();ErrorText.Text="";
@@ -519,14 +519,14 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
     {
         string text=nationSearch?.Text.Trim()??"";
         var match=catalog.Rows("nations").FirstOrDefault(r=>FootballCatalog.Value(r,"nationid")==text||FootballCatalog.Value(r,"nationname").Contains(text,StringComparison.CurrentCultureIgnoreCase));
-        if(match is null){ErrorText.Text="No nation matches that search.";return;}
-        if(catalog.Rows("teamnationlinks").Any(r=>FootballCatalog.Value(r,"teamid")==teamId)){ErrorText.Text="This team already has a nation link.";return;}
+        if(match is null){ErrorText.Text=ATLink.Core.UiText.Get("No nation matches that search.");return;}
+        if(catalog.Rows("teamnationlinks").Any(r=>FootballCatalog.Value(r,"teamid")==teamId)){ErrorText.Text=ATLink.Core.UiText.Get("This team already has a nation link.");return;}
         var table=catalog.Table("teamnationlinks");var created=TableEditing.Add(table);created["teamid"]=teamId;created["nationid"]=FootballCatalog.Value(match,"nationid");RefreshNations();ErrorText.Text="";
     }
     void AddKit()
     {
         var template=catalog.Rows("teamkits").FirstOrDefault(r=>FootballCatalog.Value(r,"teamtechid")==teamId)??catalog.Rows("teamkits").FirstOrDefault();
-        if(template is null){ErrorText.Text="No kit template available.";return;}
+        if(template is null){ErrorText.Text=ATLink.Core.UiText.Get("No kit template available.");return;}
         var created=TableEditing.Add(catalog.Table("teamkits"),template);created["teamtechid"]=teamId;RefreshKits();ErrorText.Text="";
     }
     bool ApplyEdits()
@@ -551,7 +551,7 @@ public partial class TeamWorkspace : UserControl, IWorkspacePage
         if(!ApplyEdits())return;
         var dialog=ShellDialogs.ForDatabase(catalog.Document);
         if(!ShellDialogs.Open(dialog,this))return;
-        try{catalog.Document.SaveAs(dialog.FileName);ErrorText.Text="Saved: "+dialog.FileName;}catch(Exception ex){ErrorText.Text=ex.Message;}
+        try{catalog.Document.SaveAs(dialog.FileName);ErrorText.Text=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Saved: "), dialog.FileName);}catch(Exception ex){ErrorText.Text=ex.Message;}
     }
     void CancelClick(object sender,RoutedEventArgs e)=>Closed?.Invoke(false);
 }

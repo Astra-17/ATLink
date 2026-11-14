@@ -35,7 +35,7 @@ public sealed partial class DatabaseDocument
     public void SaveAs(string path)
     {
         if(string.Equals(Path.GetFullPath(path),Path.GetFullPath(SourcePath),StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Choisir un nouveau fichier pour préserver l'original.");
+            throw new InvalidOperationException(ATLink.Core.UiText.Get("Choisir un nouveau fichier pour préserver l'original."));
         byte[] data=Serialize();
         // Write completely before exposing the final destination. Never overwrite another file.
         string target=Path.GetFullPath(path), temporary=target+"."+Guid.NewGuid().ToString("N")+".tmp";
@@ -62,19 +62,19 @@ public sealed partial class DatabaseDocument
             {
                 string id=row[fk.Name].ToString()??"";
                 bool knownReference=parent.Name=="nations"&&ReferenceNationNames.ContainsKey(id);
-                if(long.TryParse(id,out long number)&&number>0&&!ids.Contains(id)&&!knownReference)throw new InvalidDataException($"{child.Name}.{fk.Name}: référence absente {id} dans {parent.Name}.");
+                if(long.TryParse(id,out long number)&&number>0&&!ids.Contains(id)&&!knownReference)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}.{1}: référence absente {2} dans {3}.", child.Name, fk.Name, id, parent.Name));
             }
             if(deleted[parent.Name].Length==0)continue;
             var removed=deleted[parent.Name].Select(r=>r[key.Name,DataRowVersion.Original].ToString()??"").Where(id=>!ids.Contains(id)).ToHashSet();
-            if(removed.Count>0&&child.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Deleted&&removed.Contains(r[fk.Name].ToString()??"")))throw new InvalidDataException($"{parent.Name}: une ligne supprimée est encore référencée dans {child.Name}.{fk.Name}.");
+            if(removed.Count>0&&child.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Deleted&&removed.Contains(r[fk.Name].ToString()??"")))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: une ligne supprimée est encore référencée dans {1}.{2}.", parent.Name, child.Name, fk.Name));
         }
     }
     private byte[] SerializeTable(DatabaseTable table,int originalEnd)
     {
         var rows=table.Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted).ToArray();
-        if(rows.Length>ushort.MaxValue)throw new InvalidDataException($"{table.Name}: plus de 65535 lignes.");
+        if(rows.Length>ushort.MaxValue)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: plus de 65535 lignes.", table.Name));
         int capacity=Math.Max(table.SlotCapacity,rows.Length);
-        if(capacity>ushort.MaxValue)throw new InvalidDataException($"{table.Name}: capacité d'emplacements trop grande.");
+        if(capacity>ushort.MaxValue)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: capacité d'emplacements trop grande.", table.Name));
         byte[] header=original.AsSpan(table.Start,table.Records-table.Start).ToArray();
         BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(16,2),(ushort)capacity);
         BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(18,2),(ushort)rows.Length);
@@ -95,7 +95,7 @@ public sealed partial class DatabaseDocument
                 {
                     if(value.Length==0) { BinaryPrimitives.WriteInt32LittleEndian(record.AsSpan(f.Bit/8,4),-1); continue; }
                     byte[] text=Encoding.UTF8.GetBytes(value);
-                    if(text.Length>(f.Type==13?255:65535))throw new InvalidDataException($"{f.Name}: texte trop long.");
+                    if(text.Length>(f.Type==13?255:65535))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: texte trop long.", f.Name));
                     BinaryPrimitives.WriteInt32LittleEndian(record.AsSpan(f.Bit/8,4),checked((int)strings.Length));
                     if(f.Type==13)strings.WriteByte((byte)text.Length);
                     else { strings.WriteByte((byte)(text.Length>>8));strings.WriteByte((byte)text.Length); }
@@ -114,7 +114,7 @@ public sealed partial class DatabaseDocument
         // Native FC files store index definitions after the records/string block.
         // They are part of the table checksum, and must survive a table rebuild.
         int indexLength=originalEnd-4-table.CrcOffset;
-        if(indexLength<0)throw new InvalidDataException($"{table.Name}: invalid table footer.");
+        if(indexLength<0)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: invalid table footer.", table.Name));
         output.Write(original.AsSpan(table.CrcOffset,indexLength));
         byte[] partial=output.ToArray();
         Span<byte> crc=stackalloc byte[4];BinaryPrimitives.WriteUInt32LittleEndian(crc,Crc(partial.AsSpan(36)));output.Write(crc);
@@ -136,21 +136,21 @@ public sealed partial class DatabaseDocument
     {
         if(f.Type==3)
         {
-            if(!long.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out long number))throw new InvalidDataException($"{f.Name}: entier attendu.");
+            if(!long.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out long number))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: entier attendu.", f.Name));
             long raw=checked(number-f.Minimum);
-            if(raw<0 || (f.Maximum>=f.Minimum && number>f.Maximum) || f.Depth>63 || (ulong)raw>((1UL<<f.Depth)-1))throw new InvalidDataException($"{f.Name}: valeur hors limites [{f.Minimum}, {f.Maximum}].");
+            if(raw<0 || (f.Maximum>=f.Minimum && number>f.Maximum) || f.Depth>63 || (ulong)raw>((1UL<<f.Depth)-1))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: valeur hors limites [{1}, {2}].", f.Name, f.Minimum, f.Maximum));
         }
         else if(f.Type==4)
         {
-            if(!float.TryParse(value,NumberStyles.Float,CultureInfo.InvariantCulture,out float number)||!float.IsFinite(number))throw new InvalidDataException($"{f.Name}: nombre décimal attendu (point comme séparateur).");
+            if(!float.TryParse(value,NumberStyles.Float,CultureInfo.InvariantCulture,out float number)||!float.IsFinite(number))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: nombre décimal attendu (point comme séparateur).", f.Name));
         }
         else if(f.Type is 0 or 13 or 14)
         {
-            if(value.Contains('\0'))throw new InvalidDataException($"{f.Name}: caractère nul interdit.");
+            if(value.Contains('\0'))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: caractère nul interdit.", f.Name));
             int max=f.Type==0?f.Depth/8:f.Type==13?255:65535;
-            if(Encoding.UTF8.GetByteCount(value)>max)throw new InvalidDataException($"{f.Name}: maximum {max} octets UTF-8.");
+            if(Encoding.UTF8.GetByteCount(value)>max)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: maximum {1} octets UTF-8.", f.Name, max));
         }
-        else throw new InvalidDataException($"Type non pris en charge: {f.Type}");
+        else throw new InvalidDataException(ATLink.Core.UiText.Format("Type non pris en charge: {0}", f.Type));
     }
     private static void WriteValue(byte[] record,Field f,string value)
     {
@@ -174,7 +174,7 @@ public sealed partial class DatabaseDocument
         {
             string key=string.Join("\u001f",keys.Select(f=>row[f.Name].ToString()));
             seen[key]=seen.GetValueOrDefault(key)+1;
-            if(seen[key]>Math.Max(1,baseline.GetValueOrDefault(key)))throw new InvalidDataException($"{table.Name}: clé dupliquée {key}.");
+            if(seen[key]>Math.Max(1,baseline.GetValueOrDefault(key)))throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: clé dupliquée {1}.", table.Name, key));
         }
     }
 }

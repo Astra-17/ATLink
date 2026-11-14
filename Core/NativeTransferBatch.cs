@@ -32,7 +32,7 @@ public sealed class NativeTransferBatch
     }
     public static NativeTransferBatch Preview(FootballCatalog catalog,IEnumerable<NativeTransferEdit> edits,Random? rng=null)
     {
-        if(catalog.NationalTeamIds.Count==0)throw new InvalidOperationException("Load national team IDs before applying club transfers.");
+        if(catalog.NationalTeamIds.Count==0)throw new InvalidOperationException(ATLink.Core.UiText.Get("Load national team IDs before applying club transfers."));
         rng??=Random.Shared;
         var batch=new NativeTransferBatch(catalog);
         var clubLinks=catalog.Rows("teamplayerlinks").Where(r=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToArray();
@@ -40,13 +40,13 @@ public sealed class NativeTransferBatch
         var steps=new List<NativeTransferStep>();
         foreach(var edit in edits.OrderBy(e=>e.Sequence))
         {
-            if(edit.IsLoan&&edit.LoanEndDate is null)throw new InvalidDataException("A loan end date is required.");
-            if(!batch.players.TryGetValue(edit.PlayerId,out var player))throw new InvalidDataException($"Player {edit.PlayerId} is absent from the open database.");
-            if(!batch.teams.ContainsKey(edit.DestinationId))throw new InvalidDataException($"Team {edit.DestinationId} is absent from the open database.");
-            if(edit.IsLoan&&edit.LoanSourceId is not null&&!batch.teams.ContainsKey(edit.LoanSourceId))throw new InvalidDataException($"Loan source team {edit.LoanSourceId} is absent from the open database.");
-            if(catalog.NationalTeamIds.Contains(edit.DestinationId))throw new InvalidDataException("National team destination is forbidden.");
+            if(edit.IsLoan&&edit.LoanEndDate is null)throw new InvalidDataException(ATLink.Core.UiText.Get("A loan end date is required."));
+            if(!batch.players.TryGetValue(edit.PlayerId,out var player))throw new InvalidDataException(ATLink.Core.UiText.Format("Player {0} is absent from the open database.", edit.PlayerId));
+            if(!batch.teams.ContainsKey(edit.DestinationId))throw new InvalidDataException(ATLink.Core.UiText.Format("Team {0} is absent from the open database.", edit.DestinationId));
+            if(edit.IsLoan&&edit.LoanSourceId is not null&&!batch.teams.ContainsKey(edit.LoanSourceId))throw new InvalidDataException(ATLink.Core.UiText.Format("Loan source team {0} is absent from the open database.", edit.LoanSourceId));
+            if(catalog.NationalTeamIds.Contains(edit.DestinationId))throw new InvalidDataException(ATLink.Core.UiText.Get("National team destination is forbidden."));
             var candidates=clubByPlayer[edit.PlayerId].ToArray();
-            if(candidates.Length!=1)throw new InvalidDataException($"Player {edit.PlayerId}: {candidates.Length} club links; manual review required.");
+            if(candidates.Length!=1)throw new InvalidDataException(ATLink.Core.UiText.Format("Player {0}: {1} club links; manual review required.", edit.PlayerId, candidates.Length));
             var link=candidates[0];batch.links[edit.PlayerId]=link;
             string source=batch.Staged(link,"teamid");
             bool moved=source!=edit.DestinationId;
@@ -96,7 +96,7 @@ public sealed class NativeTransferBatch
     {
         var free=new List<int>(JerseyHigh);
         for(int number=JerseyLow;number<=JerseyHigh;number++)if(!taken.Contains(number))free.Add(number);
-        if(free.Count==0)throw new InvalidDataException("No free shirt number remains at the destination club.");
+        if(free.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("No free shirt number remains at the destination club."));
         return free[rng.Next(free.Count)];
     }
     static bool TryJersey(string value,out int number)=>int.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out number)&&number>=JerseyLow&&number<=JerseyHigh;
@@ -115,26 +115,26 @@ public sealed class NativeTransferBatch
         foreach(var pair in before)
             if(pair.Key.Row.RowState is DataRowState.Deleted or DataRowState.Detached ||
                 FootballCatalog.Value(pair.Key.Row,pair.Key.Column)!=pair.Value)
-                throw new InvalidOperationException("The database changed after preview.");
+                throw new InvalidOperationException(ATLink.Core.UiText.Get("The database changed after preview."));
         foreach(var step in Steps)
         {
             if(catalog.NationalTeamIds.Contains(step.SourceId)||catalog.NationalTeamIds.Contains(step.DestinationId))
-                throw new InvalidOperationException("Protected teams changed after preview.");
+                throw new InvalidOperationException(ATLink.Core.UiText.Get("Protected teams changed after preview."));
             if(players[step.PlayerId].RowState is DataRowState.Deleted or DataRowState.Detached ||
                teams[step.DestinationId].RowState is DataRowState.Deleted or DataRowState.Detached ||
                FootballCatalog.Value(players[step.PlayerId],"playerid")!=step.PlayerId ||
                FootballCatalog.Value(teams[step.DestinationId],"teamid")!=step.DestinationId)
-                throw new InvalidOperationException("Player or destination changed after preview.");
+                throw new InvalidOperationException(ATLink.Core.UiText.Get("Player or destination changed after preview."));
             var current=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"playerid")==step.PlayerId &&
                 !catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToArray();
             if(current.Length!=1||!ReferenceEquals(current[0],links[step.PlayerId]))
-                throw new InvalidOperationException("Club links changed after preview.");
+                throw new InvalidOperationException(ATLink.Core.UiText.Get("Club links changed after preview."));
         }
         var currentRelations=new[]{"playerloans","career_presignedcontract"}.SelectMany(catalog.Rows)
             .Where(r=>movedPlayers.Contains(FootballCatalog.Value(r,"playerid"))).ToArray();
         if(currentRelations.Length!=cancellations.Count ||
             currentRelations.Any(r=>!cancellations.TryGetValue(r,out var values)||!r.ItemArray.SequenceEqual(values)))
-            throw new InvalidOperationException("Loans or presigned contracts changed after preview.");
+            throw new InvalidOperationException(ATLink.Core.UiText.Get("Loans or presigned contracts changed after preview."));
 
         var loanTable=catalog.Table("playerloans");
         foreach(var loan in pendingLoans.Values)

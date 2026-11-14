@@ -56,8 +56,8 @@ public static class CompetitionEditing
     }
     public static void WeatherPreset(CompdataTable table,int country,string preset,bool missingOnly)
     {
-        if(table.Data.Columns.Count==9)throw new InvalidDataException("FC27 weather has five weights. Edit them directly; legacy climate presets use a different format.");
-        int[] dry=preset switch{"cold"=>[35,35,45,55,60,65,65,60,55,45,35,30],"tropical"=>[55,55,50,50,55,60,65,65,60,55,50,50],"dry"=>[85,85,90,90,92,95,95,95,92,90,88,85],"rainy"=>[35,35,40,40,35,35,40,40,35,35,30,30],"temperate"=>[40,45,55,60,65,70,70,65,60,55,45,40],_=>throw new InvalidDataException("Climat inconnu.")};
+        if(table.Data.Columns.Count==9)throw new InvalidDataException(ATLink.Core.UiText.Get("FC27 weather has five weights. Edit them directly; legacy climate presets use a different format."));
+        int[] dry=preset switch{"cold"=>[35,35,45,55,60,65,65,60,55,45,35,30],"tropical"=>[55,55,50,50,55,60,65,65,60,55,50,50],"dry"=>[85,85,90,90,92,95,95,95,92,90,88,85],"rainy"=>[35,35,40,40,35,35,40,40,35,35,30,30],"temperate"=>[40,45,55,60,65,70,70,65,60,55,45,40],_=>throw new InvalidDataException(ATLink.Core.UiText.Get("Climat inconnu."))};
         int[] rain=preset switch{"cold"=>[25,30,35,35,35,35,35,35,35,35,30,25],"temperate"=>[35,35,35,30,30,25,25,25,30,35,35,35],_=>dry.Select((d,i)=>100-d-(preset=="rainy"?new[]{5,5,0,0,0,0,0,0,0,0,5,10}[i]:0)).ToArray()};
         int[] cloud=preset switch{"cold"=>[70,65,60,55,50,45,45,50,55,60,70,75],"tropical"=>[55,55,60,60,55,50,45,45,50,55,60,60],"dry"=>[20,20,18,15,15,10,10,10,15,18,20,20],"rainy"=>[75,75,70,70,70,65,65,65,70,75,80,80],_=>[60,55,50,45,45,40,40,45,50,55,60,60]};
         string[] sunset=["1600","1630","1730","1830","1930","2030","2030","2000","1900","1800","1700","1600"];

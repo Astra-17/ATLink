@@ -6,8 +6,8 @@ public static class FootballQualifications
     public static IReadOnlyList<FootballQualificationKind> Available(CompetitionProjectContext c)=>Kinds.Where(k=>c.Rows("settings.txt").Any(r=>r[1]==k.Key)).ToArray();
     public static void SetLabel(CompetitionProjectContext c,int competition,int group,int position,string key)
     {
-        if(!c.Scope(competition).Contains(group)||!c.Objects.Any(o=>o.Id==group&&o.Kind==5)||position<1||position>c.Rows("standings.txt").Count(r=>r[0]==group.ToString()))throw new InvalidDataException("Choose a valid played group and finishing place.");
-        if(!Available(c).Any(k=>k.Key==key))throw new InvalidDataException("This qualification label has no verified native example in this game. It remains in Expert.");
+        if(!c.Scope(competition).Contains(group)||!c.Objects.Any(o=>o.Id==group&&o.Kind==5)||position<1||position>c.Rows("standings.txt").Count(r=>r[0]==group.ToString()))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a valid played group and finishing place."));
+        if(!Available(c).Any(k=>k.Key==key))throw new InvalidDataException(ATLink.Core.UiText.Get("This qualification label has no verified native example in this game. It remains in Expert."));
         string Family(string value)=>value=="info_label_slot_champ"?"title":value.Contains("promo")||value.Contains("releg")?"domestic":value.Contains("adv_")?"phase":"continental";
         foreach(var kind in Available(c).Where(k=>Family(k.Key)==Family(key)))
         {
@@ -26,16 +26,16 @@ public static class FootballQualifications
     }
     public static void ConnectTopTeams(CompetitionProjectContext c,int source,int group,int count,string label,int destination,int pool)
     {
-        if(source==destination)throw new InvalidDataException("Choose another competition as the qualification destination.");
-        if(!EntryPools(c,destination).Contains(pool))throw new InvalidDataException("Choose an incoming team pool in the destination competition.");
-        if(count<1||count>c.Rows("standings.txt").Count(r=>r[0]==group.ToString()))throw new InvalidDataException("Choose an existing number of top-ranked teams.");
-        var sourceModel=FootballCompetitionAdapter.Read(c,source);if(!sourceModel.Phases.Last().NativeGroups.Contains(group))throw new InvalidDataException("A season qualification must use a final results group. Intermediate-phase routes stay in Format & qualification.");
-        if(sourceModel.Phases.Last().NativeGroups.Count!=1)throw new InvalidDataException("A single final table is needed for automatic top-team qualifications. Configure special classifications in Expert.");
-        var original=FootballSeason.Read(c,destination);if(c.Rows("tasks.txt").Select((r,i)=>(r,i)).Any(x=>x.r[0]==destination.ToString()&&x.r[1]=="start"&&x.r[3]==pool.ToString()&&x.r[2].StartsWith("Fill")&&!original.ManagedRows.Contains(x.i)))throw new InvalidDataException("This pool has a special native entry rule. It is preserved; review its integration in Expert.");
+        if(source==destination)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose another competition as the qualification destination."));
+        if(!EntryPools(c,destination).Contains(pool))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose an incoming team pool in the destination competition."));
+        if(count<1||count>c.Rows("standings.txt").Count(r=>r[0]==group.ToString()))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose an existing number of top-ranked teams."));
+        var sourceModel=FootballCompetitionAdapter.Read(c,source);if(!sourceModel.Phases.Last().NativeGroups.Contains(group))throw new InvalidDataException(ATLink.Core.UiText.Get("A season qualification must use a final results group. Intermediate-phase routes stay in Format & qualification."));
+        if(sourceModel.Phases.Last().NativeGroups.Count!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("A single final table is needed for automatic top-team qualifications. Configure special classifications in Expert."));
+        var original=FootballSeason.Read(c,destination);if(c.Rows("tasks.txt").Select((r,i)=>(r,i)).Any(x=>x.r[0]==destination.ToString()&&x.r[1]=="start"&&x.r[3]==pool.ToString()&&x.r[2].StartsWith("Fill")&&!original.ManagedRows.Contains(x.i)))throw new InvalidDataException(ATLink.Core.UiText.Get("This pool has a special native entry rule. It is preserved; review its integration in Expert."));
         var tasks=original.Tasks.ToList();var match=tasks.FirstOrDefault(t=>t.Action=="FillFromCompTable"&&t.Target.Value==pool&&t.Parameters[0]==source);
         var next=new FootballSeasonTask("FillFromCompTable",new(pool),[source,count],match?.OriginalRow);
         if(match is null)tasks.Add(next);else tasks[tasks.IndexOf(match)]=next;
-        int entrants=tasks.Where(t=>t.Target.Value==pool&&t.Action.StartsWith("Fill")).Sum(t=>FootballBehaviour.SourceCount(c,t));if(entrants>c.Rows("standings.txt").Count(r=>r[0]==pool.ToString()))throw new InvalidDataException("These qualifiers would overfill the destination. Adjust its existing entry sources first.");
+        int entrants=tasks.Where(t=>t.Target.Value==pool&&t.Action.StartsWith("Fill")).Sum(t=>FootballBehaviour.SourceCount(c,t));if(entrants>c.Rows("standings.txt").Count(r=>r[0]==pool.ToString()))throw new InvalidDataException(ATLink.Core.UiText.Get("These qualifiers would overfill the destination. Adjust its existing entry sources first."));
         if(match is not null&&match.Parameters[1]>count)
         {
             var oldPlaces=Enumerable.Range(count+1,match.Parameters[1]-count).Select(n=>n.ToString()).ToHashSet();

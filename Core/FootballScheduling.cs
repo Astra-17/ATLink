@@ -28,7 +28,7 @@ public static class FootballAvailability
         string[] Ranked(int id)=>c.Rows("initteams.txt").Where(r=>r[0]==id.ToString()&&r.Length>=3&&r[2]!="-1").OrderBy(r=>int.TryParse(r[1],out int n)?n:int.MaxValue).Select(r=>r[2]).Distinct().ToArray();
         void Read(int id)
         {
-            if(!visiting.Add(id)){warnings.Add(c.ObjectName(competition)+": cyclic participant source; coverage incomplete.");return;}
+            if(!visiting.Add(id)){warnings.Add(ATLink.Core.UiText.Concat(c.ObjectName(competition), ATLink.Core.UiText.Get(": cyclic participant source; coverage incomplete.")));return;}
             foreach(var row in c.Rows("tasks.txt").Where(r=>r.Length>=7&&r[0]==id.ToString()&&r[1]=="start"&&r[2].StartsWith("Fill")))
             {
                 int P(int n)=>int.TryParse(row[n],out int value)?value:0;string[] teams=[];
@@ -36,10 +36,10 @@ public static class FootballAvailability
                 {
                     case "FillWithTeam":teams=[row[5]];break;
                     case "FillFromLeague":case "FillFromLeagueInOrder":teams=League(P(4));break;
-                    case "FillFromCompTable":teams=Ranked(P(4)).Take(P(5)).ToArray();if(teams.Length<P(5))warnings.Add(c.ObjectName(id)+": historical qualifiers are incomplete.");break;
+                    case "FillFromCompTable":teams=Ranked(P(4)).Take(P(5)).ToArray();if(teams.Length<P(5))warnings.Add(ATLink.Core.UiText.Concat(c.ObjectName(id), ATLink.Core.UiText.Get(": historical qualifiers are incomplete.")));break;
                     case "FillFromCompTableBackup":case "FillFromCompTableBackupLeague":
                         teams=Ranked(P(4));if(teams.Length<P(6))teams=teams.Concat(row[2].EndsWith("League")?League(P(5)):Ranked(P(5))).Distinct().ToArray();teams=teams.Take(P(6)).ToArray();break;
-                    default:warnings.Add(c.ObjectName(id)+": an unresolved participant-selection rule limits availability coverage.");break;
+                    default:warnings.Add(ATLink.Core.UiText.Concat(c.ObjectName(id), ATLink.Core.UiText.Get(": an unresolved participant-selection rule limits availability coverage.")));break;
                 }
                 result.AddRange(teams.Where(t=>c.Teams.Any(x=>x.Id==t)));
             }
@@ -54,13 +54,13 @@ public static class FootballAvailability
         {
             cancellation.ThrowIfCancellationRequested();var root=roots[n];progress?.Report((n+1)*100/Math.Max(1,roots.Length));
             var teams=Participants(c,root.Id,warnings);var slots=c.Calendar(root.Id);
-            if(c.EffectiveRules(root.Id).Any(r=>r.Key=="schedule_refcomp"))warnings.Add(root.DisplayName+": calendar reference behaviour may require game-side scheduling; only supplied comparable slots are projected.");
+            if(c.EffectiveRules(root.Id).Any(r=>r.Key=="schedule_refcomp"))warnings.Add(ATLink.Core.UiText.Concat(root.DisplayName, ATLink.Core.UiText.Get(": calendar reference behaviour may require game-side scheduling; only supplied comparable slots are projected.")));
             foreach(var fixedSlot in slots.Where(s=>s.FixedDate.HasValue))
             {
                 string key=fixedSlot.File+":"+fixedSlot.Row;if(!seenSlots.Add(key))continue;
                 events.Add(new(key,root.Id,root.DisplayName,fixedSlot.FixedDate!.Value,NativeTime(fixedSlot.Time),[fixedSlot.Home!,fixedSlot.Away!],FootballScheduleStatus.KnownFixture,"Assigned fixture: "+fixedSlot.File));
             }
-            if(teams.Count==0){warnings.Add(root.DisplayName+": participants could not be resolved; no free-time guarantee is available.");continue;}
+            if(teams.Count==0){warnings.Add(ATLink.Core.UiText.Concat(root.DisplayName, ATLink.Core.UiText.Get(": participants could not be resolved; no free-time guarantee is available.")));continue;}
             var model=FootballCompetitionAdapter.Read(c,root.Id);
             foreach(var phase in model.Phases)
             {
@@ -86,10 +86,10 @@ public static class FootballAvailability
                         events.Add(new(identity,root.Id,root.DisplayName,day.Key,times.Length==1?times[0]:null,teams,FootballScheduleStatus.PossibleMatchday,"Native round "+round.Key+" · "+phase.Name+"; participant/qualification and slot allocation may change"));
                     }
                 }
-                if(phaseSlots.Length==0)warnings.Add(root.DisplayName+" · "+phase.Name+": no comparable native calendar was found.");
+                if(phaseSlots.Length==0)warnings.Add(ATLink.Core.UiText.Concat(root.DisplayName+" · "+phase.Name, ATLink.Core.UiText.Get(": no comparable native calendar was found.")));
             }
         }
-        warnings.Add(c.CalendarReferenceLabel+" Career-mode postponements and qualification results cannot be predicted.");
+        warnings.Add(ATLink.Core.UiText.Concat(c.CalendarReferenceLabel, ATLink.Core.UiText.Get(" Career-mode postponements and qualification results cannot be predicted.")));
         return new(events.GroupBy(e=>e.Id).Select(g=>g.First() with{Teams=g.SelectMany(e=>e.Teams).Distinct().ToArray(),CompetitionName=string.Join(" / ",g.Select(e=>e.CompetitionName).Distinct())}).ToArray(),warnings.Distinct().ToArray(),Fingerprint(c));
     }
 }
@@ -105,21 +105,25 @@ public static class FootballFixtureSimulation
             for(int r=0;r<count;r++,index++)
             {
                 var p=calendar[index];var fixtures=new List<(int Round,string? Home,string? Away,string H,string A,IReadOnlyList<string> Possible)>();
-                var seeds=phase.Kind==FootballPhaseKind.Knockout?FootballMatchups.Seats(stages,index,participants):null;
+                var seeds=FootballMatchups.Seats(stages,index,participants);
                 string? Club(FootballMatchupSource s)=>s.Kind==FootballMatchupSourceKind.Entry?s.TeamId??(participants.Count==stages[0].Participants?participants.ElementAtOrDefault(s.Ordinal):null):null;
                 IReadOnlyList<string> Possible(FootballMatchupSource s)
                 {
                     if(Club(s) is {} club)return [club];
                     var from=stages.FirstOrDefault(t=>t.Key==s.PhaseKey);
                     if(s.Kind==FootballMatchupSourceKind.Winner&&from is not null){var match=result.FirstOrDefault(m=>m.PhaseIndex==from.Index&&m.Match==s.Ordinal);if(match is not null)return match.Teams.Count>0?match.Teams:match.PossibleTeams;}
-                    if(s.Kind==FootballMatchupSourceKind.GroupRank&&from?.Index==0&&participants.Count==from.Participants)return participants.Skip(s.Ordinal*(from.Participants/from.Phase.Groups)).Take(from.Participants/from.Phase.Groups).ToArray();
+                    if(s.Kind==FootballMatchupSourceKind.GroupRank&&from?.Index==0&&participants.Count==from.Participants)return FootballMatchups.Seats(stages,from.Index,participants).Skip(s.Ordinal*(from.Participants/from.Phase.Groups)).Take(from.Participants/from.Phase.Groups).Select(Club).Where(t=>t is not null).Cast<string>().ToArray();
                     return participants.ToArray();
                 }
                 bool concrete=index==0&&participants.Count==phase.Participants;
-                if(concrete&&phase.Kind is FootballPhaseKind.League or FootballPhaseKind.Groups)
+                if(phase.Kind is FootballPhaseKind.League or FootballPhaseKind.Groups)
                 {
                     int size=phase.Participants/phase.Groups;
-                    for(int g=0;g<phase.Groups;g++)foreach(var f in TournamentBuilder.RoundRobin(participants.Skip(g*size).Take(size).ToArray(),phase.Legs==2))fixtures.Add((f.Round,f.Home,f.Away,name(f.Home),name(f.Away),[f.Home,f.Away]));
+                    for(int g=0;g<phase.Groups;g++)foreach(var f in TournamentBuilder.RoundRobin(Enumerable.Range(g*size,size).Select(n=>n.ToString()).ToArray(),phase.Legs==2))
+                    {
+                        var home=seeds[int.Parse(f.Home)];var away=seeds[int.Parse(f.Away)];
+                        fixtures.Add((f.Round,Club(home),Club(away),FootballMatchups.Label(home,stages,name),FootballMatchups.Label(away,stages,name),Possible(home).Concat(Possible(away)).Distinct().ToArray()));
+                    }
                 }
                 else for(int leg=1;leg<=p.Rounds;leg++)for(int m=0;m<p.Matches;m++)
                 {
@@ -171,7 +175,7 @@ public static class FootballSchedulePlanner
     }
     public static FootballScheduleProposal Place(IReadOnlyList<FootballPlannedMatch> input,FootballScheduleIndex index,FootballSchedulingOptions options,CancellationToken cancellation=default,IProgress<int>? progress=null)
     {
-        if(options.End<options.Start||options.RestDays is <0 or >7||options.Days.Count==0)throw new InvalidDataException("Choose a valid date range, allowed weekdays and 0–7 rest days.");
+        if(options.End<options.Start||options.RestDays is <0 or >7||options.Days.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a valid date range, allowed weekdays and 0–7 rest days."));
         string time=FootballExactCalendar.Time(options.Kickoff);var placed=input.Where(m=>m.Locked&&m.Date.HasValue).ToList();var unplaced=new List<Guid>();
         int lastPhase=-1,lastRound=-1,processed=placed.Count;DateOnly earliest=options.Start;var reasons=new Dictionary<Guid,string>();
         foreach(var group in input.GroupBy(m=>(m.PhaseIndex,m.Round)).OrderBy(g=>g.Key.PhaseIndex).ThenBy(g=>g.Key.Round))

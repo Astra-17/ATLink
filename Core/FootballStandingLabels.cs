@@ -27,10 +27,10 @@ public static class FootballStandingLabels
             int size=c.Rows("standings.txt").Count(r=>r[0]==group.ToString());
             foreach(var rule in c.EffectiveRules(group).Where(r=>Keys.ContainsKey(r.Key)))
                 if(int.TryParse(rule.Value,out int rank)&&rank>=1&&rank<=size)
-                {var label=Keys[rule.Key];result.Add(new(group,rank,rule.Key,label.Label,label.Category,"Native competition setting"));}
+                {var label=Keys[rule.Key];result.Add(new(group,rank,rule.Key,UiText.Get(label.Label),label.Category,UiText.Get("Native competition setting")));}
             foreach(var route in c.Rows("advancement.txt").Where(r=>r[0]==group.ToString()))
                 if(int.TryParse(route[1],out int rank)&&rank>=1&&rank<=size&&int.TryParse(route[2],out int destination)&&!FootballCompetitionAdapter.IsHidden(c,destination))
-                    result.Add(new(group,rank,"route","Qualifies for "+c.ObjectPath(destination),"Qualification","Qualification route"));
+                    result.Add(new(group,rank,"route",ATLink.Core.UiText.Concat(UiText.Get("Qualifies for "), c.ObjectPath(destination)),"Qualification",UiText.Get("Qualification route")));
         }
         return result.DistinctBy(r=>(r.Group,r.Position,r.Text)).OrderBy(r=>r.Group).ThenBy(r=>r.Position).ToArray();
     }

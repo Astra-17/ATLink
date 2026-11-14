@@ -10,7 +10,7 @@ public static class FifaModCacheSelection
         Span<byte> header = stackalloc byte[12];
         input.ReadExactly(header);
         if (!header[..5].SequenceEqual("FETC\u0004"u8))
-            throw new InvalidDataException("Select an FC27 cache in FETC version 4 format.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Select an FC27 cache in FETC version 4 format."));
         return header[5..].ToArray();
     }
 

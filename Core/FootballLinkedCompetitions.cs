@@ -18,7 +18,7 @@ public static partial class FootballLinkedCompetitions
     ];
     static void RequireFc27(CompetitionProjectContext c)
     {
-        if (c.Game != "FC27" || c.Base is null) throw new InvalidDataException("Load an FC27 project and its full database.");
+        if (c.Game != "FC27" || c.Base is null) throw new InvalidDataException(ATLink.Core.UiText.Get("Load an FC27 project and its full database."));
     }
     static void Replace(CompetitionProjectContext c, string file, Func<string[], bool> managed, IEnumerable<string[]> replacement)
     {
@@ -36,7 +36,7 @@ public static partial class FootballLinkedCompetitions
         var phase = FootballCompetitionAdapter.Read(c, competition).Phases.FirstOrDefault();
         if (phase is not { Kind: FootballPhaseKind.Groups, Groups: 2 } || phase.NativeGroups.Count != 2 ||
             phase.NativeGroups.Any(g => Capacity(c, g) != phase.Participants / 2))
-            throw new InvalidDataException("Choose a competition starting with two equally sized groups.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a competition starting with two equally sized groups."));
         return phase;
     }
     static int EntryPool(CompetitionProjectContext c, int competition)
@@ -45,7 +45,7 @@ public static partial class FootballLinkedCompetitions
         var sources = c.Rows("advancement.txt").Where(r => phase.NativeGroups.Contains(int.Parse(r[2])) &&
             FootballCompetitionAdapter.IsHidden(c, int.Parse(r[0]))).Select(r => int.Parse(r[0])).Distinct().ToArray();
         if (sources.Length != 1 || Capacity(c, sources[0]) != phase.Participants)
-            throw new InvalidDataException("The incoming teams need a single preparation group. This special structure is preserved.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("The incoming teams need a single preparation group. This special structure is preserved."));
         return sources[0];
     }
     public static IReadOnlyList<string> DirectTeams(CompetitionProjectContext c, int competition)
@@ -130,11 +130,11 @@ public static partial class FootballLinkedCompetitions
         int size = phase.Participants / 2, pool = EntryPool(c, destination);
         if (qualifierFinals.Length is not (0 or 2) || direct.Count + qualifierFinals.Length != phase.Participants ||
             direct.Distinct().Count() != direct.Count || direct.Any(id => !c.Teams.Any(t => t.Id == id)))
-            throw new InvalidDataException($"Select exactly {phase.Participants - qualifierFinals.Length} different direct clubs.");
+            throw new InvalidDataException(ATLink.Core.UiText.Format("Select exactly {0} different direct clubs.", phase.Participants - qualifierFinals.Length));
         var fills = c.Rows("tasks.txt").Where(r => r[0] == destination.ToString() && r[1] == "start" && r[2].StartsWith("Fill")).ToArray();
         if (fills.Any(r => r[3] != pool.ToString() || r[2] is not ("FillWithTeam" or "FillFromCompTable") ||
             r[2] == "FillFromCompTable" && r[4] != destination.ToString()))
-            throw new InvalidDataException("Existing team sources need review before reserving qualifying places.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Existing team sources need review before reserving qualifying places."));
         Replace(c, "tasks.txt", r => r[0] == destination.ToString() && r[1] == "start" && r[2].StartsWith("Fill"),
             [Row(destination, "start", "FillFromCompTable", pool, destination, direct.Count, 0)]);
         FootballSeason.ApplyInitialStandings(c, destination, direct.Select((id, i) => new FootballStandingSeed(id, i)).ToArray());
@@ -152,7 +152,7 @@ public static partial class FootballLinkedCompetitions
         var own = c.Scope(destination);
         var external = c.Rows("advancement.txt").Where(r => r[2] == pool.ToString() && !own.Contains(int.Parse(r[0]))).ToArray();
         if (external.Any(r => !qualifierFinals.Contains(int.Parse(r[0]))))
-            throw new InvalidDataException("Other competitions already supply this entry group.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Other competitions already supply this entry group."));
         Replace(c, "advancement.txt", r => r[0] == pool.ToString() ||
             qualifierFinals.Contains(int.Parse(r[0])) && r[2] == pool.ToString(), routes);
     }
@@ -160,30 +160,30 @@ public static partial class FootballLinkedCompetitions
     public static void ConfigureDivisions(CompetitionProjectContext c, int upper, int lower, FootballPromotionSource promotion)
     {
         RequireFc27(c);
-        if (upper == lower) throw new InvalidDataException("Choose two different competitions.");
+        if (upper == lower) throw new InvalidDataException(ATLink.Core.UiText.Get("Choose two different competitions."));
         var top = GroupPhase(c, upper);
         var bottom = GroupPhase(c, lower);
         if (top.Participants != bottom.Participants || top.Participants < 8)
-            throw new InvalidDataException("Both divisions need the same number of clubs, with at least four per group.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Both divisions need the same number of clubs, with at least four per group."));
         var qualifiers = QualifiersFor(c, lower);
-        if (qualifiers.Count > 1) throw new InvalidDataException("This lower division has multiple qualifying competitions.");
+        if (qualifiers.Count > 1) throw new InvalidDataException(ATLink.Core.UiText.Get("This lower division has multiple qualifying competitions."));
         var finals = qualifiers.SingleOrDefault()?.FinalGroups ?? [];
         var upperSeeds = DirectTeams(c, upper);
         var lowerSeeds = DirectTeams(c, lower);
         if (upperSeeds.Count != top.Participants || lowerSeeds.Count != bottom.Participants - finals.Length ||
             upperSeeds.Concat(lowerSeeds).Distinct().Count() != upperSeeds.Count + lowerSeeds.Count)
-            throw new InvalidDataException("Choose complete, distinct initial club lists for the two divisions.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose complete, distinct initial club lists for the two divisions."));
         var phases = FootballCompetitionAdapter.Read(c, lower).Phases;
         var semi = phases.FirstOrDefault(p => p.Kind == FootballPhaseKind.Knockout && p.Participants == 4);
         if (promotion == FootballPromotionSource.SemifinalWinners && (semi is null || semi.NativeGroups.Count != 2))
-            throw new InvalidDataException("Add semi-finals and a final to the lower division before selecting semi-final winners.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Add semi-finals and a final to the lower division before selecting semi-final winners."));
         var managed = new HashSet<int> { upper, lower };
         var existing = c.Rows("tasks.txt").Where(r => managed.Contains(int.Parse(r[0]))).ToArray();
         if(c.Rows("tasks.txt").Any(r=>!managed.Contains(int.Parse(r[0]))&&r[1]=="end"&&r[2]=="UpdateTable"&&managed.Contains(int.Parse(r[3]))))
-            throw new InvalidDataException("Another competition already supplies these season tables. Review that link before replacing the division rules.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Another competition already supplies these season tables. Review that link before replacing the division rules."));
         if (existing.Any(r => r[1] == "end" && r[2] != "UpdateTable" ||
             r[2] == "UpdateTable" && !managed.Contains(int.Parse(r[3]))))
-            throw new InvalidDataException("These competitions have other season operations. Review the existing links first.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("These competitions have other season operations. Review the existing links first."));
         c.Execute("Link promotion and relegation", () =>
         {
             SetMainEntries(c, upper, upperSeeds, []);
@@ -208,7 +208,7 @@ public static partial class FootballLinkedCompetitions
                 int last = size - finals.Length / 2;
                 for (int rank = first; rank <= last; rank++)
                     writes.Add(Row(lower, "end", "UpdateTable", lower, bottom.NativeGroups[group], rank, offset + place++));
-                if (place != lowerPerGroup) throw new InvalidDataException("The lower division's retained places do not balance.");
+                if (place != lowerPerGroup) throw new InvalidDataException(ATLink.Core.UiText.Get("The lower division's retained places do not balance."));
                 writes.Add(Row(upper, "end", "UpdateTable", lower, top.NativeGroups[group], size, offset + lowerPerGroup));
             }
             Replace(c, "tasks.txt", r => managed.Contains(int.Parse(r[0])) && r[1] == "end" && r[2] == "UpdateTable", writes);
@@ -224,7 +224,7 @@ public static partial class FootballLinkedCompetitions
     public static void ShareGroupDates(CompetitionProjectContext c, int destination, int source, string? kickoff = null)
     {
         RequireFc27(c);
-        if (source == destination) throw new InvalidDataException("Choose another competition as the calendar source.");
+        if (source == destination) throw new InvalidDataException(ATLink.Core.UiText.Get("Choose another competition as the calendar source."));
         var from = GroupPhase(c, source);
         var to = GroupPhase(c, destination);
         var targetSlots = c.Rows("schedule.txt").Where(r => r[0] == to.NativeId.ToString() || to.NativeGroups.Contains(int.Parse(r[0]))).ToArray();
@@ -232,11 +232,11 @@ public static partial class FootballLinkedCompetitions
         var dates = sourceSlots.GroupBy(r => r[2]).ToDictionary(g => g.Key, g =>
         {
             if (g.Select(r => r[1]).Distinct().Count() != 1 || kickoff is null && g.Select(r => r[5]).Distinct().Count() != 1)
-                throw new InvalidDataException("A source matchday has several dates or kickoffs. Choose its slots individually in Calendar.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("A source matchday has several dates or kickoffs. Choose its slots individually in Calendar."));
             return (Day: g.First()[1], Time: kickoff is null ? g.First()[5] : TournamentBuilder.Time(kickoff));
         });
         if (targetSlots.Length == 0 || !targetSlots.Select(r => r[2]).Distinct().ToHashSet().SetEquals(dates.Keys))
-            throw new InvalidDataException("Both group phases need the same number of scheduled matchdays.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Both group phases need the same number of scheduled matchdays."));
         c.Execute("Use linked matchday dates", () =>
         {
             var rows = targetSlots.Select(r => { var copy = r.ToArray(); var date = dates[r[2]]; copy[1] = date.Day; copy[5] = date.Time; return copy; }).ToArray();
@@ -249,9 +249,9 @@ public static partial class FootballLinkedCompetitions
         if (quotas.Count == 0 || quotas.Any(q => q.Path is < 0 or > 1 || q.Places is < 1 or > 32) ||
             new[] { 0, 1 }.Any(path => quotas.Where(q => q.Path == path).Sum(q => q.Places) != 32) ||
             quotas.GroupBy(q => (q.Path, q.LeagueId)).Any(g => g.Count() > 1))
-            throw new InvalidDataException("Assign exactly 32 clubs to each qualifying path, using each league once per path.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Assign exactly 32 clubs to each qualifying path, using each league once per path."));
         var leagues = new FootballCatalog(c.Base!).Entities("leagues").Select(l => int.Parse(l.Id)).ToHashSet();
-        if (quotas.Any(q => !leagues.Contains(q.LeagueId))) throw new InvalidDataException("Choose leagues present in the selected game.");
+        if (quotas.Any(q => !leagues.Contains(q.LeagueId))) throw new InvalidDataException(ATLink.Core.UiText.Get("Choose leagues present in the selected game."));
     }
 
     public static int CreateQualifiers(CompetitionProjectContext c, string name, int destination, int? excludedCompetition,
@@ -260,13 +260,13 @@ public static partial class FootballLinkedCompetitions
         RequireFc27(c);
         ValidateQuotas(c, quotas);
         ValidateCalendar(calendar);
-        if (QualifiersFor(c, destination).Count > 0) throw new InvalidDataException("This competition already has qualifying playoffs. Select them to edit their quotas.");
+        if (QualifiersFor(c, destination).Count > 0) throw new InvalidDataException(ATLink.Core.UiText.Get("This competition already has qualifying playoffs. Select them to edit their quotas."));
         int created = 0;
         c.Execute("Add qualifying playoffs", () =>
         {
             var profile = FootballCompetitionAdapter.SelectProfile(c, FootballCompetitionAdapter.Profiles(c),
                 FootballCompetitionKind.Custom, c.Objects.Single(o => o.Id == destination).ParentId)
-                ?? throw new InvalidDataException("No compatible regional competition profile is available.");
+                ?? throw new InvalidDataException(ATLink.Core.UiText.Get("No compatible regional competition profile is available."));
             created = c.Create(profile.TemplateId, name, TournamentFormat.League, 1, 64, [], calendar[0].Date, 3, "20:00", false, 7, 5, 3, 1, 0);
             var disposable = c.Scope(created);
             disposable.Remove(created);
@@ -358,7 +358,7 @@ public static partial class FootballLinkedCompetitions
     static void ValidateCalendar(IReadOnlyList<FootballPlayoffDate> dates)
     {
         if (dates.Count != 5 || dates.Zip(dates.Skip(1)).Any(pair => pair.First.Date >= pair.Second.Date))
-            throw new InvalidDataException("Choose five dates in chronological order.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose five dates in chronological order."));
         foreach (var date in dates) { _ = TournamentBuilder.Time(date.FirstKickoff); _ = TournamentBuilder.Time(date.SecondKickoff); }
     }
     public static void UpdateQualifiers(CompetitionProjectContext c, FootballQualifierLink link, int? excluded,
@@ -386,18 +386,18 @@ public static partial class FootballLinkedCompetitions
         IReadOnlyList<FootballNationalQuota> quotas, IReadOnlyList<FootballPlayoffDate> calendar, IReadOnlyList<FootballQualifierRound>? rounds = null)
     {
         if (excluded == link.Competition || excluded == link.Destination)
-            throw new InvalidDataException("Choose another competition to exclude, or None.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose another competition to exclude, or None."));
         if(excluded.HasValue&&!c.Objects.Any(o=>o.Id==excluded&&o.Kind==3))
-            throw new InvalidDataException("Choose an existing competition to exclude.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose an existing competition to exclude."));
         var phases = FootballCompetitionAdapter.Read(c, link.Competition).Phases;
         if (phases.Count != 5 || phases.Where((p, i) => p.NativeGroups.Count != 32 >> i).Any())
-            throw new InvalidDataException("The existing playoff structure is not compatible.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("The existing playoff structure is not compatible."));
         var caps = quotas.GroupBy(q => q.LeagueId).ToDictionary(g => g.Key, g => g.Sum(q => q.Places));
         var rows = quotas.OrderBy(q => q.Path).Select(q => Row(link.Competition, "start", "FillFromLeagueMaxFromCountry",
             link.EntryPools[q.Path], q.LeagueId, q.Places, caps[q.LeagueId])).ToArray();
         var old = c.Rows("tasks.txt").Where(r => r[0] == link.Competition.ToString()).ToArray();
         if (old.Any(r => r[1] != "start" || r[2] != "FillFromLeagueMaxFromCountry"))
-            throw new InvalidDataException("This qualifying competition has additional operations that must be preserved.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("This qualifying competition has additional operations that must be preserved."));
         Replace(c, "tasks.txt", r => r[0] == link.Competition.ToString(), rows);
         var dependencies = new[] { excluded, (int?)link.Destination }.Where(id => id.HasValue).Select(id => id!.Value.ToString()).ToArray();
         c.SetRule(link.Competition, "advance_teamcompdependency", dependencies);
@@ -406,7 +406,7 @@ public static partial class FootballLinkedCompetitions
         {
             var date = calendar[round];
             int offset = date.Date.DayNumber - c.ReferenceDate.DayNumber;
-            if (offset < 0) throw new InvalidDataException("The date precedes this project's season reference.");
+            if (offset < 0) throw new InvalidDataException(ATLink.Core.UiText.Get("The date precedes this project's season reference."));
             for (int tie = 0; tie < phases[round].NativeGroups.Count; tie++)
                 slots.Add(Row(phases[round].NativeGroups[tie], offset, 1, 1, 1,
                     TournamentBuilder.Time(tie < phases[round].NativeGroups.Count / 2 ? date.FirstKickoff : date.SecondKickoff)));

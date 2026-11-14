@@ -5,7 +5,7 @@ using ATLink.Views;
 
 internal static class CreationLinkedGraphUiChecks
 {
-    public static void Run(CompetitionProjectContext c,CompetitionProjectContext reference,CompetitionArtwork[]? artwork=null)
+    public static void Run(CompetitionProjectContext c,CompetitionProjectContext reference,CompetitionArtwork[]? artwork=null,bool customAdvancement=false)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception(message);}
         var before=c.Project.Files.ToDictionary(f=>f.RelativePath,f=>f.Text);
@@ -56,6 +56,13 @@ internal static class CreationLinkedGraphUiChecks
         foreach(var club in child.Links.DirectClubs)club.Selected=lowerTeams.Contains(club.Club.Id);
         foreach(var team in child.Participants.Where(t=>!lowerTeams.Contains(t.Id)).ToArray())child.Participants.Remove(team);
         Check(child.Participants.Count==18,"Direct-entry test needs exactly 18 selected clubs.");
+        if(customAdvancement)
+        {
+            child.Advancement.Synchronize();var allocation=child.Matchups.AllRounds[0];
+            Check(allocation.Seats[9].Selected!.Source.Ordinal==18&&allocation.Seats[19].Selected!.Source.Ordinal==19,"Reserved winners are not shown one per group.");
+            Check(allocation.Seats[0].Selected!.Source.TeamId is not null,"Direct-entry club names are missing.");
+            allocation.Seats[0].Selected=allocation.Seats[9].Selected;
+        }
         child.Create();Check(child.Completed,"Nested draft rejected: "+child.Error);
         Check(root.Links.NewDrafts.Count==1,"Nested draft was not attached to the parent.");
         Check(c.Objects.Count==beforeObjects&&c.Inserts.Count==beforeInserts&&c.Project.Files.All(f=>f.Text==before[f.RelativePath]),
@@ -63,7 +70,7 @@ internal static class CreationLinkedGraphUiChecks
 
         root.Links.Review();root.UpdateReview();
         ((System.Windows.Controls.TabControl)rootWizard.FindName("Steps")).SelectedIndex=1;
-        ((System.Windows.Controls.TabControl)rootWizard.FindName("TeamsAndRulesTabs")).SelectedItem=rootWizard.FindName("CreationLinksTab");
+        ((System.Windows.Controls.TabControl)rootWizard.FindName("Steps")).SelectedItem=rootWizard.FindName("CreationLinksTab");
         LinkedUiRenderChecks.Render(rootWizard,"creation-linked");
         Check(root.Review.Contains("Draft Community")&&root.Review.Contains("Linked competitions"),"Linked drafts absent from Review.");
         Check(root.Links.Promotion?.Id==1,"Promotion rule did not synchronize between reciprocal draft choices.");
@@ -92,6 +99,8 @@ internal static class CreationLinkedGraphUiChecks
             Check(c.Rows("tasks.txt").Where(r=>r[1]=="end"&&r[2]=="UpdateTable"&&r[3]==id.ToString()).Select(r=>int.Parse(r[6])).Order()
                 .SequenceEqual(Enumerable.Range(1,count)),"Incomplete draft season table.");
         var lowerGroup=FootballLinkedCompetitions.GroupPhase(c,lower);
+        if(customAdvancement)
+            Check(c.Rows("advancement.txt").Any(r=>r[2]==lowerGroup.NativeGroups[0].ToString()&&r[3]=="1"&&r[1]=="19"),"Linked entry setup silently replaced a customized allocation.");
         var upperGroup=FootballLinkedCompetitions.GroupPhase(c,upper);
         Check(c.Rows("schedule.txt").Where(r=>r[0]==lowerGroup.NativeId.ToString()).Select(r=>(r[1],r[2],r[5]))
             .SequenceEqual(c.Rows("schedule.txt").Where(r=>r[0]==upperGroup.NativeId.ToString()).Select(r=>(r[1],r[2],r[5]))),"Draft calendar source ignored.");

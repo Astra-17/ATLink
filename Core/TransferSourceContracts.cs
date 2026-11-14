@@ -46,7 +46,7 @@ public static class TransferImport
         foreach(var url in urls.Distinct(StringComparer.Ordinal))
         {
             if(!CompetitionCatalog.All.Any(c=>c.TransfermarktUrl==url))
-                throw new InvalidDataException("Choose a supported Transfermarkt competition.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a supported Transfermarkt competition."));
             var result=await source.FetchTransfersAsync(url,token,progress).ConfigureAwait(false);
             if(!result.Success)throw new InvalidDataException(result.UserMessage);
             batches.Add(result.Transfers);

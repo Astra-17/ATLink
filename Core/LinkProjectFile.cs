@@ -16,7 +16,7 @@ internal static class LinkProjectFile
         if(password is not null)ValidatePassword(password);
         using var compressed = new LimitedBuffer();
         var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
-        if (files.Length is 0 or > MaxFiles) throw new InvalidDataException("Invalid project file count.");
+        if (files.Length is 0 or > MaxFiles) throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project file count."));
         ulong remaining = MaxExpanded - sizeof(uint);
         using (var deflate = new DeflateStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
         using (var writer = new BinaryWriter(deflate))
@@ -26,7 +26,7 @@ internal static class LinkProjectFile
             {
                 string relative = Path.GetRelativePath(folder, file).Replace('\\', '/');
                 byte[] name = Utf8.GetBytes(relative);
-                if (name.Length is 0 or > MaxPathBytes) throw new InvalidDataException("Invalid project path length.");
+                if (name.Length is 0 or > MaxPathBytes) throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project path length."));
                 ValidatePath(relative);
                 using var input = File.OpenRead(file);
                 ulong size = (ulong)input.Length;
@@ -77,14 +77,14 @@ internal static class LinkProjectFile
     {
         using var input = File.OpenRead(path);
         long size = input.Length - HeaderSize - TagSize;
-        if (size <= 0 || size > MaxCiphertext) throw new InvalidDataException("Invalid .link file size.");
+        if (size <= 0 || size > MaxCiphertext) throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid .link file size."));
         byte[] header = new byte[HeaderSize];
         input.ReadExactly(header);
-        if (!header.AsSpan(0, 4).SequenceEqual("ATLK"u8)) throw new InvalidDataException("This is not an ATLink project.");
-        if (header[4] is not (1 or 2)) throw new InvalidDataException("Unsupported .link version: " + header[4]);
+        if (!header.AsSpan(0, 4).SequenceEqual("ATLK"u8)) throw new InvalidDataException(ATLink.Core.UiText.Get("This is not an ATLink project."));
+        if (header[4] is not (1 or 2)) throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unsupported .link version: "), header[4]));
         if(header[4]==1)
         {
-            if(password is null)throw new InvalidDataException("This old password-protected .link format is no longer supported. Export a new project with the current ATLink version.");
+            if(password is null)throw new InvalidDataException(ATLink.Core.UiText.Get("This old password-protected .link format is no longer supported. Export a new project with the current ATLink version."));
             ValidatePassword(password);
         }
         byte[] cipher = new byte[(int)size];
@@ -97,26 +97,26 @@ internal static class LinkProjectFile
             try { Transform(password, header, cipher, tag, plaintext, encrypt: false); }
             catch (AuthenticationTagMismatchException)
             {
-                throw new InvalidDataException(header[4]==2?"Damaged .link file.":"Incorrect password or damaged .link file.");
+                throw new InvalidDataException(header[4]==2?ATLink.Core.UiText.Get("Damaged .link file."):ATLink.Core.UiText.Get("Incorrect password or damaged .link file."));
             }
             using var compressed = new MemoryStream(plaintext, writable: false);
             using var deflate = new DeflateStream(compressed, CompressionMode.Decompress);
             using var reader = new BinaryReader(deflate);
             uint count = reader.ReadUInt32();
-            if (count is 0 or > MaxFiles) throw new InvalidDataException("Invalid project file count.");
+            if (count is 0 or > MaxFiles) throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project file count."));
             ulong remaining = MaxExpanded - sizeof(uint);
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             byte[] buffer = new byte[81920];
             for (uint i = 0; i < count; i++)
             {
                 uint length = reader.ReadUInt32();
-                if (length is 0 or > MaxPathBytes) throw new InvalidDataException("Invalid project path length.");
+                if (length is 0 or > MaxPathBytes) throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project path length."));
                 Charge(ref remaining, 12UL + length);
                 byte[] name = new byte[(int)length];
                 deflate.ReadExactly(name);
                 string relative = Utf8.GetString(name);
                 ValidatePath(relative);
-                if (!seen.Add(relative)) throw new InvalidDataException("Duplicate project path: " + relative);
+                if (!seen.Add(relative)) throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Duplicate project path: "), relative));
                 ulong bytes = reader.ReadUInt64();
                 Charge(ref remaining, bytes);
                 string target = Path.Combine(folder, relative);
@@ -131,7 +131,7 @@ internal static class LinkProjectFile
                 }
             }
             if (deflate.ReadByte() != -1 || !seen.Contains("project.json"))
-                throw new InvalidDataException("Invalid project payload or missing project.json.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project payload or missing project.json."));
         }
         finally { CryptographicOperations.ZeroMemory(plaintext); }
     }
@@ -159,12 +159,12 @@ internal static class LinkProjectFile
 
     static void ValidatePassword(string password)
     {
-        if (string.IsNullOrEmpty(password)) throw new InvalidDataException("Enter a password.");
+        if (string.IsNullOrEmpty(password)) throw new InvalidDataException(ATLink.Core.UiText.Get("Enter a password."));
     }
 
     static void Charge(ref ulong remaining, ulong bytes)
     {
-        if (bytes > remaining) throw new InvalidDataException("The expanded project exceeds 2 GiB.");
+        if (bytes > remaining) throw new InvalidDataException(ATLink.Core.UiText.Get("The expanded project exceeds 2 GiB."));
         remaining -= bytes;
     }
 
@@ -178,7 +178,7 @@ internal static class LinkProjectFile
                 device is "CON" or "PRN" or "AUX" or "NUL" or "CONIN$" or "CONOUT$" ||
                 (device.Length == 4 && (device.StartsWith("COM") || device.StartsWith("LPT")) &&
                     "0123456789¹²³".Contains(device[3])))
-                throw new InvalidDataException("Unsafe project path: " + path);
+                throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unsafe project path: "), path));
         }
     }
 
@@ -196,7 +196,7 @@ internal static class LinkProjectFile
         }
         void Check(int count)
         {
-            if (Position + count > MaxCiphertext) throw new InvalidDataException("The compressed project exceeds 512 MiB.");
+            if (Position + count > MaxCiphertext) throw new InvalidDataException(ATLink.Core.UiText.Get("The compressed project exceeds 512 MiB."));
         }
     }
 }

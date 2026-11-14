@@ -33,28 +33,28 @@ public sealed class FootballSeasonViewModel:FootballNotify
     {
         try
         {
-            if(HasPending)throw new InvalidDataException("Apply or cancel pending season rules first.");
+            if(HasPending)throw new InvalidDataException(ATLink.Core.UiText.Get("Apply or cancel pending season rules first."));
             if(CompetitionId is not int id||ExchangeDestination is not {} destination)
-                throw new InvalidDataException("Choose the lower competition.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Choose the lower competition."));
             FootballSeason.ConfigureTwoGroupExchange(Context,id,destination.Id);
             changed?.Invoke();Load();
-            Preview="Promotion and relegation applied to both competitions. Export and verify the next season in FC27.";
+            Preview=ATLink.Core.UiText.Get("Promotion and relegation applied to both competitions. Export and verify the next season in FC27.");
             Notify(nameof(Preview));
         }
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
     public IReadOnlyList<FootballChoice> Countries {get;}
     public IReadOnlyList<FootballChoice> LinkCompetitions {get;}
-    public IReadOnlyList<FootballChoice> Months {get;}=[new(0,"Competition default"),..Enumerable.Range(1,12).Select(n=>new FootballChoice(n,System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(n)))];
+    public IReadOnlyList<FootballChoice> Months {get;}=[new(0,ATLink.Core.UiText.Get("Competition default")),..Enumerable.Range(1,12).Select(n=>new FootballChoice(n,UiText.Get(System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(n))))];
     public FootballChoice? Promotion {get;set;}public FootballChoice? Relegation {get;set;}public FootballChoice? Playoff {get;set;}public FootballChoice? StartMonth {get;set;}
     public bool AutomaticResults {get;set;}=true;
     public int Capacity {get;set;}=128;public int FinalCapacity {get;set;}=128;
     public bool ReplaceInitial {get;set;}
     public bool ConfirmChanges {get;set;}
     public string Error {get;private set;}="";public string Preview {get;private set;}="";
-    public string ProfileNote=>Existing?$"Imported without changes. {original?.UnknownCount??0} special native rules remain preserved in Expert.":"Guided FC27 season profile: final standings are saved for next season. A single league table also updates its own league statistics. Special final classifications require explicit rules.";
-    public IReadOnlyList<string> CalendarModes=>Existing?["Generate available slots","No generated calendar"]:["Generate available slots","Assign first-stage fixtures","No generated calendar"];
-    public string CalendarMode {get;set;}="Generate available slots";
+    public string ProfileNote=>Existing?ATLink.Core.UiText.Format("Imported without changes. {0} special native rules remain preserved in Expert.", original?.UnknownCount??0):ATLink.Core.UiText.Get("Guided FC27 season profile: final standings are saved for next season. A single league table also updates its own league statistics. Special final classifications require explicit rules.");
+    public IReadOnlyList<string> CalendarModes=>Existing?[ATLink.Core.UiText.Get("Generate available slots"),ATLink.Core.UiText.Get("No generated calendar")]:[ATLink.Core.UiText.Get("Generate available slots"),ATLink.Core.UiText.Get("Assign first-stage fixtures"),ATLink.Core.UiText.Get("No generated calendar")];
+    public string CalendarMode {get;set;}=ATLink.Core.UiText.Get("Generate available slots");
     public DateTime? FirstDate {get;set;}
     public IReadOnlyList<string> Intervals {get;}=Enumerable.Range(1,365).Select(n=>n.ToString()).ToArray();public string Interval {get;set;}="7";
     public string Kickoff {get;set;}="15:00";
@@ -66,9 +66,9 @@ public sealed class FootballSeasonViewModel:FootballNotify
     {
         try
         {
-            if(HasPending)throw new InvalidDataException("Apply or cancel the pending season settings before adding an assigned match.");
-            if(CompetitionId is not int id||FixturePhase is null||HomeClub is null||AwayClub is null||!FixtureDate.HasValue)throw new InvalidDataException("Choose a phase, date and two clubs.");
-            Context.Execute("Add assigned match",()=>FootballBehaviour.AddAssignedFixture(Context,id,FixturePhase.Id,DateOnly.FromDateTime(FixtureDate.Value),FixtureKickoff,HomeClub.Id.ToString(),AwayClub.Id.ToString()));changed?.Invoke();Load();FixtureMessage="Assigned match added to the draft. Undo is available.";Notify(nameof(FixtureMessage));
+            if(HasPending)throw new InvalidDataException(ATLink.Core.UiText.Get("Apply or cancel the pending season settings before adding an assigned match."));
+            if(CompetitionId is not int id||FixturePhase is null||HomeClub is null||AwayClub is null||!FixtureDate.HasValue)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a phase, date and two clubs."));
+            Context.Execute(ATLink.Core.UiText.Get("Add assigned match"),()=>FootballBehaviour.AddAssignedFixture(Context,id,FixturePhase.Id,DateOnly.FromDateTime(FixtureDate.Value),FixtureKickoff,HomeClub.Id.ToString(),AwayClub.Id.ToString()));changed?.Invoke();Load();FixtureMessage=ATLink.Core.UiText.Get("Assigned match added to the draft. Undo is available.");Notify(nameof(FixtureMessage));
         }
         catch(Exception ex){FixtureMessage=ex.Message;Notify(nameof(FixtureMessage));}
     }
@@ -78,21 +78,21 @@ public sealed class FootballSeasonViewModel:FootballNotify
     FootballChoice? resultsGroup;public FootballChoice? ResultsGroup{get=>resultsGroup;set{if(resultsGroup==value)return;resultsGroup=value;Notify();Notify(nameof(PlaceCounts));int limit=PlaceCounts.Count;if(!int.TryParse(QualifierCount,out int n)||n>limit)QualifierCount=limit.ToString();Notify(nameof(QualifierCount));}}
     public IReadOnlyList<string> PlaceCounts=>Enumerable.Range(1,Math.Max(1,ResultsGroup is {} g?Context.Rows("standings.txt").Count(r=>r[0]==g.Id.ToString()):1)).Select(n=>n.ToString()).ToArray();public string QualifierCount {get;set;}="1";
     FootballChoice? destination;public FootballChoice? QualificationDestination{get=>destination;set{if(destination==value)return;destination=value;Notify();Notify(nameof(DestinationPools));DestinationPool=DestinationPools.FirstOrDefault();Notify(nameof(DestinationPool));}}
-    public IReadOnlyList<FootballChoice> DestinationPools=>QualificationDestination is {Id:>0} dest?FootballQualifications.EntryPools(Context,dest.Id).Select((g,i)=>new FootballChoice(g,"Incoming team pool "+(i+1))).ToArray():[];
+    public IReadOnlyList<FootballChoice> DestinationPools=>QualificationDestination is {Id:>0} dest?FootballQualifications.EntryPools(Context,dest.Id).Select((g,i)=>new FootballChoice(g,ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Incoming team pool "), (i+1)))).ToArray():[];
     public FootballChoice? DestinationPool {get;set;}
     public string QualificationPreview {get;private set;}="";
     public void ReviewQualification()
     {
-        QualificationPreview=$"The top {QualifierCount} teams in {ResultsGroup?.Name??"the final table"} qualify for {QualificationDestination?.Name??"the selected competition"}. The destination's entry source will stay linked to this competition's previous-season results. An initial ranking may be needed for its first season.";if(ResultsGroup is {} group&&QualificationKind is {} kind&&int.TryParse(QualifierCount,out int count))QualificationPreview+=FootballStandingLabels.QualificationChanges(Context,group.Id,kind.Key,count);qualificationStamp=QualificationState();ConfirmChanges=false;Notify(nameof(ConfirmChanges));Notify(nameof(QualificationPreview));
+        QualificationPreview=ATLink.Core.UiText.Format("The top {0} teams in {1} qualify for {2}. The destination's entry source will stay linked to this competition's previous-season results. An initial ranking may be needed for its first season.", QualifierCount, ResultsGroup?.Name??"the final table", QualificationDestination?.Name??"the selected competition");if(ResultsGroup is {} group&&QualificationKind is {} kind&&int.TryParse(QualifierCount,out int count))QualificationPreview+=FootballStandingLabels.QualificationChanges(Context,group.Id,kind.Key,count);qualificationStamp=QualificationState();ConfirmChanges=false;Notify(nameof(ConfirmChanges));Notify(nameof(QualificationPreview));
     }
     public void ConnectQualification()
     {
         try
         {
-            if(CompetitionId is not int id||ResultsGroup is null||QualificationKind is null||QualificationDestination is not {Id:>0} dest||DestinationPool is null||!int.TryParse(QualifierCount,out int count))throw new InvalidDataException("Choose a final results group, a qualification type, a destination and a number of teams.");
-            if(!ConfirmChanges||qualificationStamp!=QualificationState())throw new InvalidDataException("Review and confirm the current qualification changes first.");
-            if(original is not null&&(Tasks.Count!=original.Tasks.Count||Tasks.Select(t=>t.Task).Zip(original.Tasks).Any(p=>p.First.Action!=p.Second.Action||p.First.Target!=p.Second.Target||!p.First.Parameters.SequenceEqual(p.Second.Parameters))))throw new InvalidDataException("Apply the pending season rules before connecting another competition.");
-            Context.Execute("Connect competition qualifiers",()=>FootballQualifications.ConnectTopTeams(Context,id,ResultsGroup.Id,count,QualificationKind.Key,dest.Id,DestinationPool.Id));changed?.Invoke();Load();Preview="Qualification connected in the draft. Export and validate in game.";Notify(nameof(Preview));
+            if(CompetitionId is not int id||ResultsGroup is null||QualificationKind is null||QualificationDestination is not {Id:>0} dest||DestinationPool is null||!int.TryParse(QualifierCount,out int count))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a final results group, a qualification type, a destination and a number of teams."));
+            if(!ConfirmChanges||qualificationStamp!=QualificationState())throw new InvalidDataException(ATLink.Core.UiText.Get("Review and confirm the current qualification changes first."));
+            if(original is not null&&(Tasks.Count!=original.Tasks.Count||Tasks.Select(t=>t.Task).Zip(original.Tasks).Any(p=>p.First.Action!=p.Second.Action||p.First.Target!=p.Second.Target||!p.First.Parameters.SequenceEqual(p.Second.Parameters))))throw new InvalidDataException(ATLink.Core.UiText.Get("Apply the pending season rules before connecting another competition."));
+            Context.Execute(ATLink.Core.UiText.Get("Connect competition qualifiers"),()=>FootballQualifications.ConnectTopTeams(Context,id,ResultsGroup.Id,count,QualificationKind.Key,dest.Id,DestinationPool.Id));changed?.Invoke();Load();Preview=ATLink.Core.UiText.Get("Qualification connected in the draft. Export and validate in game.");Notify(nameof(Preview));
         }
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
@@ -101,15 +101,15 @@ public sealed class FootballSeasonViewModel:FootballNotify
         Context=c;CompetitionId=competition;this.changed=changed;
         Clubs=c.Teams.Select(t=>new FootballChoice(int.Parse(t.Id),t.Name)).ToArray();
         Leagues=c.Base is null?[]:new FootballCatalog(c.Base).Entities("leagues").Select(l=>new FootballChoice(int.Parse(l.Id),c.LeagueName(l.Id))).ToArray();
-        Competitions=[new(0,"None"),..c.Objects.Where(o=>o.Kind==3).Select(o=>new FootballChoice(o.Id,o.DisplayName))];
-        LinkCompetitions=[new(0,"None"),..c.Objects.Where(o=>o.Kind==3&&int.TryParse(o.Code.TrimStart('C','c'),out _)).Select(o=>new FootballChoice(int.Parse(o.Code[1..]),o.DisplayName))];
+        Competitions=[new(0,ATLink.Core.UiText.Get("None")),..c.Objects.Where(o=>o.Kind==3).Select(o=>new FootballChoice(o.Id,o.DisplayName))];
+        LinkCompetitions=[new(0,ATLink.Core.UiText.Get("None")),..c.Objects.Where(o=>o.Kind==3&&int.TryParse(o.Code.TrimStart('C','c'),out _)).Select(o=>new FootballChoice(int.Parse(o.Code[1..]),o.DisplayName))];
         if(competition is int existingId)
         {
             var importedLinks=FootballBehaviour.ReadLinks(c,existingId);
-            foreach(int n in new[]{importedLinks.Promotion?.Value??0,importedLinks.Relegation?.Value??0}.Where(n=>n>0&&!LinkCompetitions.Any(x=>x.Id==n)))LinkCompetitions=[..LinkCompetitions,new FootballChoice(n,"Existing destination (Expert)")];
-            if(importedLinks.Playoff is {} reference&&!Competitions.Any(x=>x.Id==reference.Value))Competitions=[..Competitions,new FootballChoice(reference.Value,"Existing playoff (Expert)")];
+            foreach(int n in new[]{importedLinks.Promotion?.Value??0,importedLinks.Relegation?.Value??0}.Where(n=>n>0&&!LinkCompetitions.Any(x=>x.Id==n)))LinkCompetitions=[..LinkCompetitions,new FootballChoice(n,ATLink.Core.UiText.Get("Existing destination (Expert)"))];
+            if(importedLinks.Playoff is {} reference&&!Competitions.Any(x=>x.Id==reference.Value))Competitions=[..Competitions,new FootballChoice(reference.Value,ATLink.Core.UiText.Get("Existing playoff (Expert)"))];
         }
-        Countries=c.Base?.Tables.FirstOrDefault(t=>t.Name=="nations")?.Data.Rows.Cast<System.Data.DataRow>().Select(r=>int.Parse(FootballCatalog.Value(r,"nationid"))).Where(n=>n>0).Select(n=>new FootballChoice(n,c.Project.Labels?.Name(new CompetitionObject(n,2,"","NationName_"+n,0))??"Country "+n)).OrderBy(n=>n.Name).ToArray()??[];
+        Countries=c.Base?.Tables.FirstOrDefault(t=>t.Name=="nations")?.Data.Rows.Cast<System.Data.DataRow>().Select(r=>int.Parse(FootballCatalog.Value(r,"nationid"))).Where(n=>n>0).Select(n=>new FootballChoice(n,c.Project.Labels?.Name(new CompetitionObject(n,2,"","NationName_"+n,0))??ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Country "), n))).OrderBy(n=>n.Name).ToArray()??[];
         FirstDate=c.SeasonStart.AddDays(7).ToDateTime(TimeOnly.MinValue);Promotion=Relegation=LinkCompetitions[0];Playoff=Competitions[0];StartMonth=Months[0];
         if(competition.HasValue){Load();FixturePhase=PlayedPhases.FirstOrDefault();FixtureDate=FirstDate;ResultsGroup=ResultsGroups.FirstOrDefault();QualificationKind=QualificationKinds.FirstOrDefault();}
     }
@@ -123,7 +123,7 @@ public sealed class FootballSeasonViewModel:FootballNotify
     }
     void NotifyAll(){foreach(string key in new[]{nameof(Promotion),nameof(Relegation),nameof(Playoff),nameof(StartMonth),nameof(AutomaticResults),nameof(ReplaceInitial),nameof(ConfirmChanges),nameof(ProfileNote),nameof(Preview),nameof(Error)})Notify(key);}
     public FootballSeasonLinks Links()=>new(Promotion is {Id:>0}?new DatabaseCompetitionId(Promotion.Id):null,Relegation is {Id:>0}?new DatabaseCompetitionId(Relegation.Id):null,Playoff is {Id:>0}?new CompdataObjectId(Playoff.Id):null,StartMonth is {Id:>0}?StartMonth.Id:null);
-    public FootballCalendarPlan Calendar()=>new(CalendarMode switch{"No generated calendar"=>FootballCalendarMode.None,"Assign first-stage fixtures"=>FootballCalendarMode.AssignedFixtures,_=>FootballCalendarMode.Generate},FirstDate.HasValue?DateOnly.FromDateTime(FirstDate.Value):throw new InvalidDataException("Choose the first illustrative match date."),int.TryParse(Interval,out int days)?days:throw new InvalidDataException("Choose the days between matchdays."),TournamentBuilder.Time(Kickoff));
+    public FootballCalendarPlan Calendar()=>new(ATLink.Core.UiText.Source(CalendarMode) switch{"No generated calendar"=>FootballCalendarMode.None,"Assign first-stage fixtures"=>FootballCalendarMode.AssignedFixtures,_=>FootballCalendarMode.Generate},FirstDate.HasValue?DateOnly.FromDateTime(FirstDate.Value):throw new InvalidDataException(ATLink.Core.UiText.Get("Choose the first illustrative match date.")),int.TryParse(Interval,out int days)?days:throw new InvalidDataException(ATLink.Core.UiText.Get("Choose the days between matchdays.")),TournamentBuilder.Time(Kickoff));
     public bool CalendarChanged{get{try{return originalCalendar is not null&&Calendar()!=originalCalendar;}catch{return true;}}}
     public bool HasPending=>Existing&&(ReplaceInitial||Links()!=originalLinks||CalendarChanged||original is not null&&(Tasks.Count!=original.Tasks.Count||Tasks.Select(t=>t.Task).Zip(original.Tasks).Any(p=>p.First.Action!=p.Second.Action||p.First.Target!=p.Second.Target||!p.First.Parameters.SequenceEqual(p.Second.Parameters))));
     public FootballBehaviourPlan Plan(FootballCalendarPlan? calendar=null)=>new(Tasks.Select(t=>t.Task).ToArray(),ReplaceInitial?InitialTeams.Select((t,i)=>new FootballStandingSeed(t.Id.ToString(),i)).ToArray():[],AutomaticResults,Links(),calendar??Calendar());
@@ -146,26 +146,26 @@ public sealed class FootballSeasonViewModel:FootballNotify
     }
     public void RefreshPreview()
     {
-        Preview=string.Join("\n",Tasks.Select((t,i)=>$"{i+1}. {t.Description}"));if(!Existing&&AutomaticResults)Preview+="\nAutomatic profile: save final results for next season; for a single league, reset/update that league's statistics.";
-        Preview+=$"\nInitial standings: {(ReplaceInitial?InitialTeams.Count+" explicitly ordered teams":"preserve existing / none for a new competition")}.\n";
-        if(Promotion is {Id:>0})Preview+=$"Promotion destination: {Promotion.Name}.\n";if(Relegation is {Id:>0})Preview+=$"Relegation destination: {Relegation.Name}.\n";if(Playoff is {Id:>0})Preview+=$"Playoff: {Playoff.Name}.\n";
-        if(CalendarChanged)Preview+=$"Calendar replacement: {FirstDate:dd/MM/yyyy}, {Interval} days between rounds, {Kickoff}. {ReferenceLabel}";
+        Preview=ATLink.Core.UiText.Join("\n",Tasks.Select((t,i)=>$"{i+1}. {t.Description}"));if(!Existing&&AutomaticResults)Preview+=ATLink.Core.UiText.Get("\nAutomatic profile: save final results for next season; for a single league, reset/update that league's statistics.");
+        Preview+=ATLink.Core.UiText.Format("\nInitial standings: {0}.\n", (ReplaceInitial?InitialTeams.Count+" explicitly ordered teams":"preserve existing / none for a new competition"));
+        if(Promotion is {Id:>0})Preview+=ATLink.Core.UiText.Format("Promotion destination: {0}.\n", Promotion.Name);if(Relegation is {Id:>0})Preview+=ATLink.Core.UiText.Format("Relegation destination: {0}.\n", Relegation.Name);if(Playoff is {Id:>0})Preview+=ATLink.Core.UiText.Format("Playoff: {0}.\n", Playoff.Name);
+        if(CalendarChanged)Preview+=ATLink.Core.UiText.Format("Calendar replacement: {0:dd/MM/yyyy}, {1} days between rounds, {2}. {3}", FirstDate, Interval, Kickoff, ReferenceLabel);
         reviewStamp=ReviewState();ConfirmChanges=false;Notify(nameof(ConfirmChanges));Error="";Notify(nameof(Preview));Notify(nameof(Error));
     }
     public void Apply()
     {
         try
         {
-            if(CompetitionId is not int id||original is null)return;if(!ConfirmChanges||reviewStamp!=ReviewState())throw new InvalidDataException("Review and confirm the current season behaviour before applying.");
+            if(CompetitionId is not int id||original is null)return;if(!ConfirmChanges||reviewStamp!=ReviewState())throw new InvalidDataException(ATLink.Core.UiText.Get("Review and confirm the current season behaviour before applying."));
             var tasks=Tasks.Select(t=>t.Task).ToArray();var links=Links();
-            Context.Execute("Change season behaviour",()=>{FootballSeason.ApplyTasks(Context,id,original,tasks);if(ReplaceInitial)FootballSeason.ApplyInitialStandings(Context,id,InitialTeams.Select((t,i)=>new FootballStandingSeed(t.Id.ToString(),i)).ToArray());if(links!=originalLinks)FootballSeason.ApplyLinks(Context,id,links,originalLinks);if(CalendarChanged)FootballBehaviour.RegenerateCalendar(Context,id,Calendar(),true);});
-            changed?.Invoke();Load();Preview="Season behaviour applied in the project draft. Export to write files.";Notify(nameof(Preview));
+            Context.Execute(ATLink.Core.UiText.Get("Change season behaviour"),()=>{FootballSeason.ApplyTasks(Context,id,original,tasks);if(ReplaceInitial)FootballSeason.ApplyInitialStandings(Context,id,InitialTeams.Select((t,i)=>new FootballStandingSeed(t.Id.ToString(),i)).ToArray());if(links!=originalLinks)FootballSeason.ApplyLinks(Context,id,links,originalLinks);if(CalendarChanged)FootballBehaviour.RegenerateCalendar(Context,id,Calendar(),true);});
+            changed?.Invoke();Load();Preview=ATLink.Core.UiText.Get("Season behaviour applied in the project draft. Export to write files.");Notify(nameof(Preview));
         }
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
     public void Regenerate()
     {
-        try{if(CompetitionId is not int id)return;if(!ConfirmChanges||reviewStamp!=ReviewState())throw new InvalidDataException("Review and confirm the current calendar changes first.");Context.Execute("Generate competition calendar",()=>FootballBehaviour.RegenerateCalendar(Context,id,Calendar(),ConfirmChanges));changed?.Invoke();Load();Preview="Relative slots regenerated. Reference dates remain illustrative.";Notify(nameof(Preview));}
+        try{if(CompetitionId is not int id)return;if(!ConfirmChanges||reviewStamp!=ReviewState())throw new InvalidDataException(ATLink.Core.UiText.Get("Review and confirm the current calendar changes first."));Context.Execute(ATLink.Core.UiText.Get("Generate competition calendar"),()=>FootballBehaviour.RegenerateCalendar(Context,id,Calendar(),ConfirmChanges));changed?.Invoke();Load();Preview=ATLink.Core.UiText.Get("Relative slots regenerated. Reference dates remain illustrative.");Notify(nameof(Preview));}
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
 }

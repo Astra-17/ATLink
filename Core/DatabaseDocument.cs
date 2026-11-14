@@ -34,6 +34,13 @@ public sealed partial class DatabaseDocument
     public string SourcePath { get; }
     public string DisplayName { get; internal set; }
     public event Action? DisplayNameChanged;
+    public DatabaseDocument? DisplayLocalization { get; private set; }
+    public event Action? DisplayLocalizationChanged;
+    public void SetDisplayLocalization(DatabaseDocument localization)
+    {
+        DisplayLocalization=localization;
+        DisplayLocalizationChanged?.Invoke();
+    }
     public IReadOnlyList<DatabaseTable> Tables { get; }
     public bool HasChanges => SquadNameChanged || Tables.Any(t => t.Data.Rows.Cast<DataRow>().Any(r => r.RowState != DataRowState.Unchanged));
     public bool IsSquad => PackagedOriginal is not null && SquadFile.IsContainer(PackagedOriginal);
@@ -50,7 +57,7 @@ public sealed partial class DatabaseDocument
     internal void RememberSquadName() => originalSquadName = DisplayName;
     public void SetSquadName(string name)
     {
-        if (!IsSquad || PackagedOriginal is null) throw new InvalidOperationException("Seul un fichier Squad a un nom interne.");
+        if (!IsSquad || PackagedOriginal is null) throw new InvalidOperationException(ATLink.Core.UiText.Get("Seul un fichier Squad a un nom interne."));
         int capacity = Math.Min(SquadFile.NameCapacity, SquadFile.PrefixLength(PackagedOriginal) - SquadFile.NameOffset);
         DisplayName = SquadFile.NormalizeName(name, capacity);
         DisplayNameChanged?.Invoke();
@@ -81,9 +88,9 @@ public sealed partial class DatabaseDocument
     internal static DatabaseDocument FromBytes(byte[] b, string metadata, string path)
     {
         if (b.Length < 28 || !b.AsSpan(0, 8).SequenceEqual(new byte[] {68,66,0,8,0,0,0,0}))
-            throw new InvalidDataException("Format non pris en charge : sélectionner une DB brute ou un fichier Squad FBCHUNKS.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Format non pris en charge : sélectionner une DB brute ou un fichier Squad FBCHUNKS."));
         int size = I(b,8), count = I(b,16);
-        if (size != b.Length || count < 0 || count > (b.Length-28)/8) throw new InvalidDataException("En-tête DB invalide.");
+        if (size != b.Length || count < 0 || count > (b.Length-28)/8) throw new InvalidDataException(ATLink.Core.UiText.Get("En-tête DB invalide."));
         var xml = XDocument.Load(metadata);
         var schemas = xml.Descendants("table").ToDictionary(x => (string?)x.Attribute("shortname") ?? "", StringComparer.Ordinal);
         int start = checked(28 + count*8);
@@ -94,9 +101,9 @@ public sealed partial class DatabaseDocument
             int dir=24+i*8, t=checked(start+I(b,dir+4));
             Need(b,t,36);
             string code=Encoding.Latin1.GetString(b,dir,4);
-            if (!schemas.TryGetValue(code,out var schema)) throw new InvalidDataException($"Metadata incompatible : table {code} absente.");
+            if (!schemas.TryGetValue(code,out var schema)) throw new InvalidDataException(ATLink.Core.UiText.Format("Metadata incompatible : table {0} absente.", code));
             int recordSize=I(b,t+4), slots=U16(b,t+16), active=U16(b,t+18), n=b[t+24];
-            if (active>slots) throw new InvalidDataException($"{code}: plus d'enregistrements actifs que d'emplacements.");
+            if (active>slots) throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: plus d'enregistrements actifs que d'emplacements.", code));
             int records=checked(t+36+n*16);
             Need(b,records,checked(slots*recordSize));
             var descriptors=schema.Element("fields")!.Elements("field").ToDictionary(x=>(string)x.Attribute("shortname")!,StringComparer.Ordinal);
@@ -105,21 +112,21 @@ public sealed partial class DatabaseDocument
             {
                 int q=t+36+j*16; Need(b,q,16);
                 string fc=Encoding.Latin1.GetString(b,q+8,4);
-                if(!descriptors.TryGetValue(fc,out var descriptor)) throw new InvalidDataException($"Champ inconnu : {code}.{fc}");
+                if(!descriptors.TryGetValue(fc,out var descriptor)) throw new InvalidDataException(ATLink.Core.UiText.Format("Champ inconnu : {0}.{1}", code, fc));
                 int type=I(b,q), bit=I(b,q+4), depth=I(b,q+12);
                 int storedBits=type is 13 or 14 ? 32 : depth;
-                if(bit<0 || storedBits<0 || (long)bit+storedBits>(long)recordSize*8) throw new InvalidDataException($"Champ hors enregistrement : {fc}");
+                if(bit<0 || storedBits<0 || (long)bit+storedBits>(long)recordSize*8) throw new InvalidDataException(ATLink.Core.UiText.Format("Champ hors enregistrement : {0}", fc));
                 fields.Add(new((string)descriptor.Attribute("name")!,type,bit,depth,(long?)descriptor.Attribute("rangelow")??0,(long?)descriptor.Attribute("rangehigh")??long.MaxValue, string.Equals((string?)descriptor.Attribute("key"), "true", StringComparison.OrdinalIgnoreCase), (string?)descriptor.Attribute("fkparenttable")));
             }
             int compressed=I(b,t+12); if(compressed == -1) compressed=0;
-            if(compressed<0) throw new InvalidDataException("Bloc de chaînes invalide.");
+            if(compressed<0) throw new InvalidDataException(ATLink.Core.UiText.Get("Bloc de chaînes invalide."));
             int strings=checked(records+slots*recordSize);
             Need(b,strings,compressed);
             int treeSize=int.MaxValue;
             foreach(var field in fields.Where(f=>f.Type is 13 or 14))
                 for(int r=0;r<active;r++) { int off=I(b,records+r*recordSize+field.Bit/8); if(off>=0) treeSize=Math.Min(treeSize,off); }
             if(treeSize==int.MaxValue) treeSize=0;
-            if(treeSize>compressed || treeSize%4!=0) throw new InvalidDataException("Arbre de compression invalide.");
+            if(treeSize>compressed || treeSize%4!=0) throw new InvalidDataException(ATLink.Core.UiText.Get("Arbre de compression invalide."));
             var data=new DataTable((string)schema.Attribute("name")!){Locale=CultureInfo.InvariantCulture};
             foreach(var f in fields) data.Columns.Add(f.Name,typeof(string));
             data.BeginLoadData();
@@ -147,25 +154,25 @@ public sealed partial class DatabaseDocument
             if(!scalarCache.TryGetValue(number,out string? value)){value=number.ToString(CultureInfo.InvariantCulture);scalarCache[number]=value;}
             return value;
         }
-        if(f.Type is not (13 or 14)) throw new InvalidDataException($"Type de champ non pris en charge : {f.Type}");
+        if(f.Type is not (13 or 14)) throw new InvalidDataException(ATLink.Core.UiText.Format("Type de champ non pris en charge : {0}", f.Type));
         int offset=I(b,pos+f.Bit/8); if(offset<0)return "";
         int cursor=checked(strings+offset), limit=checked(strings+length);
         int prefix=f.Type==13?1:2;
-        if(cursor<strings || cursor+prefix>limit)throw new InvalidDataException("Pointeur de chaîne invalide.");
+        if(cursor<strings || cursor+prefix>limit)throw new InvalidDataException(ATLink.Core.UiText.Get("Pointeur de chaîne invalide."));
         int size=prefix==1?b[cursor]:BinaryPrimitives.ReadUInt16BigEndian(b.AsSpan(cursor,2)); cursor+=prefix;
         byte[] output=new byte[size];
-        if(treeSize==0) { if(cursor+size>limit)throw new InvalidDataException("Chaîne tronquée."); Array.Copy(b,cursor,output,0,size); }
+        if(treeSize==0) { if(cursor+size>limit)throw new InvalidDataException(ATLink.Core.UiText.Get("Chaîne tronquée.")); Array.Copy(b,cursor,output,0,size); }
         else
         {
             int written=0,node=0;
             while(written<size)
             {
-                if(cursor>=limit)throw new InvalidDataException("Chaîne compressée tronquée.");
+                if(cursor>=limit)throw new InvalidDataException(ATLink.Core.UiText.Get("Chaîne compressée tronquée."));
                 byte value=b[cursor++];
                 for(int bit=7;bit>=0 && written<size;bit--)
                 {
                     int q=node*4+((value>>bit)&1)*2;
-                    if(q+1>=treeSize)throw new InvalidDataException("Nœud Huffman invalide.");
+                    if(q+1>=treeSize)throw new InvalidDataException(ATLink.Core.UiText.Get("Nœud Huffman invalide."));
                     int next=b[strings+q];
                     if(next==0){output[written++]=b[strings+q+1];node=0;}else node=next;
                 }
@@ -182,12 +189,12 @@ public sealed partial class DatabaseDocument
     }
     private static ulong Bits(byte[] b,int pos,int bit,int depth)
     {
-        if(depth<0 || depth>63)throw new InvalidDataException("Profondeur entière non prise en charge.");
+        if(depth<0 || depth>63)throw new InvalidDataException(ATLink.Core.UiText.Get("Profondeur entière non prise en charge."));
         ulong value=0; for(int k=0;k<depth;k++)if((b[pos+(bit+k)/8]&(1<<((bit+k)%8)))!=0)value|=1UL<<k; return value;
     }
     private static int I(byte[] b,int pos){Need(b,pos,4);return BinaryPrimitives.ReadInt32LittleEndian(b.AsSpan(pos,4));}
     private static int U16(byte[] b,int pos){Need(b,pos,2);return BinaryPrimitives.ReadUInt16LittleEndian(b.AsSpan(pos,2));}
-    private static void Need(byte[] b,int pos,int length){if(pos<0 || length<0 || (long)pos+length>b.Length)throw new InvalidDataException("Fichier tronqué ou offsets invalides.");}
+    private static void Need(byte[] b,int pos,int length){if(pos<0 || length<0 || (long)pos+length>b.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Fichier tronqué ou offsets invalides."));}
 }
 
 

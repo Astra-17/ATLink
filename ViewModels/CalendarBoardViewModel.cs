@@ -16,14 +16,14 @@ public sealed record CalendarMonthDay(DateOnly Date,bool InMonth,IReadOnlyList<C
     public IReadOnlyList<InternationalCalendarEntry> InternationalEntries {get;init;}=[];
     public int ReplacedFriendlySlots {get;init;}
     public bool HasInternationalMarker=>InternationalEntries.Count>0||ReplacedFriendlySlots>0;
-    public string InternationalMarker=>InternationalEntries.Count>0?"INT "+string.Join(" / ",InternationalEntries.Select(s=>s.Kind.ToLowerInvariant()).Distinct()):"INT replaced";
-    public string InternationalDetails=>string.Join("\n",InternationalEntries.Select(s=>s.Description))+(ReplacedFriendlySlots>0?"\n"+ReplacedFriendlySlots+" entire slot(s) selected for replacement on export.":"");
+    public string InternationalMarker=>InternationalEntries.Count>0?ATLink.Core.UiText.Concat("INT ", ATLink.Core.UiText.Join(" / ",InternationalEntries.Select(s=>UiText.Get(s.Kind)).Distinct())):ATLink.Core.UiText.Get("INT replaced");
+    public string InternationalDetails=>ATLink.Core.UiText.Concat(ATLink.Core.UiText.Join("\n",InternationalEntries.Select(s=>s.Description)), (ReplacedFriendlySlots>0?ATLink.Core.UiText.Concat("\n"+ReplacedFriendlySlots, ATLink.Core.UiText.Get(" entire slot(s) selected for replacement on export.")):""));
     public string Day=>Date.Day.ToString();public string More=>Extra>0?"+"+Extra:"";public double Opacity=>InMonth?1:.4;
-    public string Tooltip=>Date.ToString("dd MMM yyyy",CultureInfo.GetCultureInfo("en-GB"))+"\n"+Caption+"\n"+InternationalDetails+"\n"+Problems;
+    public string Tooltip=>Date.ToString("dd MMM yyyy",UiText.Current.DisplayCulture)+"\n"+Caption+"\n"+InternationalDetails+"\n"+Problems;
 }
 public sealed class CalendarWeekday
 {
-    public DayOfWeek Day {get;init;}public string Name=>Day.ToString();public bool Allowed {get;set;}=true;
+    public DayOfWeek Day {get;init;}public string Name=>UiText.Get(Day.ToString());public bool Allowed {get;set;}=true;
 }
 public sealed class CalendarBoardViewModel:FootballNotify
 {
@@ -31,7 +31,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
     public sealed record TieState(string PhaseKey,FootballTieVenue Venue);
     public Func<IReadOnlyList<TieEditor>> TieEditors {get;set;}=()=>[];
     public FootballTieVenueViewModel? TieVenue(FootballPlannedMatch match)=>calendar.Fixtures.Any(f=>f.PhaseKey==match.PhaseKey&&f.PlannedId is null)?null:TieEditors().FirstOrDefault(t=>t.PhaseKey==match.PhaseKey&&t.Venue.Ordinal==match.Match)?.Venue;
-    public string TieVenueNote(FootballPlannedMatch match)=>calendar.Fixtures.Any(f=>f.PhaseKey==match.PhaseKey&&f.PlannedId is null)?"These assigned fixtures have no verified native tie mapping. Their stadium cannot be edited individually here.":FootballPhaseSettingsAdapter.HostLimitation;
+    public string TieVenueNote(FootballPlannedMatch match)=>calendar.Fixtures.Any(f=>f.PhaseKey==match.PhaseKey&&f.PlannedId is null)?ATLink.Core.UiText.Get("These assigned fixtures have no verified native tie mapping. Their stadium cannot be edited individually here."):FootballPhaseSettingsAdapter.HostLimitation;
     readonly CreationCalendarViewModel calendar;readonly CompetitionProjectContext context;readonly Func<IReadOnlyList<FootballPhase>> layout;
     public CompetitionProjectContext Context=>context;
     public InternationalCalendarViewModel International=>calendar.International;    string projectionKey="";CompetitionProjectContext? projection;
@@ -59,7 +59,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
     public IReadOnlyList<FootballScheduleConflict> Check(IReadOnlyList<FootballPlannedMatch> matches)
     {
         var fixedConflicts=FootballSchedulePlanner.Conflicts(matches.Where(m=>m.Locked||m.Confirmed).ToArray(),Index,RestDays).ToHashSet();
-        return FootballSchedulePlanner.Conflicts(matches,Index,RestDays).Select(c=>c.Blocking&&!fixedConflicts.Contains(c)?c with{Blocking=false,Message="Risk in unfixed suggested dates: "+c.Message}:c).ToArray();
+        return FootballSchedulePlanner.Conflicts(matches,Index,RestDays).Select(c=>c.Blocking&&!fixedConflicts.Contains(c)?c with{Blocking=false,Message=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Risk in unfixed suggested dates: "), c.Message)}:c).ToArray();
     }
     public string TeamName(string id)=>context.TeamName(id);
     public IReadOnlyList<string> TimeChoices {get;}=Enumerable.Range(0,96).Select(n=>$"{n/4:D2}:{n%4*15:D2}").ToArray();
@@ -69,25 +69,25 @@ public sealed class CalendarBoardViewModel:FootballNotify
     int restDays=3;public int RestDays{get=>restDays;set{restDays=value;Notify();RefreshDays();}}
     public bool Busy{get;private set;}public int Progress{get;private set;}public string Error{get;private set;}="";
     public bool CanWork=>!Busy&&context.Game=="FC27";
-    public string Coverage=>Index.Fingerprint.Length==0?"Load availability to compare the selected teams' other competitions.":$"{Index.Events.Count} external engagements indexed · {Index.Warnings.Count} coverage notes. No career-save or postponement prediction.";
-    public string CoverageDetails=>string.Join("\n",Index.Warnings);
+    public string Coverage=>Index.Fingerprint.Length==0?ATLink.Core.UiText.Get("Load availability to compare the selected teams' other competitions."):ATLink.Core.UiText.Format("{0} external engagements indexed · {1} coverage notes. No career-save or postponement prediction.", Index.Events.Count, Index.Warnings.Count);
+    public string CoverageDetails=>ATLink.Core.UiText.Join("\n",Index.Warnings);
     public string ParticipantCoverage
     {
-        get{try{int required=layout().FirstOrDefault()?.Participants??0;int resolved=Participants().Count;return $"{resolved}/{required} participants resolved. "+(resolved==required?"Named opening-round pairings are a reproducible proposal; group allocation may still be simulated.":"Unresolved entry rules prevent a complete team-availability guarantee. Future qualifiers remain possible participants.");}catch{return "Complete the competition format to resolve its participant coverage.";}}
+        get{try{int required=layout().FirstOrDefault()?.Participants??0;int resolved=Participants().Count;return ATLink.Core.UiText.Concat(ATLink.Core.UiText.Format("{0}/{1} participants resolved. ", resolved, required), (resolved==required?ATLink.Core.UiText.Get("Named opening-round pairings are a reproducible proposal; group allocation may still be simulated."):ATLink.Core.UiText.Get("Unresolved entry rules prevent a complete team-availability guarantee. Future qualifiers remain possible participants.")));}catch{return ATLink.Core.UiText.Get("Complete the competition format to resolve its participant coverage.");}}
     }
-    public string Reference=>calendar.Season.ReferenceLabel+" Game postponements are not predictable from DB/Compdata.";
-    DateOnly month;public string MonthTitle=>month.ToString("MMMM yyyy",CultureInfo.GetCultureInfo("en-GB"));
-    public IReadOnlyList<FootballChoice> TeamChoices=>[new(0,"All participating teams"),..Participants().Distinct().Select(id=>new FootballChoice(int.Parse(id),context.TeamName(id)))];
+    public string Reference=>ATLink.Core.UiText.Concat(calendar.Season.ReferenceLabel, ATLink.Core.UiText.Get(" Game postponements are not predictable from DB/Compdata."));
+    DateOnly month;public string MonthTitle=>month.ToString("MMMM yyyy",UiText.Current.DisplayCulture);
+    public IReadOnlyList<FootballChoice> TeamChoices=>[new(0,ATLink.Core.UiText.Get("All participating teams")),..Participants().Distinct().Select(id=>new FootballChoice(int.Parse(id),context.TeamName(id)))];
     FootballChoice? team;public FootballChoice? Team{get=>team;set{if(value is null)return;team=value;Notify();RefreshDays();}}
-    public IReadOnlyList<FootballCalendarPhase> PhaseChoices=>[new(-1,"All phases",0,0){Key="all"},..calendar.Phases];
+    public IReadOnlyList<FootballCalendarPhase> PhaseChoices=>[new(-1,ATLink.Core.UiText.Get("All phases"),0,0){Key="all"},..calendar.Phases];
     FootballCalendarPhase? phase;public FootballCalendarPhase? Phase{get=>phase;set{if(value is null)return;phase=value;Notify();RefreshDays();}}
     CancellationTokenSource? cancel;Task? loading;
     sealed class IndexCache {public FootballScheduleIndex? Value;}
     static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CompetitionProjectContext,IndexCache> cache=new();
     public bool Edited {get;private set;}
     public FootballScheduleProposal? Proposal {get;private set;}
-    public string ProposalText=>Proposal is null?"":$"{Proposal.Matches.Count(m=>m.Date.HasValue)} planned matches · {Proposal.Unplaced.Count} unplaced · {Proposal.Conflicts.Count(c=>c.Blocking)} blocking conflicts · {Proposal.Conflicts.Count(c=>!c.Blocking)} risks\n"+string.Join("\n",Proposal.Unplaced.Select(id=>"Unplaced: "+Proposal.Matches.First(m=>m.Id==id).HomeLabel+" — "+Proposal.Matches.First(m=>m.Id==id).AwayLabel+" · "+Proposal.Reasons.GetValueOrDefault(id,"No admissible date.")))+"\n"+string.Join("\n",Proposal.Conflicts.Select(c=>c.Message).Distinct().Take(30));
-    public string ProposalDates=>Proposal is null?"":string.Join("\n",Proposal.Matches.Where(m=>m.Date.HasValue).Select(m=>$"{m.Date:dd'/'MM'/'yyyy} {m.Kickoff[..2]}:{m.Kickoff[2..]} · {m.HomeLabel} — {m.AwayLabel}"));
+    public string ProposalText=>Proposal is null?"":ATLink.Core.UiText.Concat(ATLink.Core.UiText.Format("{0} planned matches · {1} unplaced · {2} blocking conflicts · {3} risks\n", Proposal.Matches.Count(m=>m.Date.HasValue), Proposal.Unplaced.Count, Proposal.Conflicts.Count(c=>c.Blocking), Proposal.Conflicts.Count(c=>!c.Blocking)), ATLink.Core.UiText.Join("\n",Proposal.Unplaced.Select(id=>ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unplaced: "), Proposal.Matches.First(m=>m.Id==id).HomeLabel, " — ", Proposal.Matches.First(m=>m.Id==id).AwayLabel, " · ", Proposal.Reasons.GetValueOrDefault(id,"No admissible date.")))), "\n", ATLink.Core.UiText.Join("\n",Proposal.Conflicts.Select(c=>c.Message).Distinct().Take(30)));
+    public string ProposalDates=>Proposal is null?"":ATLink.Core.UiText.Join("\n",Proposal.Matches.Where(m=>m.Date.HasValue).Select(m=>$"{m.Date:dd'/'MM'/'yyyy} {m.Kickoff[..2]}:{m.Kickoff[2..]} · {m.HomeLabel} — {m.AwayLabel}"));
     public bool HasProposal=>Proposal is not null;
     string proposalStamp="";
     string legacyStamp="";
@@ -98,7 +98,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
     public bool CanUndo=>undo.Count>0;public bool CanRedo=>redo.Count>0;
     public CalendarBoardViewModel(CreationCalendarViewModel calendar,CompetitionProjectContext context,Func<IReadOnlyList<FootballPhase>> layout)
     {
-        this.calendar=calendar;this.context=context;this.layout=layout;team=new(0,"All participating teams");phase=new(-1,"All phases",0,0){Key="all"};month=new(context.SeasonStart.Year,context.SeasonStart.Month,1);Start=context.SeasonStart.ToDateTime(TimeOnly.MinValue);End=context.SeasonStart.AddYears(1).AddDays(-1).ToDateTime(TimeOnly.MinValue);
+        this.calendar=calendar;this.context=context;this.layout=layout;team=new(0,ATLink.Core.UiText.Get("All participating teams"));phase=new(-1,ATLink.Core.UiText.Get("All phases"),0,0){Key="all"};month=new(context.SeasonStart.Year,context.SeasonStart.Month,1);Start=context.SeasonStart.ToDateTime(TimeOnly.MinValue);End=context.SeasonStart.AddYears(1).AddDays(-1).ToDateTime(TimeOnly.MinValue);
     }
     public void Synchronize()
     {
@@ -109,7 +109,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
         foreach(var fixture in calendar.Fixtures)
         {
             var planned=merged.FirstOrDefault(m=>m.Id==fixture.PlannedId);
-            if(planned is not null&&(planned.Home!=fixture.Home.Id.ToString()||planned.Away!=fixture.Away.Id.ToString()))throw new InvalidDataException("Matchups changed after fixtures were confirmed. Remove the affected assigned fixtures, review the new pairings and confirm them again.");
+            if(planned is not null&&(planned.Home!=fixture.Home.Id.ToString()||planned.Away!=fixture.Away.Id.ToString()))throw new InvalidDataException(ATLink.Core.UiText.Get("Matchups changed after fixtures were confirmed. Remove the affected assigned fixtures, review the new pairings and confirm them again."));
             int at=merged.FindIndex(m=>fixture.PlannedId==m.Id||m.PhaseKey==fixture.PhaseKey&&m.Home==fixture.Home.Id.ToString()&&m.Away==fixture.Away.Id.ToString());
             if(at<0)at=merged.FindIndex(m=>m.PhaseKey==fixture.PhaseKey&&!m.Confirmed&&(fixture.Round is null||fixture.Round==m.Round));
             if(at>=0)merged[at]=merged[at] with{Home=fixture.Home.Id.ToString(),Away=fixture.Away.Id.ToString(),HomeLabel=fixture.Home.Name,AwayLabel=fixture.Away.Name,Date=fixture.Date,Kickoff=fixture.Kickoff,Locked=true,Confirmed=true};
@@ -130,7 +130,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
         if(month==default)return;
         var shown=Proposal?.Matches??Matches;var conflicts=Proposal?.Conflicts??Conflicts;var first=month.AddDays(-(((int)month.DayOfWeek+6)%7));var participating=Participants().ToHashSet();
         var international=InternationalCalendarEntry.ReadMen(AvailabilityContext).Where(entry=>!FriendlyReplacements.Any(r=>
-            entry.Kind=="Friendly"&&entry.Slot.ObjectId==r.ObjectId&&entry.Slot.Offset==r.Offset&&entry.Slot.Round==r.Round&&
+            ATLink.Core.UiText.Source(entry.Kind)=="Friendly"&&entry.Slot.ObjectId==r.ObjectId&&entry.Slot.Offset==r.Offset&&entry.Slot.Round==r.Round&&
             entry.Slot.Minimum==r.Minimum&&entry.Slot.Maximum==r.Maximum&&entry.Slot.Time.PadLeft(4,'0')==r.Time))
             .ToLookup(entry=>entry.Slot.Date(context.ReferenceDate));
         Days=Enumerable.Range(0,42).Select(n=>
@@ -138,8 +138,8 @@ public sealed class CalendarBoardViewModel:FootballNotify
             var date=first.AddDays(n);var own=shown.Where(m=>m.Date==date&&(phase is null||phase.Index<0||m.PhaseKey==phase.Key)).Where(m=>team is null||team.Id==0||(m.Teams.Count>0?m.Teams:m.PossibleTeams).Contains(team.Id.ToString())).ToArray();
             var external=Index.Events.Where(e=>e.Date==date&&e.Teams.Intersect(participating).Any()).Where(e=>team is null||team.Id==0||e.Teams.Contains(team.Id.ToString())).ToArray();
             var ids=own.SelectMany(m=>m.Teams.Count>0?m.Teams:m.PossibleTeams).Concat(external.SelectMany(e=>e.Teams.Intersect(participating))).Distinct().ToArray();
-            string caption=(own.Length>0?$"{own.Length} planned · ":"")+(external.Length>0?$"{external.Count(e=>e.Status==FootballScheduleStatus.KnownFixture)} known / {external.Count(e=>e.Status==FootballScheduleStatus.SimulatedFixture)} simulated / {external.Count(e=>e.Status==FootballScheduleStatus.PossibleMatchday)} possible":"");
-            return new CalendarMonthDay(date,date.Month==month.Month,ids.Take(6).Select(id=>new CalendarTeamIcon(id,context.TeamName(id))).ToArray(),Math.Max(0,ids.Length-6),caption,string.Join("\n",conflicts.Where(c=>own.Any(m=>m.Id==c.Match)).Select(c=>c.Message).Distinct().Take(3))){HasCompetitionMatches=own.Length>0,InternationalEntries=international[date].ToArray(),ReplacedFriendlySlots=FriendlyReplacements.Count(s=>s.Date(context.ReferenceDate)==date)};
+            string caption=(own.Length>0?ATLink.Core.UiText.Format("{0} planned · ", own.Length):"")+(external.Length>0?ATLink.Core.UiText.Format("{0} known / {1} simulated / {2} possible", external.Count(e=>e.Status==FootballScheduleStatus.KnownFixture), external.Count(e=>e.Status==FootballScheduleStatus.SimulatedFixture), external.Count(e=>e.Status==FootballScheduleStatus.PossibleMatchday)):"");
+            return new CalendarMonthDay(date,date.Month==month.Month,ids.Take(6).Select(id=>new CalendarTeamIcon(id,context.TeamName(id))).ToArray(),Math.Max(0,ids.Length-6),caption,ATLink.Core.UiText.Join("\n",conflicts.Where(c=>own.Any(m=>m.Id==c.Match)).Select(c=>c.Message).Distinct().Take(3))){HasCompetitionMatches=own.Length>0,InternationalEntries=international[date].ToArray(),ReplacedFriendlySlots=FriendlyReplacements.Count(s=>s.Date(context.ReferenceDate)==date)};
         }).ToArray();Notify(nameof(Days));Notify(nameof(MonthTitle));Notify(nameof(CanUndo));Notify(nameof(CanRedo));
     }
     public void ChangeMonth(int amount){month=month.AddMonths(amount);RefreshDays();}
@@ -155,34 +155,34 @@ public sealed class CalendarBoardViewModel:FootballNotify
         async Task Load()
         {
             try{Index=await Task.Run(()=>FootballAvailability.Build(FootballAvailability.Snapshot(AvailabilityContext),progress,cancel.Token));cache.GetValue(context,_=>new()).Value=Index;Error="";Notify(nameof(Coverage));Notify(nameof(CoverageDetails));RefreshDays();}
-            catch(OperationCanceledException){Error="Availability loading cancelled. No calendar changes applied.";}
+            catch(OperationCanceledException){Error=ATLink.Core.UiText.Get("Availability loading cancelled. No calendar changes applied.");}
             catch(Exception ex){Error=ex.Message;}
             Notify(nameof(Error));
         }
     }
     public void CancelLoad()=>cancel?.Cancel();
-    public FootballSchedulingOptions Options()=>new(Start.HasValue?DateOnly.FromDateTime(Start.Value):throw new InvalidDataException("Choose a first date."),End.HasValue?DateOnly.FromDateTime(End.Value):throw new InvalidDataException("Choose a last date."),RestDays,FootballExactCalendar.Time(PreferredTime),Weekdays.Where(d=>d.Allowed).Select(d=>d.Day).ToArray());
+    public FootballSchedulingOptions Options()=>new(Start.HasValue?DateOnly.FromDateTime(Start.Value):throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a first date.")),End.HasValue?DateOnly.FromDateTime(End.Value):throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a last date.")),RestDays,FootballExactCalendar.Time(PreferredTime),Weekdays.Where(d=>d.Allowed).Select(d=>d.Day).ToArray());
     public async Task Simulate()
     {
         try
         {
-            await LoadAvailability();if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException("Load current availability before simulating.");Synchronize();var options=Options();var matches=Matches.ToArray();
+            await LoadAvailability();if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException(ATLink.Core.UiText.Get("Load current availability before simulating."));Synchronize();var options=Options();var matches=Matches.ToArray();
             Busy=true;Progress=0;Notify(nameof(Busy));Notify(nameof(CanWork));Notify(nameof(Progress));cancel=new();proposalStamp=Stamp();var progress=new Progress<int>(p=>{Progress=p;Notify(nameof(Progress));});Proposal=await Task.Run(()=>FootballSchedulePlanner.Place(matches,Index,options,cancel.Token,progress));Error="";Notify(nameof(ProposalText));Notify(nameof(ProposalDates));Notify(nameof(HasProposal));RefreshDays();
         }
-        catch(Exception ex){Error=ex is OperationCanceledException?"Simulation cancelled. The draft was not changed.":ex.Message;Notify(nameof(Error));}
+        catch(Exception ex){Error=ex is OperationCanceledException?ATLink.Core.UiText.Get("Simulation cancelled. The draft was not changed."):ex.Message;Notify(nameof(Error));}
         finally{Busy=false;Notify(nameof(Busy));Notify(nameof(CanWork));}
     }
     public void ApplyProposal()
     {
-        try{if(Proposal is null)return;if(proposalStamp!=Stamp()||Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException("The draft or scheduling options changed. Simulate again before applying.");if(Proposal.Unplaced.Count>0||Proposal.Conflicts.Any(c=>c.Blocking))throw new InvalidDataException("Resolve the blocking conflicts and unplaced matches before applying this proposal.");Commit(Proposal.Matches);Proposal=null;Notify(nameof(HasProposal));}
+        try{if(Proposal is null)return;if(proposalStamp!=Stamp()||Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException(ATLink.Core.UiText.Get("The draft or scheduling options changed. Simulate again before applying."));if(Proposal.Unplaced.Count>0||Proposal.Conflicts.Any(c=>c.Blocking))throw new InvalidDataException(ATLink.Core.UiText.Get("Resolve the blocking conflicts and unplaced matches before applying this proposal."));Commit(Proposal.Matches);Proposal=null;Notify(nameof(HasProposal));}
         catch(Exception ex){Error=ex.Message;Notify(nameof(Error));}
     }
     public void DiscardProposal(){Proposal=null;Notify(nameof(HasProposal));RefreshDays();}
     Draft Capture()=>new(Matches.ToArray(),calendar.Matchdays.Select(r=>new CreationMatchday{PhaseKey=r.PhaseKey,PhaseIndex=r.PhaseIndex,PhaseName=r.PhaseName,Round=r.Round,Date=r.Date,Kickoff=r.Kickoff,Minimum=r.Minimum,Maximum=r.Maximum,Capacity=r.Capacity}).ToArray(),calendar.Fixtures.ToArray(),calendar.Mode,FriendlyReplacements.ToArray(),FixedDayTimes.ToDictionary(),TieEditors().Select(t=>new TieState(t.PhaseKey,t.Venue.Snapshot())).ToArray(),International.Moves.ToArray());
     void RestoreTies(IReadOnlyList<TieState> states)
     {
-        var editors=TieEditors();var updates=states.Select(state=>(State:state,Target:editors.FirstOrDefault(t=>t.PhaseKey==state.PhaseKey&&t.Venue.Ordinal==state.Venue.Ordinal)?.Venue??throw new InvalidDataException("The competition format changed. Review tie venues before using calendar history."))).ToArray();
-        foreach(var update in updates)if(update.Target.Snapshot().NativeGroup!=update.State.Venue.NativeGroup)throw new InvalidDataException("The native tie mapping changed. Review its venue again.");
+        var editors=TieEditors();var updates=states.Select(state=>(State:state,Target:editors.FirstOrDefault(t=>t.PhaseKey==state.PhaseKey&&t.Venue.Ordinal==state.Venue.Ordinal)?.Venue??throw new InvalidDataException(ATLink.Core.UiText.Get("The competition format changed. Review tie venues before using calendar history.")))).ToArray();
+        foreach(var update in updates)if(update.Target.Snapshot().NativeGroup!=update.State.Venue.NativeGroup)throw new InvalidDataException(ATLink.Core.UiText.Get("The native tie mapping changed. Review its venue again."));
         foreach(var update in updates)update.Target.Restore(update.State.Venue);
     }
         public void CommitInternational(IReadOnlyList<FootballInternationalMove> moves)
@@ -197,7 +197,7 @@ public sealed class CalendarBoardViewModel:FootballNotify
     }
     void WriteSlots()
     {
-        calendar.Mode="Choose matchday dates";calendar.Matchdays.Clear();
+        calendar.Mode=ATLink.Core.UiText.Get("Choose matchday dates");calendar.Matchdays.Clear();
         foreach(var group in Matches.Where(m=>m.Date.HasValue).GroupBy(m=>(m.PhaseKey,m.PhaseIndex,m.Round,Date:m.Date!.Value,m.Kickoff)))
         {
             var p=calendar.Phases.Single(p=>p.Key==group.Key.PhaseKey);calendar.Matchdays.Add(new(){PhaseKey=p.Key,PhaseIndex=p.Index,PhaseName=p.Name,Round=group.Key.Round,Date=group.Key.Date.ToDateTime(TimeOnly.MinValue),Kickoff=group.Key.Kickoff,Minimum="0",Maximum=group.Count().ToString(),Capacity=p.Matches});
@@ -209,13 +209,13 @@ public sealed class CalendarBoardViewModel:FootballNotify
     public void UseFixtures()
     {
         ValidateFixtureAssignment();
-        var assignable=Matches.Where(m=>m.Home is not null&&m.Away is not null&&m.Date.HasValue).ToArray();if(assignable.Length==0)throw new InvalidDataException("No fully named simulated fixtures are available. Future qualifiers stay unassigned.");
+        var assignable=Matches.Where(m=>m.Home is not null&&m.Away is not null&&m.Date.HasValue).ToArray();if(assignable.Length==0)throw new InvalidDataException(ATLink.Core.UiText.Get("No fully named simulated fixtures are available. Future qualifiers stay unassigned."));
         Commit(Matches.Select(m=>assignable.Any(a=>a.Id==m.Id)?m with{Confirmed=true,Locked=true}:m).ToArray());
     }
     public void ValidateFixtureAssignment()
     {
-        if(!FixtureAssignmentAllowed())throw new InvalidDataException("Dynamic entry sources remain rules. Use the date simulation, or choose fixed participants before freezing named pairings.");
-        if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException("Refresh availability before confirming fixtures.");
+        if(!FixtureAssignmentAllowed())throw new InvalidDataException(ATLink.Core.UiText.Get("Dynamic entry sources remain rules. Use the date simulation, or choose fixed participants before freezing named pairings."));
+        if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException(ATLink.Core.UiText.Get("Refresh availability before confirming fixtures."));
     }
     void Restore(Draft draft)
     {
@@ -226,17 +226,17 @@ public sealed class CalendarBoardViewModel:FootballNotify
     public string Venue(string phaseKey)
     {
         var expanded=FootballExactCalendar.Phases(layout());var p=expanded.Single(p=>p.Key==phaseKey);int offset=0;
-        foreach(var source in layout()){int count=source.Kind==FootballPhaseKind.Knockout?source.Rounds:1;if(p.Index<offset+count){var setting=source.RoundSettings.ElementAtOrDefault(p.Index-offset)?.Stadium;if(setting?.Mode==FootballSettingMode.Value&&int.TryParse(setting.Value,out int id))return FootballPhaseSettingsAdapter.Stadiums(context).FirstOrDefault(s=>s.Id==id)?.Name??"Unavailable stadium";break;}offset+=count;}
-        return "Competition default / usual home grounds";
+        foreach(var source in layout()){int count=source.Kind==FootballPhaseKind.Knockout?source.Rounds:1;if(p.Index<offset+count){var setting=source.RoundSettings.ElementAtOrDefault(p.Index-offset)?.Stadium;if(setting?.Mode==FootballSettingMode.Value&&int.TryParse(setting.Value,out int id))return FootballPhaseSettingsAdapter.Stadiums(context).FirstOrDefault(s=>s.Id==id)?.Name??ATLink.Core.UiText.Get("Unavailable stadium");break;}offset+=count;}
+        return ATLink.Core.UiText.Get("Competition default / usual home grounds");
     }
     public IReadOnlyList<FootballEngagement> ExternalOn(DateOnly date)=>Index.Events.Where(e=>e.Date==date&&e.Teams.Intersect(Participants()).Any()).ToArray();
     public void ValidateDraft()
     {
         if(!Edited)return;
         Synchronize();
-        if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException("Availability changed. Reload it and review the planned matches.");
-        if(Matches.Any(m=>m.Date is null))throw new InvalidDataException("Some matches remain unplaced. Schedule them before creating the competition.");
-        foreach(var slot in FriendlyReplacements)if(!Matches.Any(m=>m.Date==slot.Date(context.ReferenceDate)))throw new InvalidDataException("A friendly slot is selected for replacement but no competition match remains on that date. Restore the slot or schedule its replacement.");
-        var blocking=FootballSchedulePlanner.Conflicts(Matches,Index,RestDays).FirstOrDefault(c=>c.Blocking);if(blocking is not null)throw new InvalidDataException(blocking.Message+" Adjust the remaining suggested dates or simulate a valid schedule before creation.");
+        if(Index.Fingerprint!=FootballAvailability.Fingerprint(AvailabilityContext))throw new InvalidDataException(ATLink.Core.UiText.Get("Availability changed. Reload it and review the planned matches."));
+        if(Matches.Any(m=>m.Date is null))throw new InvalidDataException(ATLink.Core.UiText.Get("Some matches remain unplaced. Schedule them before creating the competition."));
+        foreach(var slot in FriendlyReplacements)if(!Matches.Any(m=>m.Date==slot.Date(context.ReferenceDate)))throw new InvalidDataException(ATLink.Core.UiText.Get("A friendly slot is selected for replacement but no competition match remains on that date. Restore the slot or schedule its replacement."));
+        var blocking=FootballSchedulePlanner.Conflicts(Matches,Index,RestDays).FirstOrDefault(c=>c.Blocking);if(blocking is not null)throw new InvalidDataException(ATLink.Core.UiText.Concat(blocking.Message, ATLink.Core.UiText.Get(" Adjust the remaining suggested dates or simulate a valid schedule before creation.")));
     }
 }

@@ -42,7 +42,7 @@ public sealed class FifaModFile
     {
         path=path.Replace('\\','/');
         if(string.IsNullOrWhiteSpace(path)||path.StartsWith('/')||path.Contains(':')||path.Split('/').Any(p=>p is "" or "." or "..")||path.Any(c=>c<32||c>126))
-            throw new InvalidDataException("Invalid game resource path: "+path);
+            throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Invalid game resource path: "), path));
         return path;
     }
 
@@ -50,7 +50,7 @@ public sealed class FifaModFile
     {
         using var stream=File.OpenRead(path);
         using var reader=new BinaryReader(stream,Encoding.UTF8,true);
-        if(!Exact(reader,4).AsSpan().SequenceEqual("FETM"u8)||reader.ReadByte()!=3)throw new InvalidDataException("Only FETM version 3 is supported.");
+        if(!Exact(reader,4).AsSpan().SequenceEqual("FETM"u8)||reader.ReadByte()!=3)throw new InvalidDataException(ATLink.Core.UiText.Get("Only FETM version 3 is supported."));
         string game=ReadString(reader);byte[] build=Exact(reader,7);
         string title=ReadString(reader),author=ReadString(reader);
         Exact(reader,2);ReadString(reader);ReadString(reader); // Categories.
@@ -61,20 +61,20 @@ public sealed class FifaModFile
         RequireZero(reader,16);
         int count=Count(reader,100_000);
         RequireZero(reader,2);
-        if(fileSize!=stream.Length||dataOffset<stream.Position||dataOffset>stream.Length)throw new InvalidDataException("Invalid FIFAMOD file bounds.");
+        if(fileSize!=stream.Length||dataOffset<stream.Position||dataOffset>stream.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid FIFAMOD file bounds."));
         var resources=new List<FifaModResource>(count);var names=new HashSet<ulong>();var ids=new HashSet<Guid>();
         int expectedOffset=0;
         for(int i=0;i<count;i++)
         {
             var id=new Guid(Exact(reader,16));byte[] sha=Exact(reader,20);
             byte flags=reader.ReadByte();
-            if(flags is not (0x16 or 0x56)||reader.ReadByte()!=0)throw new InvalidDataException("Unsupported FIFAMOD resource flags.");
+            if(flags is not (0x16 or 0x56)||reader.ReadByte()!=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Unsupported FIFAMOD resource flags."));
             int offset=Count(reader,int.MaxValue),stored=Count(reader,int.MaxValue),original=Count(reader,int.MaxValue);
             ulong hash=reader.ReadUInt64();string name=NormalizePath(ReadString(reader));uint sb=reader.ReadUInt32();
-            if(flags==0x56&&!IsSupportedAddition(name))throw new InvalidDataException("Unsupported added FIFAMOD resource: "+name);
+            if(flags==0x56&&!IsSupportedAddition(name))throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unsupported added FIFAMOD resource: "), name));
             bool alias=resources.Any(r=>r.Offset==offset&&r.StoredSize==stored&&r.OriginalSize==original&&r.Sha1.AsSpan().SequenceEqual(sha));
             if(hash!=NameHash(name)||!names.Add(hash)||!ids.Add(id)||(!alias&&offset!=expectedOffset)||(long)dataOffset+offset+stored>stream.Length)
-                throw new InvalidDataException("Invalid or duplicate FIFAMOD resource: "+name);
+                throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Invalid or duplicate FIFAMOD resource: "), name));
             if(!alias)expectedOffset=checked(offset+stored);
             resources.Add(new(id,sha,offset,stored,original,hash,name,sb){Added=flags==0x56});
         }
@@ -82,17 +82,17 @@ public sealed class FifaModFile
         for(int i=0;i<collectorCount;i++)
         {
             string name=ReadString(reader);var manifest=new Guid(Exact(reader,16));
-            if(reader.ReadByte()!=1)throw new InvalidDataException("Unsupported collector layout.");
+            if(reader.ReadByte()!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("Unsupported collector layout."));
             collectors.Add(new(name,manifest,reader.ReadUInt32()));
         }
         RequireZero(reader,1);
-        if(stream.Position!=dataOffset||(long)dataOffset+expectedOffset!=stream.Length)throw new InvalidDataException("Unexpected FIFAMOD sections or trailing data.");
+        if(stream.Position!=dataOffset||(long)dataOffset+expectedOffset!=stream.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Unexpected FIFAMOD sections or trailing data."));
         foreach(var resource in resources)
         {
             stream.Position=(long)dataOffset+resource.Offset;
             using var hash=IncrementalHash.CreateHash(HashAlgorithmName.SHA1);byte[] buffer=new byte[65536];int left=resource.StoredSize;
             while(left>0){int n=Math.Min(left,buffer.Length);stream.ReadExactly(buffer.AsSpan(0,n));hash.AppendData(buffer,0,n);left-=n;}
-            if(!hash.GetHashAndReset().AsSpan().SequenceEqual(resource.Sha1))throw new InvalidDataException("FIFAMOD checksum mismatch: "+resource.Name);
+            if(!hash.GetHashAndReset().AsSpan().SequenceEqual(resource.Sha1))throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("FIFAMOD checksum mismatch: "), resource.Name));
         }
         return new(){Game=game,GameBuild=build,Details=new(title,author,version,description),Resources=resources,Collectors=collectors,DataOffset=dataOffset};
     }
@@ -104,31 +104,31 @@ public sealed class FifaModFile
         Span<byte> header=stackalloc byte[8];
         while(stream.Position<end)
         {
-            if(end-stream.Position<8)throw new InvalidDataException("Truncated Frostbite block.");
+            if(end-stream.Position<8)throw new InvalidDataException(ATLink.Core.UiText.Get("Truncated Frostbite block."));
             stream.ReadExactly(header);uint a=BinaryPrimitives.ReadUInt32BigEndian(header),b=BinaryPrimitives.ReadUInt32BigEndian(header[4..]);
             int raw=(int)(a&0xffffff),stored=(int)(b&0xfffff);
             if((a>>24)!=0||(b>>24)!=0||(b&0xf00000)!=0x700000||raw!=stored||raw==0||stream.Position+stored>end||output.Length+raw>resource.OriginalSize)
-                throw new InvalidDataException("Extraction supports only the uncompressed Frostbite blocks written by ATLink.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Extraction supports only the uncompressed Frostbite blocks written by ATLink."));
             byte[] data=new byte[stored];stream.ReadExactly(data);output.Write(data);
         }
-        if(output.Length!=resource.OriginalSize)throw new InvalidDataException("FIFAMOD original size mismatch.");
+        if(output.Length!=resource.OriginalSize)throw new InvalidDataException(ATLink.Core.UiText.Get("FIFAMOD original size mismatch."));
         return output.ToArray();
     }
 
     public static void Write(string target,FifaModDetails details,FifaModCatalog catalog,IReadOnlyList<FifaModInput> inputs)
     {
         if(string.IsNullOrWhiteSpace(details.Title)||string.IsNullOrWhiteSpace(details.Author)||string.IsNullOrWhiteSpace(details.Version))
-            throw new InvalidDataException("Enter a mod title, author and version.");
-        if(new[]{details.Title,details.Author,details.Version,details.Description}.Any(s=>s.Length>16_000))throw new InvalidDataException("Mod details are too long.");
-        if(inputs.Count==0)throw new InvalidDataException("There are no changed files to export.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Enter a mod title, author and version."));
+        if(new[]{details.Title,details.Author,details.Version,details.Description}.Any(s=>s.Length>16_000))throw new InvalidDataException(ATLink.Core.UiText.Get("Mod details are too long."));
+        if(inputs.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("There are no changed files to export."));
         var paths=inputs.Select(i=>NormalizePath(i.GamePath)).ToArray();
         if(paths.Any(path=>path.StartsWith("data/db/",StringComparison.OrdinalIgnoreCase)||
                            Path.GetFileName(path).Equals("fifa_ng_db.db",StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidDataException("The main game database cannot be included in a FIFAMOD export.");
-        if(paths.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=paths.Length)throw new InvalidDataException("Duplicate export paths.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("The main game database cannot be included in a FIFAMOD export."));
+        if(paths.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=paths.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Duplicate export paths."));
         var selected=paths.Select(catalog.Resolve).ToArray(); // Fail before writing, never silently omit files.
         string full=Path.GetFullPath(target);
-        if(File.Exists(full)||Directory.Exists(full))throw new IOException("Choose a new FIFAMOD filename; existing files are preserved.");
+        if(File.Exists(full)||Directory.Exists(full))throw new IOException(ATLink.Core.UiText.Get("Choose a new FIFAMOD filename; existing files are preserved."));
         string temporary=full+"."+Guid.NewGuid().ToString("N")+".tmp";
         try
         {
@@ -163,7 +163,7 @@ public sealed class FifaModFile
             }
             var written=Read(temporary);
             for(int i=0;i<inputs.Count;i++)
-                if(!written.ExtractStoredFile(temporary,written.Resources[i]).AsSpan().SequenceEqual(inputs[i].Data))throw new InvalidDataException("Export verification failed: "+paths[i]);
+                if(!written.ExtractStoredFile(temporary,written.Resources[i]).AsSpan().SequenceEqual(inputs[i].Data))throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Export verification failed: "), paths[i]));
             File.Move(temporary,full,false);
         }
         finally{if(File.Exists(temporary))File.Delete(temporary);}
@@ -183,7 +183,7 @@ public sealed class FifaModFile
 
     internal static int Count(BinaryReader reader,int maximum)
     {
-        int n=reader.Read7BitEncodedInt();if(n<0||n>maximum)throw new InvalidDataException("Invalid format count.");return n;
+        int n=reader.Read7BitEncodedInt();if(n<0||n>maximum)throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid format count."));return n;
     }
     internal static string ReadString(BinaryReader reader)
     {
@@ -191,10 +191,10 @@ public sealed class FifaModFile
     }
     internal static byte[] Exact(BinaryReader reader,int size)
     {
-        byte[] data=reader.ReadBytes(size);if(data.Length!=size)throw new EndOfStreamException("Truncated mod/cache file.");return data;
+        byte[] data=reader.ReadBytes(size);if(data.Length!=size)throw new EndOfStreamException(ATLink.Core.UiText.Get("Truncated mod/cache file."));return data;
     }
     static void RequireZero(BinaryReader reader,int count)
     {
-        if(Exact(reader,count).Any(b=>b!=0))throw new InvalidDataException("This FIFAMOD contains unsupported sections.");
+        if(Exact(reader,count).Any(b=>b!=0))throw new InvalidDataException(ATLink.Core.UiText.Get("This FIFAMOD contains unsupported sections."));
     }
 }

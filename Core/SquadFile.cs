@@ -12,7 +12,7 @@ public sealed class SquadFile
     public static bool IsContainer(ReadOnlySpan<byte> data)=>data.Length>=18&&data[..8].SequenceEqual("FBCHUNKS"u8)&&data[8]==1&&data[9]==0;
     public static int PrefixLength(ReadOnlySpan<byte> data)
     {
-        if(!IsContainer(data))throw new InvalidDataException("Conteneur Squad FBCHUNKS attendu.");
+        if(!IsContainer(data))throw new InvalidDataException(ATLink.Core.UiText.Get("Conteneur Squad FBCHUNKS attendu."));
         return checked(18+BinaryPrimitives.ReadInt32LittleEndian(data[10..14]));
     }
     public static uint ComputeSaveTypeCrc(ReadOnlySpan<byte> packed)
@@ -34,13 +34,13 @@ public sealed class SquadFile
     public static string NormalizeName(string name,int capacity=NameCapacity)
     {
         string text=name.Replace("\0","").Trim();
-        if(text.Length==0)throw new InvalidDataException("Le nom du Squad ne peut pas être vide.");
+        if(text.Length==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Le nom du Squad ne peut pas être vide."));
         int max=Math.Max(1,capacity-1);
         byte[] bytes=Encoding.UTF8.GetBytes(text);
         if(bytes.Length<=max)return text;
         int length=max;
         while(length>0&&(bytes[length]&0xC0)==0x80)length--;
-        if(length==0)throw new InvalidDataException("Le nom du Squad est trop long.");
+        if(length==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Le nom du Squad est trop long."));
         return Encoding.UTF8.GetString(bytes,0,length);
     }
     public static void WriteName(Span<byte> data,string name)
@@ -55,12 +55,12 @@ public sealed class SquadFile
     public static SquadFile Open(string path,string metadata)
     {
         byte[] data=File.ReadAllBytes(path);
-        if(!IsContainer(data))throw new InvalidDataException("Conteneur Squad FBCHUNKS attendu.");
+        if(!IsContainer(data))throw new InvalidDataException(ATLink.Core.UiText.Get("Conteneur Squad FBCHUNKS attendu."));
         int prefix=PrefixLength(data);
         int dbStart=checked(prefix+52);
-        if(dbStart+28>data.Length||!data.AsSpan(dbStart,8).SequenceEqual(new byte[]{68,66,0,8,0,0,0,0}))throw new InvalidDataException("DB embarquée absente du Squad.");
+        if(dbStart+28>data.Length||!data.AsSpan(dbStart,8).SequenceEqual(new byte[]{68,66,0,8,0,0,0,0}))throw new InvalidDataException(ATLink.Core.UiText.Get("DB embarquée absente du Squad."));
         int dbSize=BinaryPrimitives.ReadInt32LittleEndian(data.AsSpan(dbStart+8,4));
-        if(dbSize<28||(long)dbStart+dbSize>data.Length)throw new InvalidDataException("Taille de DB Squad invalide.");
+        if(dbSize<28||(long)dbStart+dbSize>data.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Taille de DB Squad invalide."));
         byte[] inner=data.AsSpan(dbStart,dbSize).ToArray();
         byte[] head=data.AsSpan(0,dbStart).ToArray();
         byte[] trail=data.AsSpan(dbStart+dbSize).ToArray();
@@ -75,9 +75,9 @@ public sealed class SquadFile
     public void SaveAs(string path)=>Database.SaveAs(path);
     private static byte[] Pack(byte[] head,byte[] db,byte[] trail,string name)
     {
-        if(head.Length<18)throw new InvalidDataException("En-tête Squad incomplet.");
+        if(head.Length<18)throw new InvalidDataException(ATLink.Core.UiText.Get("En-tête Squad incomplet."));
         int prefix=18+BinaryPrimitives.ReadInt32LittleEndian(head.AsSpan(10,4));
-        if(prefix+52!=head.Length)throw new InvalidDataException("En-tête Squad incohérent.");
+        if(prefix+52!=head.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("En-tête Squad incohérent."));
         byte[] packed=new byte[head.Length+db.Length+trail.Length];
         head.CopyTo(packed,0);
         WriteName(packed,name);
@@ -107,10 +107,10 @@ public static class LocalizationFormat
     {
         string normalized=text.TrimStart('\uFEFF');
         var rows=TableEditing.Parse(normalized,TableEditing.Separator(normalized));
-        if(rows.Count<2)throw new InvalidDataException("Export de chaînes vide.");
+        if(rows.Count<2)throw new InvalidDataException(ATLink.Core.UiText.Get("Export de chaînes vide."));
         int Hash(params string[] names){int i=Array.FindIndex(rows[0],c=>names.Contains(c.Trim(),StringComparer.OrdinalIgnoreCase));return i;}
         int hash=Hash("hashid","hash","id");int key=Hash("stringid","string","key");int value=Hash("sourcetext","text","value","textstring");
-        if(key<0||value<0)throw new InvalidDataException("Colonnes stringid et sourcetext (ou équivalent) requises.");
+        if(key<0||value<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Colonnes stringid et sourcetext (ou équivalent) requises."));
         var result=new List<string[]>();
         foreach(var row in rows.Skip(1))
         {
@@ -119,7 +119,7 @@ public static class LocalizationFormat
             string hashValue=hash>=0&&row[hash].Length>0?row[hash]:unchecked((int)LanguageHash.Compute(id)).ToString();
             result.Add([hashValue,id,row[value]]);
         }
-        if(result.Count==0)throw new InvalidDataException("Aucune chaîne lisible.");
+        if(result.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Aucune chaîne lisible."));
         return result;
     }
     public static string Export(IEnumerable<string[]> rows)
@@ -147,22 +147,22 @@ internal static class TransfermarktHttp
 }
 public sealed record FieldChoice(string Value,string Label)
 {
-    public override string ToString()=>$"{Label} ({Value})";
+    public override string ToString()=>ATLink.Core.UiText.Concat(Label, " (", Value, ")");
 }
 public static class FieldChoices
 {
     private static readonly FieldChoice[] Positions=[..PlayerProfileImport.PositionCodes.Select((code,i)=>new FieldChoice(i.ToString(),code))];
     private static readonly Dictionary<string,FieldChoice[]> Map=new(StringComparer.OrdinalIgnoreCase)
     {
-        ["preferredfoot"]=[new("1","Left"),new("2","Right")],
+        ["preferredfoot"]=[new("1",UiText.Get("Left")),new("2",UiText.Get("Right"))],
         ["preferredposition1"]=Positions,
-        ["preferredposition2"]=[new("-1","None"),..Positions],
-        ["preferredposition3"]=[new("-1","None"),..Positions],
-        ["preferredposition4"]=[new("-1","None"),..Positions],
+        ["preferredposition2"]=[new("-1",UiText.Get("None")),..Positions],
+        ["preferredposition3"]=[new("-1",UiText.Get("None")),..Positions],
+        ["preferredposition4"]=[new("-1",UiText.Get("None")),..Positions],
         ["skillmoves"]=Stars(0,4,1),
         ["skillmoveslikelihood"]=Stars(0,4,1),
         ["weakfootabilitytypecode"]=Stars(1,5,0),
-        ["gender"]=[new("0","Male"),new("1","Female")],
+        ["gender"]=[new("0",UiText.Get("Male")),new("1",UiText.Get("Female"))],
         ["internationalrep"]=[new("1","1"),new("2","2"),new("3","3"),new("4","4"),new("5","5")]
     };
     private static FieldChoice[] Stars(int from,int to,int offset)=>Enumerable.Range(from,to-from+1).Select(v=>new FieldChoice(v.ToString(),new string('★',v+offset))).ToArray();

@@ -61,6 +61,14 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
     public AttributeDraft Potential {get;}
     public int Overall {get;private set;}
     public Brush OverallBrush=>RatingColors.For(Overall);
+    Color BadgeTone(double amount){
+        var c=((SolidColorBrush)OverallBrush).Color;
+        byte Tone(byte value)=>(byte)Math.Clamp(amount>=0?value+(255-value)*amount:value*(1+amount),0,255);
+        return Color.FromRgb(Tone(c.R),Tone(c.G),Tone(c.B));
+    }
+    public Brush OverallBorderBrush=>new SolidColorBrush(BadgeTone(.48));
+    public Brush OverallReliefBrush=>new LinearGradientBrush(BadgeTone(.25),BadgeTone(-.28),65);
+
     public IReadOnlyList<PositionRating> PositionRatings {get;private set;}=[];
     static readonly (string Name,double X,double Y)[] PitchLayout=
     [
@@ -77,7 +85,9 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
         .Select(p=>new PitchRating(p.Layout.Name,p.Rating!.Rating,p.Layout.X,p.Layout.Y)).ToArray();
     public bool Valid=>Attributes.All(a=>a.IsValid)&&Potential.IsValid;
     public string Message {get;private set;}="";
-    public string Position {get;}
+    public string Position {get;private set;}
+    bool positionChanged;
+    public void UpdatePosition(string code){if(int.TryParse(code,out int n)&&n>=0&&n<PlayerProfileImport.PositionCodes.Length){string next=PlayerProfileImport.PositionCodes[n];if(next!=Position){Position=next;positionChanged=true;Changed();}}}
     readonly int initialOverall;
     public PlayerAttributeDraft(FootballCatalog catalog,EntityItem player)
     {
@@ -95,9 +105,9 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
         Group("Physical",("jumping","Jumping"),("stamina","Stamina"),("strength","Strength"),("aggression","Aggression"));
         Group("Goalkeeping",("gkdiving","GK diving"),("gkhandling","GK handling"),("gkkicking","GK kicking"),("gkpositioning","GK positioning"),("gkreflexes","GK reflexes"));
         Groups.RemoveAll(g=>g.Attributes.Length==0);
-        LeftGroups=Groups.Where(g=>g.Name is "Pace" or "Shooting" or "Passing").ToArray();
-        RightGroups=Groups.Where(g=>g.Name is not ("Pace" or "Shooting" or "Passing")).ToArray();
-        Potential=new("potential","Potential",FootballCatalog.Value(player.Row,"potential"),Changed);
+        LeftGroups=Groups.Where(g=>ATLink.Core.UiText.Source(g.Name) is "Pace" or "Shooting" or "Passing").ToArray();
+        RightGroups=Groups.Where(g=>ATLink.Core.UiText.Source(g.Name) is not ("Pace" or "Shooting" or "Passing")).ToArray();
+        Potential=new("potential",ATLink.Core.UiText.Get("Potential"),FootballCatalog.Value(player.Row,"potential"),Changed);
         Changed();
     }
     void Changed()
@@ -109,13 +119,13 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
             var values=Attributes.ToDictionary(a=>a.Field,a=>a.Value);
             if(values.TryGetValue("defensiveawareness",out int awareness))values["marking"]=awareness;
             PositionRatings=PlayerRatings.Positions.Select(p=>new PositionRating(p,PlayerRatings.RawOverall(p,values))).OrderByDescending(p=>p.Rating).ToArray();
-            Overall=Attributes.Any(a=>a.Text!=a.Initial)?PositionRatings.First(p=>p.Name==Position).Rating:initialOverall;
-            Message="OVR updates from attribute weights for "+Position+". Group scores show attribute averages.";
+            Overall=positionChanged||Attributes.Any(a=>a.Text!=a.Initial)?PositionRatings.First(p=>p.Name==Position).Rating:initialOverall;
+            Message=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("OVR updates from attribute weights for "), Position, ATLink.Core.UiText.Get(". Group scores show attribute averages."));
         }
-        else Message="Enter a whole number from 1 to 99 in every highlighted field.";
+        else Message=ATLink.Core.UiText.Get("Enter a whole number from 1 to 99 in every highlighted field.");
         // Never refresh group ItemsSource or the Potential ContentControl while typing:
         // rebuilding their visual trees destroys the focused TextBox.
-        foreach(string property in new[]{nameof(Overall),nameof(OverallBrush),nameof(PositionRatings),nameof(PitchRatings),nameof(Valid),nameof(Message),nameof(HasChanges)})
+        foreach(string property in new[]{nameof(Overall),nameof(OverallBrush),nameof(OverallBorderBrush),nameof(OverallReliefBrush),nameof(PositionRatings),nameof(PitchRatings),nameof(Valid),nameof(Message),nameof(HasChanges)})
             PropertyChanged?.Invoke(this,new(property));
     }
     public void Reset()
@@ -125,7 +135,7 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
     public bool HasChanges=>Attributes.Append(Potential).Any(a=>a.Text!=FootballCatalog.Value(player.Row,a.Field))||Overall.ToString()!=FootballCatalog.Value(player.Row,"overallrating");
     public void Apply()
     {
-        if(!Valid)throw new InvalidOperationException("Enter whole numbers from 1 to 99.");
+        if(!Valid)throw new InvalidOperationException(ATLink.Core.UiText.Get("Enter whole numbers from 1 to 99."));
         var changes=Attributes.Append(Potential).Where(a=>a.Text!=FootballCatalog.Value(player.Row,a.Field)).ToDictionary(a=>a.Field,a=>a.Text);
         if(Overall.ToString()!=FootballCatalog.Value(player.Row,"overallrating"))changes["overallrating"]=Overall.ToString();
         foreach(var entry in changes)DatabaseDocument.ValidateValue(catalog.Table("players").Fields.Single(f=>f.Name==entry.Key),entry.Value);
@@ -137,27 +147,72 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
 public partial class PlayerEditor : UserControl
 {
     public event Action? BackRequested;
-    public PlayerAttributeDraft Draft {get;}
+    public PlayerAttributeDraft Draft {get;private set;}
+    readonly PlayerInfoEditor info;
+    readonly PlayerAppearanceEditor appearance;
+    readonly FootballCatalog catalog;
+    readonly EntityItem player;
     public PlayerEditor(FootballCatalog catalog,EntityItem player)
     {
-        InitializeComponent();Draft=new(catalog,player);DataContext=Draft;
+        InitializeComponent();this.catalog=catalog;this.player=player;Draft=new(catalog,player);DataContext=Draft;info=new(catalog,player);InfoHost.Content=info;info.Changed+=()=>Error.Text=ATLink.Core.UiText.Get("Changes not applied");appearance=new(catalog,player);AppearanceHost.Content=appearance;appearance.Changed+=()=>Error.Text=ATLink.Core.UiText.Get("Changes not applied");
         PlayerName.Text=player.Name;PlayerId.Text="ID: "+player.Id;Portrait.Source=EntityImages.Player(player.Id);
         var link=catalog.Rows("teamplayerlinks").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==player.Id&&!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid")));
         string clubId=link is null?"":FootballCatalog.Value(link,"teamid");
-        ClubName.Text=catalog.Rows("teams").Where(r=>FootballCatalog.Value(r,"teamid")==clubId).Select(r=>FootballCatalog.Value(r,"teamname")).FirstOrDefault()??"No club";
+        ClubName.Text=catalog.Rows("teams").Where(r=>FootballCatalog.Value(r,"teamid")==clubId).Select(r=>FootballCatalog.Value(r,"teamname")).FirstOrDefault()??ATLink.Core.UiText.Get("No club");
         Crest.Source=EntityImages.Crest(clubId);
         string nation=FootballCatalog.Value(player.Row,"nationality");Nation.Text=catalog.NationNames().GetValueOrDefault(nation,"Nation "+nation);Flag.Source=NationFlags.Load(catalog.NationCodes().GetValueOrDefault(nation),Nation.Text);
+        RefreshInfoHeader();
+        Loaded+=(_,_)=>{catalog.Document.DisplayLocalizationChanged+=RefreshLocalizedHeader;RefreshLocalizedHeader();};
+        Unloaded+=(_,_)=>catalog.Document.DisplayLocalizationChanged-=RefreshLocalizedHeader;
         Draft.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PlayerAttributeDraft.PositionRatings))Radar.InvalidateVisual();};Radar.Draft=Draft;
+    }
+    void RefreshInfoHeader()
+    {
+        string Raw(string key)=>FootballCatalog.Value(player.Row,key);
+        string position=int.TryParse(Raw("preferredposition1"),out int p)&&p>=0&&p<PlayerProfileImport.PositionCodes.Length?PlayerProfileImport.PositionCodes[p]:Raw("preferredposition1");
+        string age="";if(DateTime.TryParse(FifaDate.ToIso(Raw("birthdate")),out var birth)){var today=DateTime.Today;int years=today.Year-birth.Year;if(birth.Date>today.AddYears(-years))years--;age=UiText.Format("{0} years",years);}
+        HeaderAge.Text=age;HeaderPosition.Text=position;HeaderHeight.Text=Raw("height")+" cm";HeaderFoot.Text=Raw("preferredfoot")=="1"?ATLink.Core.UiText.Get("Gauche"):ATLink.Core.UiText.Get("Droit");
+    }
+    void RefreshLocalizedHeader()
+    {
+        string nation=FootballCatalog.Value(player.Row,"nationality");
+        Nation.Text=catalog.NationNames().GetValueOrDefault(nation,nation);
+        var link=catalog.Rows("teamplayerlinks").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==player.Id&&!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid")));
+        string id=link is null?"":FootballCatalog.Value(link,"teamid");
+        ClubName.Text=catalog.Rows("teams").Where(team=>FootballCatalog.Value(team,"teamid")==id).Select(catalog.TeamName).FirstOrDefault()??UiText.Get("No club");
+    }
+    bool NameChanged=>NameDraft.Visibility==Visibility.Visible&&NameDraft.Text.Trim()!=catalog.PlayerName(player.Row);
+    void EditNameClick(object sender,RoutedEventArgs e){NameDraft.Text=PlayerName.Text;NameDraft.Visibility=Visibility.Visible;NameDraft.Focus();NameDraft.SelectAll();}
+    void NameDraftChanged(object sender,TextChangedEventArgs e){if(Error is not null)Error.Text=ATLink.Core.UiText.Get("Changes not applied");}
+    Dictionary<string,string> NameValues(){
+        var map=catalog.Names();var edited=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==player.Id);
+        var result=new Dictionary<string,string>();
+        foreach(var pair in new[]{("firstname","firstnameid"),("surname","lastnameid"),("commonname","commonnameid"),("playerjerseyname","playerjerseynameid")})
+            result[pair.Item1]=edited is null?map.GetValueOrDefault(FootballCatalog.Value(player.Row,pair.Item2),""):FootballCatalog.Value(edited,pair.Item1);
+        result["commonname"]=NameDraft.Text.Trim();return result;
     }
     public bool CanLeave()
     {
-        if(!Draft.HasChanges)return true;
-        var answer=ShellDialogs.Message(this,"Apply your player changes before leaving? Choose No to discard this draft.","Player changes",MessageBoxButton.YesNoCancel);
+        if(!Draft.HasChanges&&!info.HasChanges&&!appearance.HasChanges&&!NameChanged)return true;
+        var answer=ShellDialogs.Message(this,ATLink.Core.UiText.Get("Apply your player changes before leaving? Choose No to discard this draft."),ATLink.Core.UiText.Get("Player changes"),MessageBoxButton.YesNoCancel);
         return answer==MessageBoxResult.No||(answer==MessageBoxResult.Yes&&TryApply());
     }
     public bool TryApply()
     {
-        try{Draft.Apply();Error.Text="Changes applied. Save to write the file.";return true;}
+        try
+        {
+            if(!Draft.Valid)throw new InvalidOperationException(ATLink.Core.UiText.Get("Enter whole numbers from 1 to 99 for attributes."));
+            info.Validate();appearance.Validate();
+            if(NameChanged){
+                if(string.IsNullOrWhiteSpace(NameDraft.Text))throw new InvalidOperationException(ATLink.Core.UiText.Get("Le nom ne peut pas être vide."));
+                foreach(var pair in NameValues())DatabaseDocument.ValidateValue(catalog.Table("editedplayernames").Fields.Single(f=>f.Name==pair.Key),pair.Value);
+            }
+            var rows=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"playerid")==player.Id).Append(player.Row).ToDictionary(r=>r,r=>r.ItemArray.ToArray());
+            try{info.Apply();appearance.Apply();Draft.UpdatePosition(FootballCatalog.Value(player.Row,"preferredposition1"));Draft.Apply();if(NameChanged)PlayerEditing.Apply(catalog,player.Row,new Dictionary<string,string>(),NameValues());}catch{foreach(var row in rows)row.Key.ItemArray=row.Value;throw;}
+            string nation=FootballCatalog.Value(player.Row,"nationality");Nation.Text=catalog.NationNames().GetValueOrDefault(nation,nation);Flag.Source=NationFlags.Load(catalog.NationCodes().GetValueOrDefault(nation),Nation.Text);
+            PlayerName.Text=catalog.PlayerName(player.Row);NameDraft.Visibility=Visibility.Collapsed;RefreshInfoHeader();Draft=new(catalog,player);DataContext=Draft;Radar.Draft=Draft;Draft.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PlayerAttributeDraft.PositionRatings))Radar.InvalidateVisual();};Radar.InvalidateVisual();
+            Error.Text=ATLink.Core.UiText.Get("Changes applied. Save to write the file.");return true;
+        }
         catch(Exception ex){Error.Text=ex.Message;return false;}
     }
     void ApplyClick(object sender,RoutedEventArgs e)=>TryApply();

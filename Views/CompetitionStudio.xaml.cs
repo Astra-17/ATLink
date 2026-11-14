@@ -10,15 +10,15 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
     public event Action<bool>? Closed;
     public CompetitionStudioViewModel Model {get;}
     public CompetitionStudio(CompetitionProjectContext context){InitializeComponent();Model=new(context);DataContext=Model;}
-    public void Dispose()=>Model.Context.Dispose();
-    void BackClick(object sender,RoutedEventArgs e){if((Model.Context.HasUnexportedChanges||Model.Season?.HasPending==true||Model.FootballFormat.Artwork.HasPending)&&ShellDialogs.Message(this,"Leave this competition project? Export first to keep your changes.","Competition project",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;Closed?.Invoke(false);}
+    public void Dispose(){Model.Context.DisplayLanguageChanged-=Model.RefreshDisplayLanguage;Model.Context.Dispose();}
+    void BackClick(object sender,RoutedEventArgs e){if((Model.Context.HasUnexportedChanges||Model.Season?.HasPending==true||Model.FootballFormat.Artwork.HasPending)&&ShellDialogs.Message(this,ATLink.Core.UiText.Get("Leave this competition project? Export first to keep your changes."),ATLink.Core.UiText.Get("Competition project"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;Closed?.Invoke(false);}
     void RenameClick(object sender,RoutedEventArgs e)=>Model.Rename();
     void InternationalCalendarClick(object sender,RoutedEventArgs e)
     {
         if(!Model.TryApplyPendingSeason())return;
         var draft=new InternationalCalendarViewModel(Model.Context);
         var dialog=new InternationalCalendarWindow(draft){Owner=Window.GetWindow(this)};
-        if(dialog.ShowDialog()==true)Model.Run("Move international matchdays",()=>FootballInternationalCalendar.Apply(Model.Context,draft.Moves));
+        if(dialog.ShowDialog()==true)Model.Run(ATLink.Core.UiText.Get("Move international matchdays"),()=>FootballInternationalCalendar.Apply(Model.Context,draft.Moves));
     }
     void TranslationsClick(object sender,RoutedEventArgs e)
     {
@@ -26,7 +26,7 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
         if(!Model.TryApplyPendingSeason())return;
         if(Model.Context.Languages.Count==0)
         {
-            ShellDialogs.Message(this,"No language files are available.","Translations");
+            ShellDialogs.Message(this,ATLink.Core.UiText.Get("No language files are available."),ATLink.Core.UiText.Get("Translations"));
             return;
         }
         var dialog=new CompetitionTranslationsWindow(Model.Context,competition){Owner=Window.GetWindow(this)};
@@ -40,7 +40,7 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
     void NewSlotClick(object sender,RoutedEventArgs e)=>Model.AddSlot();void RemoveSlotClick(object sender,RoutedEventArgs e)=>Model.RemoveSlot();
     void SaveSlotClick(object sender,RoutedEventArgs e)=>Model.SaveSlot();
     void JumpSlot(object sender,MouseButtonEventArgs e){if(Model.ChosenSlot is { } slot)Model.JumpToSlot(slot);}
-    void ApplyPhaseSettings(object sender,RoutedEventArgs e)=>Model.Run("Change phase settings",()=>{foreach(var phase in Model.FootballFormat.Phases){if(phase.NativeId is not int id)throw new InvalidDataException("Apply the competition format before saving settings for new phases.");phase.Rules.Apply(Model.Context,id);foreach(var settings in phase.Snapshot().RoundSettings)FootballPhaseSettingsAdapter.Apply(Model.Context,id,settings);}},section:"rules");
+    void ApplyPhaseSettings(object sender,RoutedEventArgs e)=>Model.Run(ATLink.Core.UiText.Get("Change phase settings"),()=>{foreach(var phase in Model.FootballFormat.Phases){if(phase.NativeId is not int id)throw new InvalidDataException(ATLink.Core.UiText.Get("Apply the competition format before saving settings for new phases."));phase.Rules.Apply(Model.Context,id);foreach(var settings in phase.Snapshot().RoundSettings)FootballPhaseSettingsAdapter.Apply(Model.Context,id,settings);}},section:"rules");
     void RulesClick(object sender,RoutedEventArgs e)=>Model.SaveSportRules();void SortUp(object sender,RoutedEventArgs e)=>Model.MoveSort(-1);void SortDown(object sender,RoutedEventArgs e)=>Model.MoveSort(1);void SortAdd(object sender,RoutedEventArgs e)=>Model.AddSort();void SortRemove(object sender,RoutedEventArgs e)=>Model.RemoveSort();
     void EndRuleChanged(object sender,SelectionChangedEventArgs e){if(DataContext is CompetitionStudioViewModel model)model.LoadEndRules();}
     void NewSourceClick(object sender,RoutedEventArgs e)=>Model.NewSource();void RemoveSourceClick(object sender,RoutedEventArgs e)=>Model.RemoveSource();void SaveSourceClick(object sender,RoutedEventArgs e)=>Model.SaveSource();
@@ -57,11 +57,11 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
     {
         if(!Model.TryApplyPendingSeason())return;
         var draft=new CompdataProject{SourceFolder=Model.Context.Project.SourceFolder,Labels=Model.Context.Project.Labels,Files=Model.Context.Project.Files.Select(f=>new CompdataFile{RelativePath=f.RelativePath,Text=f.Text,InitialText=f.InitialText,Original=f.Original,Encoding=f.Encoding,IsNew=f.IsNew}).ToArray()};
-        var editor=new CompetitionManagerWindow(draft);editor.Closed+=ok=>{if(ok)Model.Run("Expert configuration",()=>Model.Context.Project.Files=draft.Files);};WorkspaceController.Open(editor);
+        var editor=new CompetitionManagerWindow(draft);editor.Closed+=ok=>{if(ok)Model.Run(ATLink.Core.UiText.Get("Expert configuration"),()=>Model.Context.Project.Files=draft.Files);};WorkspaceController.Open(editor);
     }
     bool MayOpenProject() =>
         (!Model.Context.HasUnexportedChanges&&Model.Season?.HasPending!=true&&!Model.FootballFormat.Artwork.HasPending)||
-        ShellDialogs.Message(this,"Open another project without exporting the current changes?","Competition project",MessageBoxButton.YesNo)==MessageBoxResult.Yes;
+        ShellDialogs.Message(this,ATLink.Core.UiText.Get("Open another project without exporting the current changes?"),ATLink.Core.UiText.Get("Competition project"),MessageBoxButton.YesNo)==MessageBoxResult.Yes;
 
     void OpenProjectClick(object sender,RoutedEventArgs e)
     {
@@ -87,7 +87,7 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
     async void OpenLinkClick(object sender,RoutedEventArgs e)
     {
         if(!MayOpenProject())return;
-        var dialog=new Microsoft.Win32.OpenFileDialog{Title="Open ATLink project",Filter="ATLink project (*.link)|*.link",CheckFileExists=true};
+        var dialog=new Microsoft.Win32.OpenFileDialog{Title=ATLink.Core.UiText.Get("Open ATLink project"),Filter=ATLink.Core.UiText.Get("ATLink project (*.link)|*.link"),CheckFileExists=true};
         if(!ShellDialogs.Open(dialog,this))return;
         await OpenProjectAsync(()=>Model.Context.OpenLink(dialog.FileName));
     }
@@ -95,48 +95,48 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
     async void OpenProjectFolderClick(object sender,RoutedEventArgs e)
     {
         if(!MayOpenProject())return;
-        var dialog=new Microsoft.Win32.OpenFolderDialog{Title="Open an exported competition project or a Compdata folder"};if(!ShellDialogs.Open(dialog,this))return;
+        var dialog=new Microsoft.Win32.OpenFolderDialog{Title=ATLink.Core.UiText.Get("Open an exported competition project or a Compdata folder")};if(!ShellDialogs.Open(dialog,this))return;
         await OpenProjectAsync(()=>Model.Context.OpenProject(dialog.FolderName));
     }
 
     async Task OpenProjectAsync(Func<CompetitionProjectContext> load)
     {
-        Model.SetWorking(true,"Opening the competition project…");
+        Model.SetWorking(true,ATLink.Core.UiText.Get("Opening the competition project…"));
         CompetitionProjectContext? context=null;
         try
         {
             context=await Task.Run(load);
-            var workspace=WorkspaceController.Current ?? throw new InvalidOperationException("No active workspace.");
+            var workspace=WorkspaceController.Current ?? throw new InvalidOperationException(ATLink.Core.UiText.Get("No active workspace."));
             var studio=new CompetitionStudio(context);
             workspace.Pop();
             workspace.Push(studio);
             context=null;
         }
-        catch(Exception ex){ShellDialogs.Message(this,ex.Message,"Open project");}
+        catch(Exception ex){ShellDialogs.Message(this,ex.Message,ATLink.Core.UiText.Get("Open project"));}
         finally{context?.Dispose();Model.SetWorking(false);}
     }
     async void ExportFifaModClick(object sender,RoutedEventArgs e)
     {
         if(!Model.TryApplyPendingSeason())return;
-        if(Model.Context.Game!="FC27"){ShellDialogs.Message(this,"FIFAMOD export currently supports FC27 only.","Export FIFAMOD");return;}
+        if(Model.Context.Game!="FC27"){ShellDialogs.Message(this,ATLink.Core.UiText.Get("FIFAMOD export currently supports FC27 only."),ATLink.Core.UiText.Get("Export FIFAMOD"));return;}
         var workspace=WorkspaceController.Current;
         var configuration=workspace?.Configuration;
-        if(configuration is null){ShellDialogs.Message(this,"Complete the game setup in System before exporting.","Export FIFAMOD");return;}
+        if(configuration is null){ShellDialogs.Message(this,ATLink.Core.UiText.Get("Complete the game setup in System before exporting."),ATLink.Core.UiText.Get("Export FIFAMOD"));return;}
         if(configuration.FindProblem(Model.Context.Game,purpose:DataPurpose.FifaMod) is string problem)
         {
-            ShellDialogs.Message(this,problem,"Game configuration");
+            ShellDialogs.Message(this,problem,ATLink.Core.UiText.Get("Game configuration"));
             return;
         }
         var settings=configuration.Game(Model.Context.Game);
         var options=new FifaModExportWindow(Model.Name,settings.ExportAuthor){Owner=Window.GetWindow(this)};
         if(options.ShowDialog()!=true)return;
-        var dialog=new Microsoft.Win32.SaveFileDialog{Title="Export FIFAMOD",Filter="FIFA mod|*.fifamod",DefaultExt=".fifamod",AddExtension=true,FileName="ATLink-FC27-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".fifamod",OverwritePrompt=true};
+        var dialog=new Microsoft.Win32.SaveFileDialog{Title=ATLink.Core.UiText.Get("Export FIFAMOD"),Filter="FIFA mod|*.fifamod",DefaultExt=".fifamod",AddExtension=true,FileName="ATLink-FC27-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".fifamod",OverwritePrompt=true};
         if(!ShellDialogs.Open(dialog,this))return;
         // Read WPF controls on their owning thread before starting the export worker.
         string outputPath=dialog.FileName,cachePath=settings.FifaModCachePath;
         var details=options.Details;
         var context=Model.Context;
-        Model.SetWorking(true,"Packaging modified files and verifying the FIFAMOD contents…");
+        Model.SetWorking(true,ATLink.Core.UiText.Get("Packaging modified files and verifying the FIFAMOD contents…"));
         try
         {
             await Task.Run(()=>context.ExportFifaMod(outputPath,cachePath,details));
@@ -145,10 +145,10 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
                 configuration.Save(configuration.Current.WithGame(context.Game,configuration.Game(context.Game) with {ExportAuthor=details.Author}));
             }
             catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
-            {ShellDialogs.Message(this,"The mod was exported, but the default author could not be saved: "+ex.Message,"Export FIFAMOD");}
-            Model.Run("Exported: "+dialog.FileName+" · File contents verified. FIFA Mod Manager / in-game validation remains to be done.",()=>{},false);
+            {ShellDialogs.Message(this,ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("The mod was exported, but the default author could not be saved: "), ex.Message),ATLink.Core.UiText.Get("Export FIFAMOD"));}
+            Model.Run(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Exported: "), dialog.FileName, ATLink.Core.UiText.Get(" · File contents verified. FIFA Mod Manager / in-game validation remains to be done.")),()=>{},false);
         }
-        catch(Exception ex){Model.Run("Export FIFAMOD",()=>throw ex,false);}
+        catch(Exception ex){Model.Run(ATLink.Core.UiText.Get("Export FIFAMOD"),()=>throw ex,false);}
         finally{Model.SetWorking(false);}
     }
     async void ExportLinkClick(object sender,RoutedEventArgs e)
@@ -156,31 +156,31 @@ public partial class CompetitionStudio:UserControl,IWorkspacePage,IDisposable
         if(!Model.TryApplyPendingSeason())return;
         var dialog=new Microsoft.Win32.SaveFileDialog
         {
-            Title="Export ATLink project",Filter="ATLink project (*.link)|*.link",DefaultExt=".link",
+            Title=ATLink.Core.UiText.Get("Export ATLink project"),Filter=ATLink.Core.UiText.Get("ATLink project (*.link)|*.link"),DefaultExt=".link",
             AddExtension=true,OverwritePrompt=false,FileName="ATLink-"+Model.Game+"-competitions.link"
         };
         if(!ShellDialogs.Open(dialog,this))return;
         bool replace=File.Exists(dialog.FileName);
-        if(replace&&ShellDialogs.Message(this,"Replace the selected .link file?","Export project",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
-        Model.SetWorking(true,"Compressing and encrypting the project…");
+        if(replace&&ShellDialogs.Message(this,ATLink.Core.UiText.Get("Replace the selected .link file?"),ATLink.Core.UiText.Get("Export project"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
+        Model.SetWorking(true,ATLink.Core.UiText.Get("Compressing and encrypting the project…"));
         try
         {
             await Task.Run(()=>Model.Context.ExportLink(dialog.FileName,replace));
-            Model.Run("Exported: "+dialog.FileName,()=>{},false);
+            Model.Run(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Exported: "), dialog.FileName),()=>{},false);
         }
-        catch(Exception ex){Model.Run("Export",()=>throw ex,false);}
+        catch(Exception ex){Model.Run(ATLink.Core.UiText.Get("Export"),()=>throw ex,false);}
         finally{Model.SetWorking(false);}
     }
 
     async void ExportProjectFolderClick(object sender,RoutedEventArgs e)
     {
         if(!Model.TryApplyPendingSeason())return;
-        if(ShellDialogs.Message(this,Model.ExportSummary+"\n\nExport a new project folder?","Review export",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
-        var dialog=new Microsoft.Win32.OpenFolderDialog{Title="Choose the parent folder for a new competition project"};if(!ShellDialogs.Open(dialog,this))return;
+        if(ShellDialogs.Message(this,ATLink.Core.UiText.Concat(Model.ExportSummary, ATLink.Core.UiText.Get("\n\nExport a new project folder?")),ATLink.Core.UiText.Get("Review export"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
+        var dialog=new Microsoft.Win32.OpenFolderDialog{Title=ATLink.Core.UiText.Get("Choose the parent folder for a new competition project")};if(!ShellDialogs.Open(dialog,this))return;
         string target=Path.Combine(dialog.FolderName,"ATLink-"+Model.Game+"-competitions-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N")[..6]);
-        Model.SetWorking(true,"Writing database, localized names and competition files…\nThis can take a moment. The original files remain intact.");
-        try{await Task.Run(()=>Model.Context.Export(target));Model.Run("Exported: "+target,()=>{},false);}
-        catch(Exception ex){Model.Run("Export",()=>throw ex,false);}
+        Model.SetWorking(true,ATLink.Core.UiText.Get("Writing database, localized names and competition files…\nThis can take a moment. The original files remain intact."));
+        try{await Task.Run(()=>Model.Context.Export(target));Model.Run(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Exported: "), target),()=>{},false);}
+        catch(Exception ex){Model.Run(ATLink.Core.UiText.Get("Export"),()=>throw ex,false);}
         finally{Model.SetWorking(false);}
     }
 }

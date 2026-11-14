@@ -15,7 +15,7 @@ public static class FifaDate
     public static string FromIso(string value)
     {
         if(!DateTime.TryParseExact(value,"yyyy-MM-dd",CultureInfo.InvariantCulture,DateTimeStyles.None,out var date))
-            throw new InvalidDataException("Expected a valid calendar date (YYYY-MM-DD).");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Expected a valid calendar date (YYYY-MM-DD)."));
         return ((int)(date-Epoch).TotalDays).ToString(CultureInfo.InvariantCulture);
     }
 }

@@ -10,7 +10,7 @@ public partial class CreationCalendarEditor:UserControl
     void Build(object sender,RoutedEventArgs e)=>Model?.BuildMatchdays();
     void MovePhaseDates(object sender,RoutedEventArgs e)=>Model?.AdjustPhase(true);
     void ApplyPhaseTime(object sender,RoutedEventArgs e)=>Model?.AdjustPhase(false);
-    void Reset(object sender,RoutedEventArgs e){if(ShellDialogs.Message(this,"Replace the dates entered with the proposed generation dates?","Reset calendar",MessageBoxButton.YesNo)==MessageBoxResult.Yes)Model?.BuildMatchdays(true);}
+    void Reset(object sender,RoutedEventArgs e){if(ShellDialogs.Message(this,ATLink.Core.UiText.Get("Replace the dates entered with the proposed generation dates?"),ATLink.Core.UiText.Get("Reset calendar"),MessageBoxButton.YesNo)==MessageBoxResult.Yes)Model?.BuildMatchdays(true);}
     void Split(object sender,RoutedEventArgs e){if((sender as FrameworkElement)?.DataContext is CreationMatchday row)Model?.SplitSlot(row);}
     void RemoveSlot(object sender,RoutedEventArgs e){if((sender as FrameworkElement)?.DataContext is CreationMatchday row)Model?.RemoveSlot(row);}
     void AddFixture(object sender,RoutedEventArgs e)=>Model?.AddFixture();void RemoveFixture(object sender,RoutedEventArgs e)=>Model?.RemoveFixture();

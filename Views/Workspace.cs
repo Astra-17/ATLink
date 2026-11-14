@@ -23,6 +23,13 @@ public sealed class WorkspaceController
     public Window Shell {get;}
     public ApplicationConfigurationStore? Configuration {get;set;}
     public Func<string,bool>? ConfigureGame {get;set;}
+    public IEnumerable<CompetitionProjectContext> CompetitionContexts=>stack.Select(page=>page switch
+    {
+        CompetitionStudio studio=>studio.Model.Context,
+        FootballCreationWizard wizard=>wizard.ProjectContext,
+        CompetitionCreationWizard wizard=>wizard.ProjectContext,
+        _=>null
+    }).OfType<CompetitionProjectContext>().Distinct();
     public WorkspaceController(MainViewModel model,Window shell){this.model=model;Shell=shell;Current=this;}
     public static void Open(UserControl page)=>Current?.Push(page);
     public void Push(UserControl page)
@@ -68,7 +75,7 @@ internal static class ShellDialogs
         var target=document.SaveTarget();
         var dialog=new SaveFileDialog
         {
-            Title=title??"Enregistrer dans un nouveau fichier",
+            Title=title??ATLink.Core.UiText.Get("Enregistrer dans un nouveau fichier"),
             Filter=target.Filter,
             FileName=target.FileName,
             AddExtension=target.AddExtension,
@@ -102,7 +109,7 @@ public sealed class ActionPage : UserControl, IWorkspacePage
         var dock=new DockPanel();
         StudioWindow.Style(this,dock);
         var buttons=new StackPanel{Orientation=Orientation.Horizontal};
-        var back=new Button{Content="Back",Margin=new Thickness(0,0,8,0)};
+        var back=new Button{Content=ATLink.Core.UiText.Get("Back"),Margin=new Thickness(0,0,8,0)};
         back.Click+=(_,_)=>Closed?.Invoke(false);
         buttons.Children.Add(back);
         if(applyLabel is not null)

@@ -7,7 +7,7 @@ public static class FootballCompetitionNames
         var keys=c.CompetitionTranslationKeys(c.Objects.Single(o=>o.Id==competition));
         foreach(var name in names)
         {
-            if(string.IsNullOrWhiteSpace(name.FullName)||string.IsNullOrWhiteSpace(name.ShortName))throw new InvalidDataException("Enter full and short competition names.");
+            if(string.IsNullOrWhiteSpace(name.FullName)||string.IsNullOrWhiteSpace(name.ShortName))throw new InvalidDataException(ATLink.Core.UiText.Get("Enter full and short competition names."));
             c.SetTranslation(name.Language,keys[0],name.FullName);c.SetTranslation(name.Language,keys[1],name.ShortName);
         }
     }

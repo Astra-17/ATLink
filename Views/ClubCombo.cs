@@ -31,7 +31,7 @@ internal static class ClubCombo
         var view=new ListCollectionView(choices.ToList());
         box.ItemsSource=view;
         box.IsEditable=true;box.IsTextSearchEnabled=false;box.StaysOpenOnEdit=true;
-        TextSearch.SetTextPath(box,"Label");
+        TextSearch.SetTextPath(box,ATLink.Core.UiText.Get("Label"));
         VirtualizingPanel.SetIsVirtualizing(box,true);
         VirtualizingPanel.SetVirtualizationMode(box,VirtualizationMode.Recycling);
         ScrollViewer.SetCanContentScroll(box,true);
@@ -151,7 +151,7 @@ public sealed class TransferDraft:INotifyPropertyChanged
     public bool IsLoan {get;init;}
     public string LoanSourceTeamId {get;init;}="";
     public bool IsLoanToBuy {get;set;}
-    public string MovementType=>IsLoan?"Loan":"Transfer";
+    public string MovementType=>IsLoan?ATLink.Core.UiText.Get("Loan"):ATLink.Core.UiText.Get("Transfer");
     public string LoanEnd
     {
         get=>loanEnd;

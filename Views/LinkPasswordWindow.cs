@@ -11,7 +11,7 @@ internal sealed class LinkPasswordWindow : Window
     LinkPasswordWindow(Window? owner, bool creating)
     {
         Owner = owner;
-        Title = creating ? "Protect ATLink project" : "Unlock ATLink project";
+        Title = creating ? ATLink.Core.UiText.Get("Protect ATLink project") : ATLink.Core.UiText.Get("Unlock ATLink project");
         Width = 460;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
@@ -19,15 +19,15 @@ internal sealed class LinkPasswordWindow : Window
         var root = new StackPanel { Margin = new Thickness(20) };
         Content = root;
         StudioWindow.Style(this, root);
-        root.Children.Add(new TextBlock { Text = "Password" });
+        root.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Get("Password") });
         root.Children.Add(password);
         if (creating)
         {
-            root.Children.Add(new TextBlock { Text = "Confirm password", Margin = new Thickness(0, 10, 0, 0) });
+            root.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Get("Confirm password"), Margin = new Thickness(0, 10, 0, 0) });
             root.Children.Add(confirmation);
             root.Children.Add(new TextBlock
             {
-                Text = "Keep this password. If you lose it, the project cannot be recovered.",
+                Text = ATLink.Core.UiText.Get("Keep this password. If you lose it, the project cannot be recovered."),
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0)
             });
         }
@@ -35,14 +35,14 @@ internal sealed class LinkPasswordWindow : Window
         root.Children.Add(status);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         root.Children.Add(buttons);
-        buttons.Children.Add(new Button { Content = "Cancel", IsCancel = true, Margin = new Thickness(4) });
-        var accept = new Button { Content = creating ? "Export" : "Open", IsDefault = true, Margin = new Thickness(4) };
+        buttons.Children.Add(new Button { Content = ATLink.Core.UiText.Get("Cancel"), IsCancel = true, Margin = new Thickness(4) });
+        var accept = new Button { Content = creating ? ATLink.Core.UiText.Get("Export") : ATLink.Core.UiText.Get("Open"), IsDefault = true, Margin = new Thickness(4) };
         buttons.Children.Add(accept);
         accept.Click += (_, _) =>
         {
             using var secure = password.SecurePassword;
-            if (secure.Length == 0) status.Text = "Enter a password.";
-            else if (creating && password.Password != confirmation.Password) status.Text = "Passwords do not match.";
+            if (secure.Length == 0) status.Text = ATLink.Core.UiText.Get("Enter a password.");
+            else if (creating && password.Password != confirmation.Password) status.Text = ATLink.Core.UiText.Get("Passwords do not match.");
             else DialogResult = true;
         };
         Loaded += (_, _) => password.Focus();

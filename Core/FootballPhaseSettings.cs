@@ -41,7 +41,7 @@ public static class FootballPhaseSettingsAdapter
         {
             var rows=c.Rows("settings.txt").Where(r=>r[0]==g.Id.ToString()&&r[1]=="match_stadium").ToArray();
             bool invalid=c.Rows("standings.txt").Count(r=>r[0]==g.Id.ToString())!=2||rows.Length>1||rows.Length==1&&(!int.TryParse(rows[0][2],out int id)||!Stadiums(c).Any(s=>s.Id==id));
-            return new FootballTieVenue(i,new(Value:rows.Length==1?rows[0][2]:null),g.Id,invalid,invalid?"Existing venue or tie structure requires Expert; native values are preserved.":"");
+            return new FootballTieVenue(i,new(Value:rows.Length==1?rows[0][2]:null),g.Id,invalid,invalid?ATLink.Core.UiText.Get("Existing venue or tie structure requires Expert; native values are preserved."):"");
         }).ToArray();
     }
     static string? Local(CompetitionProjectContext c,int phase,string key)
@@ -53,16 +53,16 @@ public static class FootballPhaseSettingsAdapter
     {
         if(settings.VenuePolicy==FootballVenuePolicy.HostStadiums||settings.HostStadiums.Count>0||settings.FixtureVenues.Count>0)throw new InvalidDataException(HostLimitation);
         if(settings.YellowCards==FootballYellowCards.ClearBeforePhase)throw new InvalidDataException(YellowLimitation);
-        if(c.Game!="FC27"&&(settings.Prize.Mode!=FootballSettingMode.Preserve||settings.Stadium.Mode!=FootballSettingMode.Preserve||settings.YellowCards!=FootballYellowCards.Preserve))throw new InvalidDataException("These phase settings are not verified for "+c.Game+". Existing native values stay preserved in Expert.");
-        if(settings.Prize.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.Prize.Value,NumberStyles.None,CultureInfo.InvariantCulture,out int money)||money<0))throw new InvalidDataException("Prize money: enter a whole amount from 0 to 2,147,483,647 without a currency symbol.");
-        if(settings.DrawDate.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.DrawDate.Value,out int day)||day<0))throw new InvalidDataException("Choose a draw date after the calendar origin.");
-        if(settings.Stadium.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.Stadium.Value,out int stadium)||!Stadiums(c).Any(s=>s.Id==stadium)))throw new InvalidDataException("Choose a stadium available in this game's database.");
-        if(settings.TieVenues.Select(t=>t.Ordinal).Distinct().Count()!=settings.TieVenues.Count)throw new InvalidDataException("A tie has more than one venue setting.");
+        if(c.Game!="FC27"&&(settings.Prize.Mode!=FootballSettingMode.Preserve||settings.Stadium.Mode!=FootballSettingMode.Preserve||settings.YellowCards!=FootballYellowCards.Preserve))throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("These phase settings are not verified for "), c.Game, ATLink.Core.UiText.Get(". Existing native values stay preserved in Expert.")));
+        if(settings.Prize.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.Prize.Value,NumberStyles.None,CultureInfo.InvariantCulture,out int money)||money<0))throw new InvalidDataException(ATLink.Core.UiText.Get("Prize money: enter a whole amount from 0 to 2,147,483,647 without a currency symbol."));
+        if(settings.DrawDate.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.DrawDate.Value,out int day)||day<0))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a draw date after the calendar origin."));
+        if(settings.Stadium.Mode==FootballSettingMode.Value&&(!int.TryParse(settings.Stadium.Value,out int stadium)||!Stadiums(c).Any(s=>s.Id==stadium)))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a stadium available in this game's database."));
+        if(settings.TieVenues.Select(t=>t.Ordinal).Distinct().Count()!=settings.TieVenues.Count)throw new InvalidDataException(ATLink.Core.UiText.Get("A tie has more than one venue setting."));
         foreach(var tie in settings.TieVenues)
         {
             if(tie.Stadium.Mode==FootballSettingMode.Preserve)continue;
-            if(c.Game!="FC27"||tie.Protected)throw new InvalidDataException("This tie's native venue is preserved in Expert.");
-            if(tie.Stadium.Mode==FootballSettingMode.Value&&(!int.TryParse(tie.Stadium.Value,out int id)||!Stadiums(c).Any(s=>s.Id==id)))throw new InvalidDataException("Choose an installed stadium for each customized tie.");
+            if(c.Game!="FC27"||tie.Protected)throw new InvalidDataException(ATLink.Core.UiText.Get("This tie's native venue is preserved in Expert."));
+            if(tie.Stadium.Mode==FootballSettingMode.Value&&(!int.TryParse(tie.Stadium.Value,out int id)||!Stadiums(c).Any(s=>s.Id==id)))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose an installed stadium for each customized tie."));
         }
     }
     public static void Apply(CompetitionProjectContext c,int phase,FootballPhaseSettings settings,bool created=false,IReadOnlyList<int>? tieGroups=null)
@@ -80,16 +80,16 @@ public static class FootballPhaseSettingsAdapter
         var changed=settings.TieVenues.Where(t=>t.Stadium.Mode!=FootballSettingMode.Preserve).ToArray();
         if(changed.Length>0)
         {
-            if(tieGroups is null||c.EffectiveRules(phase).FirstOrDefault(r=>r.Key=="match_stagetype").Value is not("KO1LEG" or "KO2LEGS" or "KO2LEG"))throw new InvalidDataException("A verified knockout group mapping is required for tie venues.");
+            if(tieGroups is null||c.EffectiveRules(phase).FirstOrDefault(r=>r.Key=="match_stagetype").Value is not("KO1LEG" or "KO2LEGS" or "KO2LEG"))throw new InvalidDataException(ATLink.Core.UiText.Get("A verified knockout group mapping is required for tie venues."));
             foreach(var tie in changed)
             {
-                if(tie.Ordinal<0||tie.Ordinal>=tieGroups.Count)throw new InvalidDataException("A customized tie was removed. Review its venue before changing the format.");
+                if(tie.Ordinal<0||tie.Ordinal>=tieGroups.Count)throw new InvalidDataException(ATLink.Core.UiText.Get("A customized tie was removed. Review its venue before changing the format."));
                 int group=tieGroups[tie.Ordinal];
-                if(tie.NativeGroup is int original&&original!=group||!c.Objects.Any(o=>o.Id==group&&o.Kind==5&&o.ParentId==phase)||c.Rows("standings.txt").Count(r=>r[0]==group.ToString())!=2)throw new InvalidDataException("The native tie mapping changed. Refresh before editing its venue.");
+                if(tie.NativeGroup is int original&&original!=group||!c.Objects.Any(o=>o.Id==group&&o.Kind==5&&o.ParentId==phase)||c.Rows("standings.txt").Count(r=>r[0]==group.ToString())!=2)throw new InvalidDataException(ATLink.Core.UiText.Get("The native tie mapping changed. Refresh before editing its venue."));
                 c.SetRule(group,"match_stadium",tie.Stadium.Mode==FootballSettingMode.Inherit?[]:[tie.Stadium.Value!]);
             }
         }
         // CarryForward deliberately keeps the original discipline owner and acquired suspensions.
     }
-    public static string Amount(string? value)=>decimal.TryParse(value,NumberStyles.None,CultureInfo.InvariantCulture,out decimal n)&&n>=0?n>=1000000?(n/1000000).ToString("0.##",CultureInfo.InvariantCulture)+" M":n>=1000?(n/1000).ToString("0.##",CultureInfo.InvariantCulture)+" K":n.ToString("N0",CultureInfo.GetCultureInfo("en-US")):"Native value (Expert)";
+    public static string Amount(string? value)=>decimal.TryParse(value,NumberStyles.None,CultureInfo.InvariantCulture,out decimal n)&&n>=0?n>=1000000?(n/1000000).ToString("0.##",CultureInfo.InvariantCulture)+" M":n>=1000?(n/1000).ToString("0.##",CultureInfo.InvariantCulture)+" K":n.ToString("N0",CultureInfo.GetCultureInfo("en-US")):ATLink.Core.UiText.Get("Native value (Expert)");
 }

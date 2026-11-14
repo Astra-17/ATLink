@@ -13,7 +13,7 @@ public partial class FormationWindow:UserControl,IWorkspacePage
     public FormationWindow(FootballCatalog catalog,string teamId)
     {
         InitializeComponent();editor=new(catalog,teamId);Lineup.ItemsSource=editor.Slots;
-        PlayerColumn.ItemsSource=new[]{new EntityItem("-1","Empty","",editor.Sheet)}.Concat(editor.Players).ToArray();
+        PlayerColumn.ItemsSource=new[]{new EntityItem("-1",ATLink.Core.UiText.Get("Empty"),"",editor.Sheet)}.Concat(editor.Players).ToArray();
         Templates.ItemsSource=editor.Templates.Select(r=>new{Row=r,Name=FootballCatalog.Value(r,"formationname")}).ToArray();Templates.DisplayMemberPath="Name";Templates.SelectedValuePath="Row";Templates.IsEditable=true;Templates.IsReadOnly=true;Templates.Text=FootballCatalog.Value(editor.Formation,"formationname");
         Mentalities.ItemsSource=editor.Mentalities.Select(r=>new{Row=r,Name=FootballCatalog.Value(r,"mentalityid")+" · "+FootballCatalog.Value(r,"tactic_name")}).ToArray();Mentalities.DisplayMemberPath="Name";Mentalities.SelectedValuePath="Row";Mentalities.SelectedIndex=0;
         foreach(var pair in editor.Takers){var label=new TextBlock{Text=pair.Key,Margin=new Thickness(0,8,0,4)};var select=new ComboBox{ItemsSource=PlayerColumn.ItemsSource,DisplayMemberPath="Name",SelectedValuePath="Id",SelectedValue=pair.Value};select.SelectionChanged+=(_,_)=>editor.Takers[pair.Key]=select.SelectedValue?.ToString()??"-1";Takers.Children.Add(label);Takers.Children.Add(select);}

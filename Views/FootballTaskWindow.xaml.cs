@@ -16,12 +16,12 @@ public partial class FootballTaskWindow:Window
     }
     string Label(CompetitionObject o)
     {
-        if(FootballCompetitionAdapter.IsHidden(model.Context,o.Id))return "Incoming teams · "+model.Context.ObjectName(o.ParentId==model.CompetitionId?o.Id:model.CompetitionId??o.ParentId);
+        if(FootballCompetitionAdapter.IsHidden(model.Context,o.Id))return ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Incoming teams · "), model.Context.ObjectName(o.ParentId==model.CompetitionId?o.Id:model.CompetitionId??o.ParentId));
         return model.Context.ObjectPath(o.Id);
     }
     IReadOnlyList<FootballChoice> TargetOptions(SeasonAction action)
     {
-        if(model.CompetitionId is not int id)return [new(0,action.TargetKind==5?"Incoming teams":action.TargetKind==3?"This competition":"Final played phase")];
+        if(model.CompetitionId is not int id)return [new(0,action.TargetKind==5?ATLink.Core.UiText.Get("Incoming teams"):action.TargetKind==3?ATLink.Core.UiText.Get("This competition"):ATLink.Core.UiText.Get("Final played phase"))];
         if(action.Code=="UpdateTable"&&model.Context.Game=="FC27")
             return model.Competitions.Where(choice=>choice.Id>0).OrderByDescending(choice=>choice.Id==id).ToArray();
         var scope=model.Context.Scope(id);return model.Context.Objects.Where(o=>scope.Contains(o.Id)&&o.Kind==action.TargetKind).Select(o=>new FootballChoice(o.Id,Label(o))).ToArray();
@@ -32,15 +32,15 @@ public partial class FootballTaskWindow:Window
         return parameter.Kind switch
         {
             SeasonParameterKind.Team=>model.Clubs,
-            SeasonParameterKind.League=>!model.Existing&&action.Code is "ClearLeagueStats" or "UpdateLeagueStats" or "UpdateLeagueTable"?[new(-1,"This competition's new league"),..model.Leagues]:model.Leagues,
+            SeasonParameterKind.League=>!model.Existing&&action.Code is "ClearLeagueStats" or "UpdateLeagueStats" or "UpdateLeagueTable"?[new(-1,ATLink.Core.UiText.Get("This competition's new league")),..model.Leagues]:model.Leagues,
             SeasonParameterKind.Competition=>model.Competitions.Where(x=>x.Id>0).ToArray(),
             SeasonParameterKind.Nation=>model.Countries,
             SeasonParameterKind.Coefficient=>Enumerable.Range(1,128).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
-            SeasonParameterKind.Group=>model.CompetitionId is int id?c.Objects.Where(o=>o.Kind==5&&c.Scope(id).Contains(o.Id)&&!FootballCompetitionAdapter.IsHidden(c,o.Id)).Select(o=>new FootballChoice(o.Id,c.ObjectPath(o.Id))).ToArray():[new(0,"Final results group")],
-            SeasonParameterKind.Position when model.CompetitionId is int id&&action.Code=="UpdateTable"&&parameter.Label=="Finishing position"=>
+            SeasonParameterKind.Group=>model.CompetitionId is int id?c.Objects.Where(o=>o.Kind==5&&c.Scope(id).Contains(o.Id)&&!FootballCompetitionAdapter.IsHidden(c,o.Id)).Select(o=>new FootballChoice(o.Id,c.ObjectPath(o.Id))).ToArray():[new(0,ATLink.Core.UiText.Get("Final results group"))],
+            SeasonParameterKind.Position when model.CompetitionId is int id&&action.Code=="UpdateTable"&&ATLink.Core.UiText.Source(parameter.Label)=="Finishing position"=>
                 Enumerable.Range(1,LargestPlayedGroup(id)).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
             SeasonParameterKind.Position when model.Existing&&action.Code=="UpdateTable"=>Enumerable.Range(1,128).Select(n=>new FootballChoice(n,n.ToString())).ToArray(),
-            _=>!model.Existing&&action.Code=="FillWithTeam"&&parameter.Kind==SeasonParameterKind.Position?[new(1,"Next free place")]:Enumerable.Range(1,Math.Max(1,model.Existing&&TargetChoice.SelectedItem is FootballChoice t&&action.TargetKind==5?model.Context.Rows("standings.txt").Count(r=>r[0]==t.Id.ToString()):parameter.Label=="Finishing position"?model.FinalCapacity:model.Capacity)).Select(n=>new FootballChoice(n,n.ToString())).ToArray()
+            _=>!model.Existing&&action.Code=="FillWithTeam"&&parameter.Kind==SeasonParameterKind.Position?[new(1,ATLink.Core.UiText.Get("Next free place"))]:Enumerable.Range(1,Math.Max(1,model.Existing&&TargetChoice.SelectedItem is FootballChoice t&&action.TargetKind==5?model.Context.Rows("standings.txt").Count(r=>r[0]==t.Id.ToString()):ATLink.Core.UiText.Source(parameter.Label)=="Finishing position"?model.FinalCapacity:model.Capacity)).Select(n=>new FootballChoice(n,n.ToString())).ToArray()
         };
     }
     int LargestPlayedGroup(int id)
@@ -61,8 +61,8 @@ public partial class FootballTaskWindow:Window
     {
         try
         {
-            if(ActionChoice.SelectedItem is not SeasonAction action||TargetChoice.SelectedItem is not FootballChoice target)throw new InvalidDataException("Choose a rule and its destination.");
-            var fields=Parameters.Items.Cast<ParameterChoice>().ToArray();if(fields.Any(p=>p.Selected is null))throw new InvalidDataException("Complete every field using a named choice.");
+            if(ActionChoice.SelectedItem is not SeasonAction action||TargetChoice.SelectedItem is not FootballChoice target)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a rule and its destination."));
+            var fields=Parameters.Items.Cast<ParameterChoice>().ToArray();if(fields.Any(p=>p.Selected is null))throw new InvalidDataException(ATLink.Core.UiText.Get("Complete every field using a named choice."));
             Result=new(action.Code,new(target.Id),fields.Select(p=>p.Selected!.Id).ToArray(),original?.OriginalRow);
             if(model.CompetitionId is int id)FootballSeason.Validate(model.Context,id,Result);return true;
         }

@@ -9,10 +9,10 @@ public sealed record InternationalCalendarEntry(string Kind,string Competition,C
         ?$"{time/100:00}:{time%100:00}":Slot.TimeLabel;
 
     public string Description=>Slot.FixedDate.HasValue
-        ?$"{Kind} · {Competition} · {Kickoff} · {Slot.Matchup}"
+        ?UiText.Concat(UiText.Get(Kind)," · ",Competition," · ",Kickoff," · ",Slot.Matchup)
         :Slot.Shared
-            ?$"{Kind} · {Competition} · Matchday {Slot.Round} · {Kickoff} (shared slot) · Native dates: {string.Join(", ",NativeDates.Select(date=>date.ToString("dd MMM yyyy",System.Globalization.CultureInfo.InvariantCulture)))}"
-            :$"{Kind} · {Competition} · Matchday {Slot.Round} · {Kickoff} · capacity {Slot.Minimum}–{Slot.Maximum}";
+            ?ATLink.Core.UiText.Format("{0} · {1} · Matchday {2} · {3} (shared slot) · Native dates: {4}", UiText.Get(Kind), Competition, Slot.Round, Kickoff, string.Join(", ",NativeDates.Select(date=>date.ToString("dd MMM yyyy",UiText.Current.DisplayCulture))))
+            :ATLink.Core.UiText.Format("{0} · {1} · Matchday {2} · {3} · capacity {4}–{5}", UiText.Get(Kind), Competition, Slot.Round, Kickoff, Slot.Minimum, Slot.Maximum);
 
     public static IReadOnlyList<InternationalCalendarEntry> ReadMen(CompetitionProjectContext context)
     {
@@ -58,7 +58,7 @@ public sealed record InternationalFriendlySlot(int ObjectId,int Offset,int Round
     public string Key=>NativeRow;
     public DateOnly Date(DateOnly reference)=>reference.AddDays(Offset);
     public string TimeLabel=>Time.Length==4?Time[..2]+":"+Time[2..]:Time;
-    public string Description=>(Women?"Women's":"Men's")+" international friendly · "+TimeLabel+" · "+(Minimum==Maximum?Maximum.ToString():Minimum+"–"+Maximum)+" matches";
+    public string Description=>ATLink.Core.UiText.Concat((Women?"Women's":"Men's"), ATLink.Core.UiText.Get(" international friendly · "), TimeLabel, " · ", (Minimum==Maximum?Maximum.ToString():Minimum+"–"+Maximum), ATLink.Core.UiText.Get(" matches"));
 }
 public static class FootballInternationalFriendlies
 {
@@ -80,10 +80,10 @@ public static class FootballInternationalFriendlies
     public static void RemoveSelected(CompetitionProjectContext c,IReadOnlyList<InternationalFriendlySlot> selected)
     {
         if(selected.Count==0)return;
-        if(c.Game!="FC27")throw new InvalidDataException("International friendly replacement is only verified for FC27.");
+        if(c.Game!="FC27")throw new InvalidDataException(ATLink.Core.UiText.Get("International friendly replacement is only verified for FC27."));
         var available=Read(c);var keys=selected.Select(s=>s.Key).ToHashSet();
         foreach(var slot in selected)
-            if(available.Count(s=>s.Key==slot.Key)!=1)throw new InvalidDataException("An international friendly slot changed or is ambiguous. Refresh its marker before replacing it.");
+            if(available.Count(s=>s.Key==slot.Key)!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("An international friendly slot changed or is ambiguous. Refresh its marker before replacing it."));
         c.Edit("schedule.txt",table=>{foreach(var row in table.Data.Rows.Cast<DataRow>().Where(r=>keys.Contains(string.Join(',',r.ItemArray.Select(v=>v?.ToString()??"")))).ToArray())row.Delete();});
     }
 }

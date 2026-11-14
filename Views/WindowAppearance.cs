@@ -9,6 +9,10 @@ namespace ATLink.Views;
 
 public static class WindowAppearance
 {
+    public static readonly DependencyProperty SettingsCommandProperty=DependencyProperty.RegisterAttached(
+        "SettingsCommand",typeof(ICommand),typeof(WindowAppearance));
+    public static ICommand? GetSettingsCommand(DependencyObject target)=>(ICommand?)target.GetValue(SettingsCommandProperty);
+    public static void SetSettingsCommand(DependencyObject target,ICommand? value)=>target.SetValue(SettingsCommandProperty,value);
     public static readonly DependencyProperty EnabledProperty=DependencyProperty.RegisterAttached(
         "Enabled",typeof(bool),typeof(WindowAppearance),new PropertyMetadata(false,OnEnabled));
     public static bool GetEnabled(DependencyObject target)=>(bool)target.GetValue(EnabledProperty);

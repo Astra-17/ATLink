@@ -14,9 +14,9 @@ public sealed class PlayerBrowser : UserControl
     readonly FootballCatalog catalog;
     readonly DataGrid grid=new();
     readonly PlayerDetails detail=new();
-    readonly TextBox search=new(){ToolTip="Search players by name or ID",HorizontalAlignment=HorizontalAlignment.Stretch};
+    readonly TextBox search=new(){ToolTip=ATLink.Core.UiText.Get("Search players by name or ID"),HorizontalAlignment=HorizontalAlignment.Stretch};
     readonly TextBlock count=new();
-    readonly List<PlayerCard> players;
+    List<PlayerCard> players;
     string category="All players";
     readonly StackPanel filters=new(){Orientation=Orientation.Horizontal};
     public event Action<EntityItem>? EditRequested;
@@ -40,20 +40,20 @@ public sealed class PlayerBrowser : UserControl
         var root=new DockPanel();
         var header=new DockPanel{Margin=new Thickness(0,0,0,20)};
         var actions=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        var add=new Button{Content="+  Create from selected",Background=B("AccentBrush"),Padding=new Thickness(16,10,16,10)};
+        var add=new Button{Content=ATLink.Core.UiText.Get("+  Create from selected"),Background=B("AccentBrush"),Padding=new Thickness(16,10,16,10)};
         add.Click+=(_,_)=>{if(grid.SelectedItem is PlayerCard p)CreateRequested?.Invoke(p.Item);};
         actions.Children.Add(add);DockPanel.SetDock(actions,Dock.Right);header.Children.Add(actions);
-        var titles=new StackPanel();titles.Children.Add(Text("Players",30,true));var sub=Text("Explore your players, attributes and potential.",13);sub.Foreground=B("MutedBrush");sub.Margin=new Thickness(0,6,12,0);titles.Children.Add(sub);header.Children.Add(titles);
+        var titles=new StackPanel();titles.Children.Add(Text(ATLink.Core.UiText.Get("Players"),30,true));var sub=Text(ATLink.Core.UiText.Get("Explore your players, attributes and potential."),13);sub.Foreground=B("MutedBrush");sub.Margin=new Thickness(0,6,12,0);titles.Children.Add(sub);header.Children.Add(titles);
         DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
         var body=new Grid();body.ColumnDefinitions.Add(new(){Width=new GridLength(1.55,GridUnitType.Star),MinWidth=560});body.ColumnDefinitions.Add(new(){Width=new GridLength(1,GridUnitType.Star),MinWidth=290});
         var left=new DockPanel{Margin=new Thickness(0,0,18,0)};
         var searchBox=new Grid{Margin=new Thickness(0,0,0,12)};searchBox.Children.Add(search);
-        var placeholder=Text("Search a player...",13);placeholder.Foreground=B("MutedBrush");placeholder.Margin=new Thickness(10,0,0,0);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;
+        var placeholder=Text(ATLink.Core.UiText.Get("Search a player..."),13);placeholder.Foreground=B("MutedBrush");placeholder.Margin=new Thickness(10,0,0,0);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;
         searchBox.Children.Add(placeholder);search.TextChanged+=(_,_)=>placeholder.Visibility=search.Text.Length==0?Visibility.Visible:Visibility.Collapsed;
         DockPanel.SetDock(searchBox,Dock.Top);left.Children.Add(searchBox);
         foreach(var label in new[]{"All players","Goalkeepers","Defenders","Midfielders","Forwards"})
         {
-            var button=new Button{Content=label,Tag=label,Padding=new Thickness(10,9,10,9),Margin=new Thickness(0,0,4,0)};
+            var button=new Button{Content=UiText.Get(label),Tag=label,Padding=new Thickness(10,9,10,9),Margin=new Thickness(0,0,4,0)};
             button.Click+=(_,_)=>{category=label;Refresh();};filters.Children.Add(button);
         }
         var filterScroll=new ScrollViewer{Content=filters,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Disabled,Margin=new Thickness(0,0,0,12)};
@@ -70,8 +70,8 @@ public sealed class PlayerBrowser : UserControl
                 item.Click+=(_,_)=>{if(row.Item is PlayerCard p){grid.SelectedItem=p;action(p);}};
                 menu.Items.Add(item);
             }
-            Item("Edit player",p=>EditRequested?.Invoke(p.Item));
-            Item("Transfer player",p=>
+            Item(ATLink.Core.UiText.Get("Edit player"),p=>EditRequested?.Invoke(p.Item));
+            Item(ATLink.Core.UiText.Get("Transfer player"),p=>
             {
                 var dialog=new PlayerTransferWindow(catalog,p.Item);
                 if(Window.GetWindow(this) is Window owner)dialog.Owner=owner;
@@ -81,7 +81,7 @@ public sealed class PlayerBrowser : UserControl
                     grid.Items.Refresh();detail.DataContext=null;ShowPlayer();
                 }
             });
-            Item("Duplicate player",p=>CreateRequested?.Invoke(p.Item));
+            Item(ATLink.Core.UiText.Get("Duplicate player"),p=>CreateRequested?.Invoke(p.Item));
             row.ContextMenu=menu;
         };
         grid.PreviewMouseRightButtonDown+=(_,e)=>
@@ -95,7 +95,7 @@ public sealed class PlayerBrowser : UserControl
         var portrait=new FrameworkElementFactory(typeof(Image));portrait.SetValue(Image.WidthProperty,30d);portrait.SetValue(Image.HeightProperty,30d);portrait.SetBinding(Image.SourceProperty,new Binding("Portrait"));name.AppendChild(portrait);
         var nameText=new FrameworkElementFactory(typeof(TextBlock));nameText.SetBinding(TextBlock.TextProperty,new Binding("Name"));nameText.SetValue(TextBlock.VerticalAlignmentProperty,VerticalAlignment.Center);nameText.SetValue(TextBlock.MarginProperty,new Thickness(9,0,0,0));name.AppendChild(nameText);
         grid.Columns.Add(new DataGridTemplateColumn{Header="NAME",CellTemplate=new DataTemplate{VisualTree=name},SortMemberPath="Name",Width=new DataGridLength(1,DataGridLengthUnitType.Star),MinWidth=150});
-        Column("AGE","Age",46);Column("POS","Position",48);
+        Column("AGE",ATLink.Core.UiText.Get("Age"),46);Column("POS",ATLink.Core.UiText.Get("Position"),48);
         var flag=new FrameworkElementFactory(typeof(FlagImage));flag.SetValue(FlagImage.WidthProperty,32d);flag.SetValue(FlagImage.HeightProperty,22d);flag.SetBinding(FlagImage.SourceProperty,new Binding("Flag"));flag.SetBinding(FlagImage.ToolTipProperty,new Binding("Nationality"));
         grid.Columns.Add(new DataGridTemplateColumn{Header="NAT",CellTemplate=new DataTemplate{VisualTree=flag},Width=48,SortMemberPath="Nationality"});
         var rating=new FrameworkElementFactory(typeof(Border));rating.SetBinding(Border.BackgroundProperty,new Binding("Overall"){Converter=new RatingBrushConverter()});rating.SetValue(Border.CornerRadiusProperty,new CornerRadius(4));rating.SetValue(Border.PaddingProperty,new Thickness(5,3,5,3));rating.SetValue(Border.VerticalAlignmentProperty,VerticalAlignment.Center);
@@ -112,11 +112,21 @@ public sealed class PlayerBrowser : UserControl
     void Refresh()
     {
         var selected=(grid.SelectedItem as PlayerCard)?.Id;
-        var visible=players.Where(p=>(p.Name.Contains(search.Text,StringComparison.OrdinalIgnoreCase)||p.Id.ToString().Contains(search.Text))&&(category=="All players"||p.Group==category)).ToArray();
+        var visible=players.Where(p=>(p.Name.Contains(search.Text,StringComparison.OrdinalIgnoreCase)||p.Id.ToString().Contains(search.Text))&&(ATLink.Core.UiText.Source(category)=="All players"||p.Group==category)).ToArray();
         grid.ItemsSource=visible;grid.SelectedItem=visible.FirstOrDefault(p=>p.Id==selected)??visible.FirstOrDefault();
-        count.Text=$"{visible.Length:N0} players";
+        count.Text=UiText.Plural(visible.Length,"{0:N0} player","{0:N0} players");
         foreach(Button b in filters.Children)b.Background=B((string)b.Tag==category?"AccentBrush":"PanelBrush");
         ShowPlayer();
+    }
+    public void RefreshLocalizedNames()
+    {
+        var nations=catalog.NationNames();var codes=catalog.NationCodes();
+        var teams=catalog.Entities("teams").ToDictionary(t=>t.Id,t=>t.Name);
+        var clubs=catalog.Rows("teamplayerlinks").Where(link=>!catalog.NationalTeamIds.Contains(FootballCatalog.Value(link,"teamid")))
+            .GroupBy(link=>FootballCatalog.Value(link,"playerid")).Select(group=>new {Player=group.Key,Team=group.Select(link=>FootballCatalog.Value(link,"teamid")).FirstOrDefault(teams.ContainsKey)})
+            .Where(link=>link.Team is not null).ToDictionary(link=>link.Player,link=>new ClubInfo(link.Team!,teams[link.Team!]));
+        players=catalog.Entities("players").Select(player=>new PlayerCard(player,nations,codes,clubs)).ToList();
+        Refresh();
     }
     void Edit(){if(grid.SelectedItem is PlayerCard p)EditRequested?.Invoke(p.Item);}
     void ShowPlayer()=>detail.DataContext=grid.SelectedItem as PlayerCard;
@@ -139,17 +149,17 @@ public sealed class PlayerBrowser : UserControl
         public sealed record AttributeRating(string Name,int Rating);
         static readonly (string Field,string Name)[] RatedAttributes=
         [
-            ("acceleration","Acceleration"),("sprintspeed","Sprint speed"),("agility","Agility"),
-            ("balance","Balance"),("jumping","Jumping"),("stamina","Stamina"),("strength","Strength"),
-            ("reactions","Reactions"),("aggression","Aggression"),("composure","Composure"),
-            ("interceptions","Interceptions"),("positioning","Attacking positioning"),("vision","Vision"),
-            ("ballcontrol","Ball control"),("crossing","Crossing"),("curve","Curve"),
-            ("dribbling","Dribbling"),("finishing","Finishing"),("freekickaccuracy","Free kick accuracy"),
-            ("headingaccuracy","Heading accuracy"),("longpassing","Long passing"),("longshots","Long shots"),
-            ("marking","Defensive awareness"),("penalties","Penalties"),("shortpassing","Short passing"),
-            ("shotpower","Shot power"),("slidingtackle","Sliding tackle"),("standingtackle","Standing tackle"),
-            ("volleys","Volleys"),("gkdiving","GK diving"),("gkhandling","GK handling"),
-            ("gkkicking","GK kicking"),("gkpositioning","GK positioning"),("gkreflexes","GK reflexes")
+            ("acceleration",ATLink.Core.UiText.Get("Acceleration")),("sprintspeed",ATLink.Core.UiText.Get("Sprint speed")),("agility",ATLink.Core.UiText.Get("Agility")),
+            ("balance",ATLink.Core.UiText.Get("Balance")),("jumping",ATLink.Core.UiText.Get("Jumping")),("stamina",ATLink.Core.UiText.Get("Stamina")),("strength",ATLink.Core.UiText.Get("Strength")),
+            ("reactions",ATLink.Core.UiText.Get("Reactions")),("aggression",ATLink.Core.UiText.Get("Aggression")),("composure",ATLink.Core.UiText.Get("Composure")),
+            ("interceptions",ATLink.Core.UiText.Get("Interceptions")),("positioning",ATLink.Core.UiText.Get("Attacking positioning")),("vision",ATLink.Core.UiText.Get("Vision")),
+            ("ballcontrol",ATLink.Core.UiText.Get("Ball control")),("crossing",ATLink.Core.UiText.Get("Crossing")),("curve",ATLink.Core.UiText.Get("Curve")),
+            ("dribbling",ATLink.Core.UiText.Get("Dribbling")),("finishing",ATLink.Core.UiText.Get("Finishing")),("freekickaccuracy",ATLink.Core.UiText.Get("Free kick accuracy")),
+            ("headingaccuracy",ATLink.Core.UiText.Get("Heading accuracy")),("longpassing",ATLink.Core.UiText.Get("Long passing")),("longshots",ATLink.Core.UiText.Get("Long shots")),
+            ("marking",ATLink.Core.UiText.Get("Defensive awareness")),("penalties",ATLink.Core.UiText.Get("Penalties")),("shortpassing",ATLink.Core.UiText.Get("Short passing")),
+            ("shotpower",ATLink.Core.UiText.Get("Shot power")),("slidingtackle",ATLink.Core.UiText.Get("Sliding tackle")),("standingtackle",ATLink.Core.UiText.Get("Standing tackle")),
+            ("volleys",ATLink.Core.UiText.Get("Volleys")),("gkdiving",ATLink.Core.UiText.Get("GK diving")),("gkhandling",ATLink.Core.UiText.Get("GK handling")),
+            ("gkkicking",ATLink.Core.UiText.Get("GK kicking")),("gkpositioning",ATLink.Core.UiText.Get("GK positioning")),("gkreflexes",ATLink.Core.UiText.Get("GK reflexes"))
         ];
         public IReadOnlyList<AttributeRating> MainAttributes=>RatedAttributes
             .Select(a=>new AttributeRating(a.Name,int.TryParse(Raw(a.Field),out int rating)?rating:0))
@@ -158,10 +168,10 @@ public sealed class PlayerBrowser : UserControl
             .Take(6).ToArray();
         public int Potential=>int.TryParse(Raw("potential"),out int v)?v:0;
         public string Position=>int.TryParse(Raw("preferredposition1"),out int v)&&v>=0&&v<PlayerProfileImport.PositionCodes.Length?PlayerProfileImport.PositionCodes[v]:"—";
-        static readonly string[] PositionNames=["Goalkeeper","Sweeper","Right Wing Back","Right Back","Right Centre Back","Centre Back","Left Centre Back","Left Back","Left Wing Back","Right Defensive Midfielder","Central Defensive Midfielder","Left Defensive Midfielder","Right Midfielder","Right Centre Midfielder","Central Midfielder","Left Centre Midfielder","Left Midfielder","Right Attacking Midfielder","Central Attacking Midfielder","Left Attacking Midfielder","Right Forward","Centre Forward","Left Forward","Right Winger","Right Striker","Striker","Left Striker","Left Winger"];
+        static readonly string[] PositionNames=[ATLink.Core.UiText.Get("Goalkeeper"),ATLink.Core.UiText.Get("Sweeper"),ATLink.Core.UiText.Get("Right Wing Back"),ATLink.Core.UiText.Get("Right Back"),ATLink.Core.UiText.Get("Right Centre Back"),ATLink.Core.UiText.Get("Centre Back"),ATLink.Core.UiText.Get("Left Centre Back"),ATLink.Core.UiText.Get("Left Back"),ATLink.Core.UiText.Get("Left Wing Back"),ATLink.Core.UiText.Get("Right Defensive Midfielder"),ATLink.Core.UiText.Get("Central Defensive Midfielder"),ATLink.Core.UiText.Get("Left Defensive Midfielder"),ATLink.Core.UiText.Get("Right Midfielder"),ATLink.Core.UiText.Get("Right Centre Midfielder"),ATLink.Core.UiText.Get("Central Midfielder"),ATLink.Core.UiText.Get("Left Centre Midfielder"),ATLink.Core.UiText.Get("Left Midfielder"),ATLink.Core.UiText.Get("Right Attacking Midfielder"),ATLink.Core.UiText.Get("Central Attacking Midfielder"),ATLink.Core.UiText.Get("Left Attacking Midfielder"),ATLink.Core.UiText.Get("Right Forward"),ATLink.Core.UiText.Get("Centre Forward"),ATLink.Core.UiText.Get("Left Forward"),ATLink.Core.UiText.Get("Right Winger"),ATLink.Core.UiText.Get("Right Striker"),ATLink.Core.UiText.Get("Striker"),ATLink.Core.UiText.Get("Left Striker"),ATLink.Core.UiText.Get("Left Winger")];
         public string PositionDescription=>int.TryParse(Raw("preferredposition1"),out int value)&&value>=0&&value<PositionNames.Length?$"{PositionNames[value]} - {Position}":Position;
-        public string AgeAndBirthDate=>Birth is DateTime birth?$"{Age} years ({birth:dd'/'MM'/'yyyy})":"—";
-        public string ContractText=>int.TryParse(Raw("contractvaliduntil"),out int year)&&year>0?$"Under contract until 30/06/{year}":"Contract end unavailable";
+        public string AgeAndBirthDate=>Birth is DateTime birth?ATLink.Core.UiText.Format("{0} years ({1:dd'/'MM'/'yyyy})", Age, birth):"—";
+        public string ContractText=>int.TryParse(Raw("contractvaliduntil"),out int year)&&year>0?ATLink.Core.UiText.Format("Under contract until 30/06/{0}", year):ATLink.Core.UiText.Get("Contract end unavailable");
         ClubInfo? Club=>clubs?.GetValueOrDefault(item.Id);
         public bool HasClub=>Club is not null;
         public string ClubName=>Club?.Name??"";
@@ -169,7 +179,7 @@ public sealed class PlayerBrowser : UserControl
         public string Group=>Position=="GK"?"Goalkeepers":new[]{"RB","RWB","CB","LCB","RCB","LB","LWB","SW"}.Contains(Position)?"Defenders":new[]{"ST","LS","RS","CF","LF","RF","LW","RW"}.Contains(Position)?"Forwards":"Midfielders";
         public ImageSource? Flag=>NationFlags.Load(codes?.GetValueOrDefault(Raw("nationality")),Nationality);
         public string Nationality=>nations.GetValueOrDefault(Raw("nationality"),"Nation "+Raw("nationality"));
-        public string StrongFoot=>Raw("preferredfoot") switch{"1"=>"Left","2"=>"Right",_=>"—"};
+        public string StrongFoot=>Raw("preferredfoot") switch{"1"=>ATLink.Core.UiText.Get("Left"),"2"=>ATLink.Core.UiText.Get("Right"),_=>"—"};
         static IReadOnlyList<string> Stars(string raw,int offset=0)=>int.TryParse(raw,out int value)?Enumerable.Repeat("★",Math.Clamp(value+offset,0,5)).ToArray():["—"];
         public IReadOnlyList<string> SkillMoveStars=>Stars(Raw("skillmoves"),1);
         public IReadOnlyList<string> WeakFootStars=>Stars(Raw("weakfootabilitytypecode"));

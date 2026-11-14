@@ -10,7 +10,7 @@ public static class PlayerProfileImport
     private static string Clean(string s)=>Regex.Replace(HtmlEntity.DeEntitize(s),@"\s+"," ").Trim();
     public static PlayerProfile Parse(string text)
     {
-        if(text.TrimStart().StartsWith('{'))return JsonSerializer.Deserialize<PlayerProfile>(text,new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Profil JSON vide.");
+        if(text.TrimStart().StartsWith('{'))return JsonSerializer.Deserialize<PlayerProfile>(text,new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException(ATLink.Core.UiText.Get("Profil JSON vide."));
         var html=new HtmlDocument();html.LoadHtml(text);var root=html.DocumentNode;
         string? Item(string name){var n=root.SelectSingleNode($"//*[@itemprop='{name}']");return n is null?null:Clean(n.GetAttributeValue("content",n.InnerText));}
         string? Info(params string[] keys)
@@ -21,7 +21,7 @@ public static class PlayerProfileImport
         }
         var heading=root.SelectSingleNode("//h1");
         if(heading is not null)foreach(var n in heading.SelectNodes(".//*[contains(@class,'shirt-number')]")?.ToArray()??[])n.Remove();
-        string name=Item("name")??Clean(heading?.InnerText??"");if(name.Length==0)throw new InvalidDataException("Nom du joueur absent du profil HTML.");
+        string name=Item("name")??Clean(heading?.InnerText??"");if(name.Length==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Nom du joueur absent du profil HTML."));
         string birth=Item("birthDate")??Info("Date of birth/Age","Date de naissance/âge","Geburtsdatum/Alter")??"";
         DateOnly? dob=null;
         string date=Regex.Replace(birth,@"\s*\(.*$","").Trim();
@@ -79,7 +79,7 @@ public static class PlayerProfileImport
     }
     public static async Task<PlayerProfile> Fetch(string url,CancellationToken cancellation=default)
     {
-        if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||!TransfermarktHttp.IsProfile(uri)||!uri.AbsolutePath.Contains("/spieler/"))throw new InvalidDataException("URL de profil Transfermarkt HTTPS requise.");
+        if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||!TransfermarktHttp.IsProfile(uri)||!uri.AbsolutePath.Contains("/spieler/"))throw new InvalidDataException(ATLink.Core.UiText.Get("URL de profil Transfermarkt HTTPS requise."));
         using var client=TransfermarktHttp.Create();
         string html=await Get(client,uri,cancellation);
         var profile=Parse(html);
@@ -94,7 +94,7 @@ public static class PlayerProfileImport
     private static async Task<string> Get(HttpClient client,Uri uri,CancellationToken cancellation)
     {
         using var response=await client.GetAsync(uri,cancellation);
-        if(!response.IsSuccessStatusCode)throw new HttpRequestException($"HTTP {(int)response.StatusCode}. Charger un profil HTML/JSON local si l'accès est refusé.");
+        if(!response.IsSuccessStatusCode)throw new HttpRequestException(ATLink.Core.UiText.Format("HTTP {0}. Charger un profil HTML/JSON local si l'accès est refusé.", (int)response.StatusCode));
         return await response.Content.ReadAsStringAsync(cancellation);
     }
     private static string? Absolute(string? href)

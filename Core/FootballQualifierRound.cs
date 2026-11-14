@@ -9,13 +9,13 @@ public static class FootballQualifierRounds
     {
         if(rounds is null||rounds.Count==0)return;
         var phases=FootballCompetitionAdapter.Read(c,competition).Phases;
-        if(rounds.Count!=phases.Count)throw new InvalidDataException("Configure all five qualifying rounds.");
+        if(rounds.Count!=phases.Count)throw new InvalidDataException(ATLink.Core.UiText.Get("Configure all five qualifying rounds."));
         for(int i=0;i<rounds.Count;i++)
         {
             var draft=rounds[i];int stage=phases[i].NativeId!.Value;
             foreach(var key in draft.ResetRules)
             {
-                if(!FootballRuleCatalogue.IsEditableKey(key))throw new InvalidDataException("Unknown qualifying rule.");
+                if(!FootballRuleCatalogue.IsEditableKey(key))throw new InvalidDataException(ATLink.Core.UiText.Get("Unknown qualifying rule."));
                 c.SetRule(stage,key,[]);
             }
             foreach(var rule in draft.Rules)

@@ -10,7 +10,7 @@ public partial class FootballPhaseWindow:Window
     {
         InitializeComponent();source=phase;Draft=phase.EditCopy();DataContext=Draft;Fields.DataContext=Draft;Draft.ConfigureEssentials(context);Sections.SelectedIndex=showRules?1:0;PhaseSettings.Configure(context,[Draft]);
         if(formatOnly){Fields.ShowEssentials=false;foreach(System.Windows.Controls.TabItem tab in Sections.Items.Cast<System.Windows.Controls.TabItem>().Skip(1))tab.Visibility=Visibility.Collapsed;Sections.SelectedIndex=0;}
-        NativeSettings.ItemsSource=(phase.NativeId??templateId) is int id?context.EffectiveRules(id).Select(r=>new{r.Key,r.Value,Origin=r.Source==id?"This phase":context.ObjectName(r.Source)}).OrderBy(r=>r.Key).ToArray():phase.InheritedSettings.SelectMany(p=>p.Value.Select(value=>new{Key=p.Key,Value=value,Origin="Competition default"})).OrderBy(r=>r.Key).ToArray();
+        NativeSettings.ItemsSource=(phase.NativeId??templateId) is int id?context.EffectiveRules(id).Select(r=>new{r.Key,r.Value,Origin=r.Source==id?ATLink.Core.UiText.Get("This phase"):context.ObjectName(r.Source)}).OrderBy(r=>r.Key).ToArray():phase.InheritedSettings.SelectMany(p=>p.Value.Select(value=>new{Key=p.Key,Value=value,Origin=ATLink.Core.UiText.Get("Competition default")})).OrderBy(r=>r.Key).ToArray();
         Loaded+=(_,_)=>{if(Owner is not null){MaxHeight=SystemParameters.WorkArea.Height;Height=Math.Min(Height,Math.Max(420,Owner.ActualHeight-60));}};
     }
     public bool ConfirmDraft()

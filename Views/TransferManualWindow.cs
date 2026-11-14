@@ -20,7 +20,7 @@ public sealed class TransferManualWindow:Window
     readonly TextBox number=new(){MinHeight=36};
     readonly TextBox contract=new(){MinHeight=36};
     readonly ComboBox loanEnd=new(){MinHeight=36};
-    readonly CheckBox loanToBuy=new(){Content="Loan with purchase option",Margin=new Thickness(0,10,0,0)};
+    readonly CheckBox loanToBuy=new(){Content=ATLink.Core.UiText.Get("Loan with purchase option"),Margin=new Thickness(0,10,0,0)};
     readonly StackPanel contractPanel=new(),loanPanel=new(){Visibility=Visibility.Collapsed};
     bool isLoan;
     readonly TextBlock error=new(){Foreground=new SolidColorBrush(Color.FromRgb(0xFF,0x8E,0x8E)),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,0)};
@@ -38,7 +38,7 @@ public sealed class TransferManualWindow:Window
     public TransferManualWindow(FootballCatalog catalog,ClubOption[] clubs,EnrichedPlayers enrich,IReadOnlyDictionary<string,string> contracts)
     {
         this.catalog=catalog;this.clubs=clubs;this.enrich=enrich;this.contracts=contracts;
-        Title="Add player";Width=560;SizeToContent=SizeToContent.Height;ResizeMode=ResizeMode.NoResize;
+        Title=ATLink.Core.UiText.Get("Add player");Width=560;SizeToContent=SizeToContent.Height;ResizeMode=ResizeMode.NoResize;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;ShowInTaskbar=false;
         Resources.MergedDictionaries.Add(new ResourceDictionary{Source=new Uri("/ATLink;component/Themes/Studio.xaml",UriKind.Relative)});
         Style=TryFindResource(typeof(Window)) as Style;
@@ -53,25 +53,25 @@ public sealed class TransferManualWindow:Window
         var root=new StackPanel{Margin=new Thickness(24)};
         var heading=new DockPanel{Margin=new Thickness(0,0,0,18)};
         var modes=new StackPanel{Orientation=Orientation.Horizontal};DockPanel.SetDock(modes,Dock.Right);
-        var transferMode=new ToggleButton{Content="Transfer",IsChecked=true,MinWidth=86,Padding=new Thickness(12,7,12,7)};
-        var loanMode=new ToggleButton{Content="Loan",MinWidth=72,Padding=new Thickness(12,7,12,7),Margin=new Thickness(6,0,0,0)};
+        var transferMode=new ToggleButton{Content=ATLink.Core.UiText.Get("Transfer"),IsChecked=true,MinWidth=86,Padding=new Thickness(12,7,12,7)};
+        var loanMode=new ToggleButton{Content=ATLink.Core.UiText.Get("Loan"),MinWidth=72,Padding=new Thickness(12,7,12,7),Margin=new Thickness(6,0,0,0)};
         void SetMode(bool loan){isLoan=loan;transferMode.IsChecked=!loan;loanMode.IsChecked=loan;contractPanel.Visibility=loan?Visibility.Collapsed:Visibility.Visible;loanPanel.Visibility=loan?Visibility.Visible:Visibility.Collapsed;}
         transferMode.Click+=(_,_)=>SetMode(false);loanMode.Click+=(_,_)=>SetMode(true);modes.Children.Add(transferMode);modes.Children.Add(loanMode);heading.Children.Add(modes);
-        heading.Children.Add(new TextBlock{Text="Add player",FontSize=23,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});root.Children.Add(heading);
-        root.Children.Add(new TextBlock{Text="Player",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,0,0,7)});
+        heading.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Add player"),FontSize=23,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});root.Children.Add(heading);
+        root.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Player"),Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,0,0,7)});
         root.Children.Add(players);
-        root.Children.Add(new TextBlock{Text="New club",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        root.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("New club"),Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         root.Children.Add(destinations);
-        root.Children.Add(new TextBlock{Text="Number",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        root.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Number"),Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         root.Children.Add(number);
-        contractPanel.Children.Add(new TextBlock{Text="Contract",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        contractPanel.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Contract"),Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         contractPanel.Children.Add(contract);root.Children.Add(contractPanel);
-        loanPanel.Children.Add(new TextBlock{Text="Loan end date",Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
+        loanPanel.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Get("Loan end date"),Foreground=StudioPalette.Get("MutedBrush"),Margin=new Thickness(0,16,0,7)});
         loanPanel.Children.Add(loanEnd);loanPanel.Children.Add(loanToBuy);root.Children.Add(loanPanel);
         root.Children.Add(error);
         var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,20,0,0)};
-        var cancel=new Button{Content="Cancel",IsCancel=true,MinWidth=95,Margin=new Thickness(0,0,10,0),Padding=new Thickness(14,9,14,9)};
-        var confirm=new Button{Content="Add",IsDefault=true,MinWidth=95,Padding=new Thickness(14,9,14,9),Background=StudioPalette.Get("AccentBrush")};
+        var cancel=new Button{Content=ATLink.Core.UiText.Get("Cancel"),IsCancel=true,MinWidth=95,Margin=new Thickness(0,0,10,0),Padding=new Thickness(14,9,14,9)};
+        var confirm=new Button{Content=ATLink.Core.UiText.Get("Add"),IsDefault=true,MinWidth=95,Padding=new Thickness(14,9,14,9),Background=StudioPalette.Get("AccentBrush")};
         confirm.Click+=(_,_)=>Confirm();
         buttons.Children.Add(cancel);buttons.Children.Add(confirm);root.Children.Add(buttons);
         Content=root;
@@ -81,7 +81,7 @@ public sealed class TransferManualWindow:Window
     void AttachPlayers()
     {
         players.ItemsSource=playerView;players.IsEditable=true;players.IsTextSearchEnabled=false;players.StaysOpenOnEdit=true;
-        TextSearch.SetTextPath(players,"Label");
+        TextSearch.SetTextPath(players,ATLink.Core.UiText.Get("Label"));
         VirtualizingPanel.SetIsVirtualizing(players,true);
         players.ItemsPanel=new ItemsPanelTemplate(new FrameworkElementFactory(typeof(VirtualizingStackPanel)));
         var root=new FrameworkElementFactory(typeof(DockPanel));
@@ -147,10 +147,10 @@ public sealed class TransferManualWindow:Window
 
     void Confirm()
     {
-        if(ChosenPlayer() is not PlayerPick player){error.Text="Choose a player.";return;}
-        if(ClubCombo.Chosen(destinations,clubs) is not ClubOption club){error.Text="Choose a destination club.";return;}
+        if(ChosenPlayer() is not PlayerPick player){error.Text=ATLink.Core.UiText.Get("Choose a player.");return;}
+        if(ClubCombo.Chosen(destinations,clubs) is not ClubOption club){error.Text=ATLink.Core.UiText.Get("Choose a destination club.");return;}
         if(isLoan&&!DateOnly.TryParseExact(loanEnd.Text,"dd/MM/yyyy",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out _))
-        {error.Text="Choose a valid loan end date.";return;}
+        {error.Text=ATLink.Core.UiText.Get("Choose a valid loan end date.");return;}
         var names=catalog.Rows("teams").GroupBy(r=>FootballCatalog.Value(r,"teamid")).ToDictionary(g=>g.Key,g=>FootballCatalog.Value(g.First(),"teamname"));
         var links=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"playerid")==player.Id&&!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid"))).ToArray();
         string? oldId=links.Length==0?null:FootballCatalog.Value(links[0],"teamid");

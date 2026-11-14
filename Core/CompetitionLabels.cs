@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 namespace ATLink.Core;
 public sealed class CompetitionLabels
 {
+    public bool TryText(string key,out string text)=>translations.TryGetValue(LanguageHash.Compute(key),out text!);
     readonly Dictionary<uint,string> translations=[];
     public CompetitionLabels(DatabaseDocument localization)
     {
@@ -16,8 +17,8 @@ public sealed class CompetitionLabels
         string key=item.Name.Trim();
         if(key.Length>0&&translations.TryGetValue(LanguageHash.Compute(key),out string? value))return value;
         if(key.StartsWith("FCE_"))return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(key[4..].Replace('_',' ').ToLowerInvariant());
-        if(key.StartsWith("TrophyName",StringComparison.OrdinalIgnoreCase))return "Competition "+Regex.Match(item.Code,@"\d+").Value+" (name unavailable)";
+        if(key.StartsWith("TrophyName",StringComparison.OrdinalIgnoreCase))return ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Competition "), Regex.Match(item.Code,@"\d+").Value, ATLink.Core.UiText.Get(" (name unavailable)"));
         if(key.Length>0)return key;
-        return item.Kind switch{0=>"World",1=>"Confederation",2=>"Country",3=>"Competition",4=>"Stage",5=>"Group "+Regex.Match(item.Code,@"\d+").Value,_=>"Competition object"};
+        return item.Kind switch{0=>ATLink.Core.UiText.Get("World"),1=>ATLink.Core.UiText.Get("Confederation"),2=>ATLink.Core.UiText.Get("Country"),3=>ATLink.Core.UiText.Get("Competition"),4=>ATLink.Core.UiText.Get("Stage"),5=>ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Group "), Regex.Match(item.Code,@"\d+").Value),_=>ATLink.Core.UiText.Get("Competition object")};
     }
 }

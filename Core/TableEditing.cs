@@ -25,30 +25,30 @@ public static class TableEditing
             else if(c is '\r' or '\n' && !quoted){if(c=='\r' && i+1<text.Length && text[i+1]=='\n')i++;cells.Add(cell.ToString());cell.Clear();rows.Add(cells.ToArray());cells.Clear();}
             else cell.Append(c);
         }
-        if(quoted)throw new InvalidDataException("Guillemets non fermés dans le fichier.");
+        if(quoted)throw new InvalidDataException(ATLink.Core.UiText.Get("Guillemets non fermés dans le fichier."));
         if(cell.Length>0||cells.Count>0){cells.Add(cell.ToString());rows.Add(cells.ToArray());}
         return rows;
     }
     public static IReadOnlyList<string[]> PreviewImport(DatabaseTable table,string text,char separator=',')
     {
-        var parsed=Parse(text.TrimStart('\uFEFF'),separator);if(parsed.Count==0)throw new InvalidDataException("Fichier vide.");
+        var parsed=Parse(text.TrimStart('\uFEFF'),separator);if(parsed.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Fichier vide."));
         var headers=parsed[0];
-        if(headers.Distinct(StringComparer.Ordinal).Count()!=headers.Length || headers.Length!=table.Fields.Count || table.Fields.Any(f=>!headers.Contains(f.Name)))throw new InvalidDataException("Les colonnes doivent correspondre exactement à la table sélectionnée.");
+        if(headers.Distinct(StringComparer.Ordinal).Count()!=headers.Length || headers.Length!=table.Fields.Count || table.Fields.Any(f=>!headers.Contains(f.Name)))throw new InvalidDataException(ATLink.Core.UiText.Get("Les colonnes doivent correspondre exactement à la table sélectionnée."));
         var mapped=new List<string[]>();
         foreach(var row in parsed.Skip(1))
         {
-            if(row.Length!=headers.Length)throw new InvalidDataException("Nombre de colonnes incorrect.");
+            if(row.Length!=headers.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Nombre de colonnes incorrect."));
             var values=table.Fields.Select(f=>row[Array.IndexOf(headers,f.Name)]).ToArray();
             for(int c=0;c<values.Length;c++)DatabaseDocument.ValidateValue(table.Fields[c],values[c]);
             mapped.Add(values);
         }
         var keys=table.Fields.Select((f,i)=>(f,i)).Where(x=>x.f.IsKey).Select(x=>x.i).ToArray();
-        if(keys.Length>0 && mapped.GroupBy(r=>string.Join("\u001f",keys.Select(k=>r[k]))).Any(g=>g.Count()>1))throw new InvalidDataException("L'import contient des clés dupliquées.");
+        if(keys.Length>0 && mapped.GroupBy(r=>string.Join("\u001f",keys.Select(k=>r[k]))).Any(g=>g.Count()>1))throw new InvalidDataException(ATLink.Core.UiText.Get("L'import contient des clés dupliquées."));
         return mapped;
     }
     public static void Replace(DatabaseTable table,IReadOnlyList<string[]> rows)
     {
-        if(rows.Count>65535)throw new InvalidDataException("Trop de lignes.");
+        if(rows.Count>65535)throw new InvalidDataException(ATLink.Core.UiText.Get("Trop de lignes."));
         foreach(DataRow row in table.Data.Rows.Cast<DataRow>().ToArray())row.Delete();
         foreach(var row in rows)table.Data.Rows.Add(row.Cast<object>().ToArray());
     }
@@ -68,8 +68,8 @@ public static class TableEditing
     {
         var f=table.Fields.Single(f=>f.Name==column);DatabaseDocument.ValidateValue(f,value);
         var rows=targets.ToArray();
-        if(f.IsKey && rows.Length>1)throw new InvalidDataException("Une même clé ne peut pas être attribuée à plusieurs lignes.");
-        if(f.IsKey && table.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Deleted&&!rows.Contains(r)&&(string)r[column]==value))throw new InvalidDataException("Cette clé existe déjà.");
+        if(f.IsKey && rows.Length>1)throw new InvalidDataException(ATLink.Core.UiText.Get("Une même clé ne peut pas être attribuée à plusieurs lignes."));
+        if(f.IsKey && table.Data.Rows.Cast<DataRow>().Any(r=>r.RowState!=DataRowState.Deleted&&!rows.Contains(r)&&(string)r[column]==value))throw new InvalidDataException(ATLink.Core.UiText.Get("Cette clé existe déjà."));
         foreach(var row in rows)row[column]=value;
     }
 }

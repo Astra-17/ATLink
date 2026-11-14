@@ -1,4 +1,4 @@
-<UserControl Foreground="{DynamicResource TextBrush}" x:Class="ATLink.Views.TeamWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Background="{DynamicResource BackgroundBrush}" FontFamily="Segoe UI" FontSize="13">
+<UserControl xmlns:loc="clr-namespace:ATLink.Services" Foreground="{DynamicResource TextBrush}" x:Class="ATLink.Views.TeamWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Background="{DynamicResource BackgroundBrush}" FontFamily="Segoe UI" FontSize="13">
  <UserControl.Resources>
   <ResourceDictionary>
    <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="../Themes/Studio.xaml"/></ResourceDictionary.MergedDictionaries>
@@ -12,12 +12,12 @@
   <Border DockPanel.Dock="Top" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Background="{DynamicResource AccentBrush}" Content="Apply" Click="ApplyClick" Style="{StaticResource ApplyButton}"/>
-     <Button Background="{DynamicResource AccentBrush}" Content="Apply and Back" Click="ApplyBackClick" Margin="0,0,8,0"/>
-     <Button Background="{DynamicResource AccentBrush}" Content="Apply and Save" Click="ApplySaveClick"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="{loc:Text T31e392d1c0378b}" Click="ApplyClick" Style="{StaticResource ApplyButton}"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="{loc:Text T6f9e5a04179e9e}" Click="ApplyBackClick" Margin="0,0,8,0"/>
+     <Button Background="{DynamicResource AccentBrush}" Content="{loc:Text Tc931ca6e93e60b}" Click="ApplySaveClick"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal">
-     <Button Content="Back" Click="CancelClick" VerticalAlignment="Center" Margin="0,0,14,0"/>
+     <Button Content="{loc:Text T76900f1bfd16c8}" Click="CancelClick" VerticalAlignment="Center" Margin="0,0,14,0"/>
      <Border Width="64" Height="64" CornerRadius="8" Background="{DynamicResource RailBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="0,0,12,0">
       <Image x:Name="Crest" Stretch="Uniform" Margin="4"/>
      </Border>

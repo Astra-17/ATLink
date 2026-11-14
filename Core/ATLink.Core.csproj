@@ -5,5 +5,5 @@
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
   </ItemGroup>
-<ItemGroup><EmbeddedResource Include="Resources/*.json" /></ItemGroup></Project>
+<ItemGroup><EmbeddedResource Include="Resources/*.json" WithCulture="false" /></ItemGroup></Project>
 

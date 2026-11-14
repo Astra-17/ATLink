@@ -52,13 +52,13 @@ public sealed partial class CompetitionProjectContext : IDisposable
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(temporary.Path, "project.json")));
         var manifest = json.RootElement;
         if (manifest.GetProperty("Game").GetString() != Game)
-            throw new InvalidDataException("Select " + manifest.GetProperty("Game").GetString() + " before opening this project.");
+            throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Select "), manifest.GetProperty("Game").GetString(), ATLink.Core.UiText.Get(" before opening this project.")));
         var reference = manifest.GetProperty("LinkReference").Deserialize<LinkReference>()
-            ?? throw new InvalidDataException("Missing project reference information.");
+            ?? throw new InvalidDataException(ATLink.Core.UiText.Get("Missing project reference information."));
         if (reference.Fingerprint is not { Length: 64 } || reference.Languages is null ||
             reference.Languages.Any(code => string.IsNullOrEmpty(code)) ||
             reference.Languages.Distinct(StringComparer.Ordinal).Count() != reference.Languages.Length)
-            throw new InvalidDataException("Invalid project reference information.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid project reference information."));
 
         var sources = new LinkSources(reference.NeedsDatabase ? databaseSource : (null, ""),
             reference.PrimaryLanguage is { } code ? OpenReferenceLanguage(code) : (null, ""));
@@ -78,7 +78,7 @@ public sealed partial class CompetitionProjectContext : IDisposable
             project.extractedLink = temporary.Detach();
             return project;
         }
-        throw new InvalidDataException($"Incompatible {Game} reference data. Expected SHA-256 {reference.Fingerprint}.");
+        throw new InvalidDataException(ATLink.Core.UiText.Format("Incompatible {0} reference data. Expected SHA-256 {1}.", Game, reference.Fingerprint));
     }
 
     (DatabaseDocument Document, string Metadata) OpenReferenceLanguage(string code)
@@ -87,7 +87,7 @@ public sealed partial class CompetitionProjectContext : IDisposable
             Path.GetFileNameWithoutExtension(document.SourcePath) == code)
             return (document, localizationSource.Metadata);
         var language = Languages.SingleOrDefault(item => item.Code == code)
-            ?? throw new InvalidDataException("Missing reference language: " + code);
+            ?? throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Missing reference language: "), code));
         return (DatabaseDocument.Open(language.DatabasePath, language.MetadataPath), language.MetadataPath);
     }
 
@@ -101,7 +101,7 @@ public sealed partial class CompetitionProjectContext : IDisposable
         foreach (string code in languages)
         {
             var language = Languages.SingleOrDefault(item => item.Code == code)
-                ?? throw new InvalidDataException("Missing reference language: " + code);
+                ?? throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Missing reference language: "), code));
             hashes.Add("loc/" + code + ".db", HashFile(language.DatabasePath));
             hashes.Add("loc/" + code + "-meta.xml", HashFile(language.MetadataPath));
         }

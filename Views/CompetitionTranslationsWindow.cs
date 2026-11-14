@@ -17,7 +17,7 @@ public sealed class CompetitionTranslationsWindow : Window
     readonly ListBox results = new() { DisplayMemberPath = "Key" };
     readonly TextBox translation = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 96 };
     readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap };
-    readonly Button save = new() { Content = "Save text to project", IsEnabled = false };
+    readonly Button save = new() { Content = ATLink.Core.UiText.Get("Save text to project"), IsEnabled = false };
     Entry[] entries = [];
 
     public CompetitionTranslationsWindow(CompetitionProjectContext context, CompetitionObject competition)
@@ -25,7 +25,7 @@ public sealed class CompetitionTranslationsWindow : Window
         this.context = context;
         ArgumentNullException.ThrowIfNull(competition);
         competitionKeys = context.CompetitionTranslationKeys(competition);
-        Title = "Translations · "+competition.Name;
+        Title = ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Translations · "), competition.Name);
         Width = 680;
         Height = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -35,16 +35,16 @@ public sealed class CompetitionTranslationsWindow : Window
         var top = new StackPanel();
         DockPanel.SetDock(top, Dock.Top);
         root.Children.Add(top);
-        top.Children.Add(new TextBlock { Text = "Language" });
+        top.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Get("Language") });
         top.Children.Add(language);
-        top.Children.Add(new TextBlock { Text = "Full and abbreviated names of "+competition.Name, TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,8) });
-        top.Children.Add(new TextBlock { Text = "Search competition names" });
+        top.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Full and abbreviated names of "), competition.Name), TextWrapping=TextWrapping.Wrap, Margin=new Thickness(0,8,0,8) });
+        top.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Get("Search competition names") });
         top.Children.Add(search);
 
         var bottom = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
         DockPanel.SetDock(bottom, Dock.Bottom);
         root.Children.Add(bottom);
-        bottom.Children.Add(new TextBlock { Text = "Text for the selected key" });
+        bottom.Children.Add(new TextBlock { Text = ATLink.Core.UiText.Get("Text for the selected key") });
         bottom.Children.Add(translation);
         bottom.Children.Add(save);
         bottom.Children.Add(status);
@@ -71,13 +71,13 @@ public sealed class CompetitionTranslationsWindow : Window
         entries = [];
         results.ItemsSource = null;
         IsEnabled = false;
-        status.Text = "Loading " + selected.Name + "…";
+        status.Text = ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Loading "), selected.Name, "…");
         try
         {
             entries = await Task.Run(() => context.ReadTranslations(selected.Code)
                 .Select(row => new Entry(row.Key, row.Text)).ToArray());
             Filter(previousKey);
-            status.Text = "Select a key and save your changes to the project.";
+            status.Text = ATLink.Core.UiText.Get("Select a key and save your changes to the project.");
         }
         catch (Exception ex) { status.Text = ex.Message; }
         finally { IsEnabled = true; }
@@ -108,11 +108,11 @@ public sealed class CompetitionTranslationsWindow : Window
         IsEnabled = false;
         try
         {
-            await Task.Run(() => context.Execute("Edit translation: " + entry.Key,
+            await Task.Run(() => context.Execute(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Edit translation: "), entry.Key),
                 () => context.SetTranslation(selected.Code, entry.Key, text)));
             entries = [..entries.Where(item => item.Hash != entry.Hash), new Entry(entry.Key, text)];
             Filter(entry.Key);
-            status.Text = "Saved to project. Export to write the language file.";
+            status.Text = ATLink.Core.UiText.Get("Saved to project. Export to write the language file.");
         }
         catch (Exception ex) { status.Text = ex.Message; }
         finally { IsEnabled = true; }

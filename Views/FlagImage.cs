@@ -27,7 +27,7 @@ public static class NationFlags
     static readonly Dictionary<string,ImageSource?> cache=new(StringComparer.OrdinalIgnoreCase);
     public static ImageSource? Load(string? iso,string nation)
     {
-        string code=nation switch {
+        string code=ATLink.Core.UiText.Source(nation) switch {
             "England" or "Angleterre"=>"gb-eng","Scotland" or "Écosse"=>"gb-sct","Wales"=>"gb-wls","Northern Ireland"=>"gb-nir",
             _=>(iso??"").Trim().ToLowerInvariant()
         };

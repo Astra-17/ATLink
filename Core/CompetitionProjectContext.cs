@@ -9,7 +9,7 @@ public sealed record CompetitionProjectMapping(int DatabaseCompetitionId,int Com
 public sealed record CompetitionTeam(string Id,string Name){public override string ToString()=>Name;}
 public sealed record CompetitionSlot(string File,int Row,int ObjectId,string Phase,int Offset,int Round,int Minimum,int Maximum,string Time,bool Shared,string? Home=null,string? Away=null,DateOnly? FixedDate=null)
 {
-    public string Kind=>Home is null?"Available slot":"Assigned match";
+    public string Kind=>Home is null?UiText.Get("Available slot"):UiText.Get("Assigned match");
     public string Matchup {get;init;}="";
     public string DateLabel {get;init;}="";
     public string TimeLabel=>Time.Length==4?Time[..2]+":"+Time[2..]:Time;
@@ -25,7 +25,7 @@ public static class CompetitionRuleDefinitions
         new("rule_numyellowstored","Yellow cards before suspension","Discipline"),new("rule_numgamesbanredmin","Minimum red-card ban","Discipline"),new("rule_numgamesbanredmax","Maximum red-card ban","Discipline"),
         new("rule_numgamesbandoubleyellowmin","Minimum ban for a second yellow","Discipline"),new("rule_numgamesbandoubleyellowmax","Maximum ban for a second yellow","Discipline"),
         new("rule_numgamesbanyellowsmin","Minimum ban for accumulated yellows","Discipline"),new("rule_numgamesbanyellowsmax","Maximum ban for accumulated yellows","Discipline"),new("match_matchimportance","Match importance (0–100)","Match rules")];
-    public static string SortLabel(string key)=>key switch{"POINTS"=>"Points","GOALDIFF"=>"Goal difference","GOALSFOR"=>"Goals scored","WINS"=>"Wins","TEAMRATING"=>"Team rating",_=>key+" (advanced criterion)"};
+    public static string SortLabel(string key)=>key switch{"POINTS"=>ATLink.Core.UiText.Get("Points"),"GOALDIFF"=>ATLink.Core.UiText.Get("Goal difference"),"GOALSFOR"=>ATLink.Core.UiText.Get("Goals scored"),"WINS"=>ATLink.Core.UiText.Get("Wins"),"TEAMRATING"=>ATLink.Core.UiText.Get("Team rating"),_=>ATLink.Core.UiText.Concat(key, ATLink.Core.UiText.Get(" (advanced criterion)"))};
 }
 public sealed partial class CompetitionProjectContext
 {
@@ -41,8 +41,8 @@ public sealed partial class CompetitionProjectContext
     public static readonly DateOnly Fc27CalendarOrigin=new(2025,12,28);
     public DateOnly SeasonStart=>Game=="FC27"&&ReferenceDate==Fc27CalendarOrigin?new(2026,7,1):ReferenceDate;
     public string CalendarReferenceLabel=>Game=="FC27"&&ReferenceDate==Fc27CalendarOrigin
-        ?"FC27 2026/27 calendar · calibrated against Community Shield: 16 Aug 2026. Other game dates remain to be checked."
-        :$"Custom / illustrative calendar origin: {ReferenceDate:dd/MM/yyyy}. Game dates are not confirmed.";
+        ?ATLink.Core.UiText.Get("FC27 2026/27 calendar · calibrated against Community Shield: 16 Aug 2026. Other game dates remain to be checked.")
+        :ATLink.Core.UiText.Format("Custom / illustrative calendar origin: {0:dd/MM/yyyy}. Game dates are not confirmed.", ReferenceDate);
     public bool ReferenceConfirmed {get;set;}
     public Dictionary<int,FootballSchedulingOptions> SchedulingOptions {get;private set;}=[];
     public Dictionary<int,IReadOnlyList<FootballMatchupMetadata>> MatchupSettings {get;private set;}=[];
@@ -50,7 +50,7 @@ public sealed partial class CompetitionProjectContext
     IReadOnlyList<CompetitionProjectMapping> importedMappings=[];
     bool importedDatabase,importedLocalization;
     (DatabaseDocument? Document,string Metadata) databaseSource,localizationSource;
-    public IReadOnlyList<CompetitionTeam> Teams {get;}
+    public IReadOnlyList<CompetitionTeam> Teams {get;private set;}
     sealed record State(IReadOnlyList<(CompdataFile File,string Text)> Files,CompetitionDbInsert[] Inserts,DateOnly Reference,bool Confirmed,Dictionary<int,FootballSchedulingOptions> SchedulingOptions,Dictionary<int,IReadOnlyList<FootballMatchupMetadata>> Matchups,CompetitionTranslation[] Translations,Dictionary<int,CompetitionArtwork> Artwork);
     readonly Stack<(string Label,State State)> undo=[];readonly Stack<(string Label,State State)> redo=[];
     State checkpoint;
@@ -63,6 +63,7 @@ public sealed partial class CompetitionProjectContext
     {
         Project=project;Game=game;Base=database;Localization=localization;Metadata=metadata;LocMetadata=locMetadata;
         databaseSource=(database,metadata);localizationSource=(localization,locMetadata);
+        if(database is not null&&localization is not null)database.SetDisplayLocalization(localization);
         if(game=="FC27")ReferenceDate=Fc27CalendarOrigin;
         if(localization is not null)Project.Labels=new CompetitionLabels(localization);
         Teams=database is null?[]:new FootballCatalog(database).Entities("teams").Select(t=>new CompetitionTeam(t.Id,t.Name)).ToArray();checkpoint=Capture();exportedCheckpoint=checkpoint;
@@ -83,7 +84,7 @@ public sealed partial class CompetitionProjectContext
             compdataSource=Project.SourceFolder;
             if(verifiedSource is null&&data.TryGetProperty("CompdataSource",out var source)&&source.GetString() is string original&&Directory.Exists(original))compdataSource=original;
             if(data.TryGetProperty("CompetitionMappings",out var savedMappings))foreach(var entry in savedMappings.EnumerateArray())mappings.Add(new(int.Parse(entry.GetProperty("DatabaseCompetitionId").ToString()),entry.GetProperty("CompdataObjectId").GetInt32(),entry.TryGetProperty("DatabaseLeagueId",out var league)&&league.ValueKind!=JsonValueKind.Null?int.Parse(league.ToString()):null));
-            if(data.TryGetProperty("Game",out var game)&&game.GetString()!=Game)throw new InvalidDataException("Select "+game.GetString()+" before opening this project.");
+            if(data.TryGetProperty("Game",out var game)&&game.GetString()!=Game)throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Select "), game.GetString(), ATLink.Core.UiText.Get(" before opening this project.")));
             if(data.TryGetProperty("ReferenceDate",out var date)&&DateOnly.TryParse(date.GetString(),out var parsed))reference=parsed;
             if(data.TryGetProperty("ReferenceConfirmed",out var check))confirmed=check.GetBoolean();
         }
@@ -146,7 +147,7 @@ public sealed partial class CompetitionProjectContext
             string text=Project.Files.Single(f=>f.RelativePath.Equals("compobj.txt",StringComparison.OrdinalIgnoreCase)).Text;
             if(!ReferenceEquals(objectText,text)||!ReferenceEquals(objectTranslations,translations))
             {
-                var names=translations.Where(t=>t.Language==PrimaryLanguage)
+                var names=translations.Where(t=>t.Language==DisplayLanguage)
                     .ToDictionary(t=>TranslationHash(t.Key),t=>t.Text);
                 objectCache=TournamentBuilder.Objects(Project).Select(item =>
                 {
@@ -188,16 +189,16 @@ public sealed partial class CompetitionProjectContext
         return result;
     }
     public HashSet<int> Scope(int id){var ids=new HashSet<int>{id};bool changed;do{changed=false;foreach(var o in Objects)if(ids.Contains(o.ParentId)&&ids.Add(o.Id))changed=true;}while(changed);return ids;}
-    public string ObjectName(int id)=>Objects.FirstOrDefault(o=>o.Id==id)?.DisplayName??"Unknown stage";
+    public string ObjectName(int id)=>Objects.FirstOrDefault(o=>o.Id==id)?.DisplayName??ATLink.Core.UiText.Get("Unknown stage");
     public string ObjectPath(int id)
     {
-        var item=Objects.FirstOrDefault(o=>o.Id==id);if(item is null)return "Unknown stage";
+        var item=Objects.FirstOrDefault(o=>o.Id==id);if(item is null)return ATLink.Core.UiText.Get("Unknown stage");
         string Label(CompetitionObject o){var peers=Objects.Where(p=>p.ParentId==o.ParentId&&p.Kind==o.Kind&&p.DisplayName==o.DisplayName).OrderBy(p=>p.Id).ToArray();return peers.Length>1?o.DisplayName+" "+(Array.FindIndex(peers,p=>p.Id==o.Id)+1):o.DisplayName;}
         var parent=Objects.FirstOrDefault(o=>o.Id==item.ParentId);
         return item.Kind==5&&parent is not null?Label(parent)+" · "+Label(item):Label(item);
     }
-    public string TeamName(string id)=>id is "-1" or "0"?"To be determined":Teams.FirstOrDefault(t=>t.Id==id)?.Name??"Unavailable team ("+id+")";
-    public string Region(int id){var seen=new HashSet<int>();while(Objects.FirstOrDefault(o=>o.Id==id) is { } o&&seen.Add(id)){if(o.Kind<=2)return o.DisplayName;id=o.ParentId;}return "World";}
+    public string TeamName(string id)=>id is "-1" or "0"?ATLink.Core.UiText.Get("To be determined"):Teams.FirstOrDefault(t=>t.Id==id)?.Name??ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unavailable team ("), id, ")");
+    public string Region(int id){var seen=new HashSet<int>();while(Objects.FirstOrDefault(o=>o.Id==id) is { } o&&seen.Add(id)){if(o.Kind<=2)return o.DisplayName;id=o.ParentId;}return ATLink.Core.UiText.Get("World");}
     public CompdataTable Table(string path)=>new(Project.Files.Single(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase)));
     public void Edit(string path,Action<CompdataTable> edit)
     {
@@ -210,34 +211,34 @@ public sealed partial class CompetitionProjectContext
         var requested=values.ToArray();if(Rows("settings.txt").Where(r=>r[0]==objectId.ToString()&&r[1]==key).Select(r=>r[2]).SequenceEqual(requested))return;
         Edit("settings.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>(string)r[0]==objectId.ToString()&&(string)r[1]==key).ToArray())r.Delete();foreach(var value in requested)t.Data.Rows.Add(objectId.ToString(),key,value);});
     }
-    public void SetTeam(int competition,int rowIndex,string teamId)=>Edit("initteams.txt",t=>{if(!Teams.Any(x=>x.Id==teamId)&&teamId!="-1")throw new InvalidDataException("Choose an installed team.");t.Data.Rows[rowIndex][2]=teamId;});
+    public void SetTeam(int competition,int rowIndex,string teamId)=>Edit("initteams.txt",t=>{if(!Teams.Any(x=>x.Id==teamId)&&teamId!="-1")throw new InvalidDataException(ATLink.Core.UiText.Get("Choose an installed team."));t.Data.Rows[rowIndex][2]=teamId;});
     public void Rename(int id,string name)
     {
-        if(string.IsNullOrWhiteSpace(name)||name.IndexOfAny([',','\n','\r'])>=0)throw new InvalidDataException("Enter a name without commas or line breaks.");
+        if(string.IsNullOrWhiteSpace(name)||name.IndexOfAny([',','\n','\r'])>=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Enter a name without commas or line breaks."));
         if(Objects.FirstOrDefault(o=>o.Id==id)?.DisplayName==name.Trim())return;
         Edit("compobj.txt",t=>t.Data.Rows.Cast<DataRow>().Single(r=>(string)r[0]==id.ToString())[3]=name.Trim());
     }
     public int AddStage(int competition,string name,string type)
     {
-        if(!Objects.Any(o=>o.Id==competition&&o.Kind==3))throw new InvalidDataException("Select a competition.");
-        if(type is not("LEAGUE" or "GROUP" or "KO1LEG" or "KO2LEG" or "KO2LEGS" or "SETUP"))throw new InvalidDataException("Select a supported stage format.");
+        if(!Objects.Any(o=>o.Id==competition&&o.Kind==3))throw new InvalidDataException(ATLink.Core.UiText.Get("Select a competition."));
+        if(type is not("LEAGUE" or "GROUP" or "KO1LEG" or "KO2LEG" or "KO2LEGS" or "SETUP"))throw new InvalidDataException(ATLink.Core.UiText.Get("Select a supported stage format."));
         int id=Objects.Max(o=>o.Id)+1;int ordinal=Objects.Count(o=>o.ParentId==competition&&o.Kind==4)+1;
         while(Objects.Any(o=>o.ParentId==competition&&o.Code=="S"+ordinal))ordinal++;
         Edit("compobj.txt",t=>t.Data.Rows.Add(id.ToString(),"4","S"+ordinal,"New stage",competition.ToString()));Rename(id,name);SetRule(id,"match_stagetype",[type=="GROUP"?"LEAGUE":type=="KO2LEG"?"KO2LEGS":type]);if(type=="GROUP")SetRule(id,"match_matchsituation",["GROUP"]);return id;
     }
     public int AddGroup(int stage,string name,int capacity)
     {
-        if(!Objects.Any(o=>o.Id==stage&&o.Kind==4))throw new InvalidDataException("Select a stage.");
+        if(!Objects.Any(o=>o.Id==stage&&o.Kind==4))throw new InvalidDataException(ATLink.Core.UiText.Get("Select a stage."));
         int id=Objects.Max(o=>o.Id)+1;int ordinal=Objects.Count(o=>o.ParentId==stage&&o.Kind==5)+1;while(Objects.Any(o=>o.ParentId==stage&&o.Code=="G"+ordinal))ordinal++;
         Edit("compobj.txt",t=>t.Data.Rows.Add(id.ToString(),"5","G"+ordinal,"New group",stage.ToString()));Rename(id,name);ResizeGroup(id,capacity);return id;
     }
     public void ResizeGroup(int group,int capacity)
     {
-        if(capacity is <2 or >128)throw new InvalidDataException("Choose 2–128 places.");
-        var item=Objects.SingleOrDefault(o=>o.Id==group&&o.Kind==5)??throw new InvalidDataException("Choose a group.");
+        if(capacity is <2 or >128)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose 2–128 places."));
+        var item=Objects.SingleOrDefault(o=>o.Id==group&&o.Kind==5)??throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a group."));
         var type=EffectiveRules(item.ParentId).FirstOrDefault(r=>r.Key=="match_stagetype").Value;
-        if(type is "KO1LEG" or "KO2LEG" or "KO2LEGS"&&capacity!=2)throw new InvalidDataException("A knockout tie needs exactly two places.");
-        if(Rows("tasks.txt").Any(r=>r.Length>=7&&r[2]=="FillWithTeam"&&r[3]==group.ToString()&&int.TryParse(r[4],out int position)&&position>capacity))throw new InvalidDataException("Remove the affected team allocations before reducing this group.");
+        if(type is "KO1LEG" or "KO2LEG" or "KO2LEGS"&&capacity!=2)throw new InvalidDataException(ATLink.Core.UiText.Get("A knockout tie needs exactly two places."));
+        if(Rows("tasks.txt").Any(r=>r.Length>=7&&r[2]=="FillWithTeam"&&r[3]==group.ToString()&&int.TryParse(r[4],out int position)&&position>capacity))throw new InvalidDataException(ATLink.Core.UiText.Get("Remove the affected team allocations before reducing this group."));
         bool zeroBased=Rows("standings.txt").Any(r=>r[1]=="0");
         Edit("standings.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>(string)r[0]==group.ToString()).ToArray())r.Delete();for(int i=0;i<capacity;i++)t.Data.Rows.Add(group.ToString(),(zeroBased?i:i+1).ToString());});
     }
@@ -254,11 +255,11 @@ public sealed partial class CompetitionProjectContext
     }
     public void UpdateSlot(CompetitionSlot slot,DateOnly date,string time,int phase,int min,int max,bool sharedConsent,int? round=null)
     {
-        if(slot.Shared&&!sharedConsent)throw new InvalidDataException("This calendar is shared. Confirm the change for all users of this calendar.");
-        if(slot.FixedDate is null&&!ReferenceConfirmed)throw new InvalidDataException("Acknowledge the illustrative season reference before changing relative dates.");
-        string compact=TournamentBuilder.Time(time);if(min<0||max<min)throw new InvalidDataException("Maximum matches must be at least the minimum.");
-        if(round is <1)throw new InvalidDataException("Matchdays start at 1.");
-        Edit(slot.File,t=>{var r=t.Data.Rows[slot.Row];if(slot.FixedDate is not null){r[0]=date.ToString("yyyyMMdd");r[1]=compact;}else{if(phase!=slot.ObjectId&&slot.Shared)throw new InvalidDataException("A shared slot must keep its source stage.");if(!Objects.Any(o=>o.Id==phase&&o.Kind is 4 or 5))throw new InvalidDataException("Choose a stage or group.");int offset=date.DayNumber-ReferenceDate.DayNumber;if(offset<0)throw new InvalidDataException("Date precedes the reference season.");r[0]=phase.ToString();r[1]=offset.ToString();if(round.HasValue)r[2]=round.Value.ToString();r[3]=min.ToString();r[4]=max.ToString();r[5]=compact;}});
+        if(slot.Shared&&!sharedConsent)throw new InvalidDataException(ATLink.Core.UiText.Get("This calendar is shared. Confirm the change for all users of this calendar."));
+        if(slot.FixedDate is null&&!ReferenceConfirmed)throw new InvalidDataException(ATLink.Core.UiText.Get("Acknowledge the illustrative season reference before changing relative dates."));
+        string compact=TournamentBuilder.Time(time);if(min<0||max<min)throw new InvalidDataException(ATLink.Core.UiText.Get("Maximum matches must be at least the minimum."));
+        if(round is <1)throw new InvalidDataException(ATLink.Core.UiText.Get("Matchdays start at 1."));
+        Edit(slot.File,t=>{var r=t.Data.Rows[slot.Row];if(slot.FixedDate is not null){r[0]=date.ToString("yyyyMMdd");r[1]=compact;}else{if(phase!=slot.ObjectId&&slot.Shared)throw new InvalidDataException(ATLink.Core.UiText.Get("A shared slot must keep its source stage."));if(!Objects.Any(o=>o.Id==phase&&o.Kind is 4 or 5))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a stage or group."));int offset=date.DayNumber-ReferenceDate.DayNumber;if(offset<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Date precedes the reference season."));r[0]=phase.ToString();r[1]=offset.ToString();if(round.HasValue)r[2]=round.Value.ToString();r[3]=min.ToString();r[4]=max.ToString();r[5]=compact;}});
     }
     public void UpdateMatchday(int competition,CompetitionSlot selected,DateOnly date,string time,int phase,int min,int max,bool sharedConsent,int? round=null)
     {
@@ -267,52 +268,52 @@ public sealed partial class CompetitionProjectContext
     }
     public void AddSlot(int competition,int phase,DateOnly date,int round,string time,int min,int max)
     {
-        if(!ReferenceConfirmed)throw new InvalidDataException("Acknowledge the illustrative reference season before adding relative dates.");
-        if(!Scope(competition).Contains(phase)||!Objects.Any(o=>o.Id==phase&&o.Kind is 4 or 5))throw new InvalidDataException("Choose a stage or group of this competition.");
-        if(round<1||date<ReferenceDate||min<0||max<min)throw new InvalidDataException("Check the date, matchday number and match capacity.");
+        if(!ReferenceConfirmed)throw new InvalidDataException(ATLink.Core.UiText.Get("Acknowledge the illustrative reference season before adding relative dates."));
+        if(!Scope(competition).Contains(phase)||!Objects.Any(o=>o.Id==phase&&o.Kind is 4 or 5))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a stage or group of this competition."));
+        if(round<1||date<ReferenceDate||min<0||max<min)throw new InvalidDataException(ATLink.Core.UiText.Get("Check the date, matchday number and match capacity."));
         string compact=TournamentBuilder.Time(time);Edit("schedule.txt",t=>t.Data.Rows.Add(phase.ToString(),(date.DayNumber-ReferenceDate.DayNumber).ToString(),round.ToString(),min.ToString(),max.ToString(),compact));
     }
     public string DescribeSource(string[] row)
     {
-        string Target(int i)=>int.TryParse(row.ElementAtOrDefault(i),out int id)?ObjectPath(id):"Unknown";
+        string Target(int i)=>int.TryParse(row.ElementAtOrDefault(i),out int id)?ObjectPath(id):ATLink.Core.UiText.Get("Unknown");
         string Team(int i)=>TeamName(row.ElementAtOrDefault(i)??"-1");
         return row[2] switch
         {
-            "FillWithTeam"=>$"Add {Team(5)} to {Target(3)}",
-            "FillFromCompTable"=>$"Take {row[5]} qualified teams from {Target(4)} into {Target(3)}",
-            "FillFromLeague"=>$"Take teams from {LeagueName(row[4])} into {Target(3)}",
-            "UpdateTable"=>$"Update {Target(3)} from {Target(4)}",
-            "FillFromSpecialTeams"=>$"Select {row[4]} teams from a special allocation pool → {Target(3)}",
-            "FillFromSpecialTeamsWithNation"=>$"Select {row[4]} teams from a country's special allocation pool → {Target(3)}",
-            "FillFromLeagueMaxFromCountry"=>$"Select {row[5]} teams from {LeagueName(row[4])}, at most {row[6]} per country → {Target(3)}",
-            "FillFromTopCoefficientCountry"=>$"Use country coefficient rank {row[4]} to allocate {row[5]} qualifiers → {Target(3)}",
-            "FillFromCompTableBackupLeague"=>$"Qualify {row[6]} teams from {Target(4)}, with {LeagueName(row[5])} as a fallback → {Target(3)}",
-            "FillFromCompTableBackup"=>$"Qualify {row[6]} teams from {Target(4)}, with {Target(5)} as a fallback → {Target(3)}",
-            "ClearLeagueStats"=>$"Reset previous statistics for {LeagueName(row[4])}",
-            "UpdateLeagueTable"=>$"Update the standings of {LeagueName(row[4])}",
-            "UpdateLeagueStats"=>$"Update the statistics of {LeagueName(row[4])}",
-            _=>"Other team-selection rule — preserved in Advanced"
+            "FillWithTeam"=>ATLink.Core.UiText.Format("Add {0} to {1}", Team(5), Target(3)),
+            "FillFromCompTable"=>ATLink.Core.UiText.Format("Take {0} qualified teams from {1} into {2}", row[5], Target(4), Target(3)),
+            "FillFromLeague"=>ATLink.Core.UiText.Format("Take teams from {0} into {1}", LeagueName(row[4]), Target(3)),
+            "UpdateTable"=>ATLink.Core.UiText.Format("Update {0} from {1}", Target(3), Target(4)),
+            "FillFromSpecialTeams"=>ATLink.Core.UiText.Format("Select {0} teams from a special allocation pool → {1}", row[4], Target(3)),
+            "FillFromSpecialTeamsWithNation"=>ATLink.Core.UiText.Format("Select {0} teams from a country's special allocation pool → {1}", row[4], Target(3)),
+            "FillFromLeagueMaxFromCountry"=>ATLink.Core.UiText.Format("Select {0} teams from {1}, at most {2} per country → {3}", row[5], LeagueName(row[4]), row[6], Target(3)),
+            "FillFromTopCoefficientCountry"=>ATLink.Core.UiText.Format("Use country coefficient rank {0} to allocate {1} qualifiers → {2}", row[4], row[5], Target(3)),
+            "FillFromCompTableBackupLeague"=>ATLink.Core.UiText.Format("Qualify {0} teams from {1}, with {2} as a fallback → {3}", row[6], Target(4), LeagueName(row[5]), Target(3)),
+            "FillFromCompTableBackup"=>ATLink.Core.UiText.Format("Qualify {0} teams from {1}, with {2} as a fallback → {3}", row[6], Target(4), Target(5), Target(3)),
+            "ClearLeagueStats"=>ATLink.Core.UiText.Format("Reset previous statistics for {0}", LeagueName(row[4])),
+            "UpdateLeagueTable"=>ATLink.Core.UiText.Format("Update the standings of {0}", LeagueName(row[4])),
+            "UpdateLeagueStats"=>ATLink.Core.UiText.Format("Update the statistics of {0}", LeagueName(row[4])),
+            _=>ATLink.Core.UiText.Get("Other team-selection rule — preserved in Advanced")
         };
     }
     public string LeagueName(string id)
     {
         var item=Objects.FirstOrDefault(o=>o.Kind==3&&o.Code.Equals("C"+id,StringComparison.OrdinalIgnoreCase));
         if(item is not null)return Objects.Any(o=>o.Kind==3&&o.Id!=item.Id&&o.DisplayName==item.DisplayName)?item.DisplayName+" · "+Region(item.Id):item.DisplayName;
-        return Inserts.FirstOrDefault(i=>i.Table=="leagues"&&i.Values["leagueid"]==id)?.Values.GetValueOrDefault("leaguename")??(Base is null?"New league":new FootballCatalog(Base).Rows("leagues").Where(r=>FootballCatalog.Value(r,"leagueid")==id).Select(r=>FootballCatalog.Value(r,"leaguename")).FirstOrDefault()??"Unavailable league");
+        return Inserts.FirstOrDefault(i=>i.Table=="leagues"&&i.Values["leagueid"]==id)?.Values.GetValueOrDefault("leaguename")??(Base is null?ATLink.Core.UiText.Get("New league"):new FootballCatalog(Base).Rows("leagues").Where(r=>FootballCatalog.Value(r,"leagueid")==id).Select(r=>FootballCatalog.Value(r,"leaguename")).FirstOrDefault()??ATLink.Core.UiText.Get("Unavailable league"));
     }
     public void SetProgression(int source,int rank,int destination,int place)
     {
         var visited=new HashSet<int>();var queue=new Queue<int>();queue.Enqueue(destination);
-        while(queue.TryDequeue(out int group)){if(group==source)throw new InvalidDataException("This qualification would create a cycle.");if(!visited.Add(group))continue;foreach(var r in Rows("advancement.txt").Where(r=>r[0]==group.ToString()))queue.Enqueue(int.Parse(r[2]));}
+        while(queue.TryDequeue(out int group)){if(group==source)throw new InvalidDataException(ATLink.Core.UiText.Get("This qualification would create a cycle."));if(!visited.Add(group))continue;foreach(var r in Rows("advancement.txt").Where(r=>r[0]==group.ToString()))queue.Enqueue(int.Parse(r[2]));}
         Edit("advancement.txt",t=>{foreach(var r in t.Data.Rows.Cast<DataRow>().Where(r=>(string)r[2]==destination.ToString()&&(string)r[3]==place.ToString()).ToArray())r.Delete();t.Data.Rows.Add(source.ToString(),rank.ToString(),destination.ToString(),place.ToString());});
     }
     public IReadOnlyList<string> ExportNotes=>new string[]{
-        "Only changed Compdata, database and localization files are exported. Reopening uses the original game files for unchanged data.",
-        "Competition IDs and Compdata object IDs are separate. Existing club league memberships are preserved.",
-        "Competition graphics, trophies, badges, broadcast presentation and career-mode registration may require game-specific assets or configuration.",
-        "A successful export is not proof that the competition is playable. Install with the appropriate game tools and validate in game.",
-        "Relative schedule dates use an illustrative reference season; verify the game's season/date conversion before release."}.Concat(FootballBehaviour.Warnings(this)).ToArray();
-    public string ChangeSummary=>string.Join("\n",Inserts.GroupBy(i=>i.Table.StartsWith("LanguageStrings")?"Localized names":i.Table switch{"competition"=>"Competition identities","leagues"=>"League identities","competitionballs"=>"Ball/weather variants","competitionsponsorlinks"=>"Sponsor presentation links",_=>"Other database records"}).Select(g=>$"{g.Key}: {g.Count()} new records"));
+        ATLink.Core.UiText.Get("Only changed Compdata, database and localization files are exported. Reopening uses the original game files for unchanged data."),
+        ATLink.Core.UiText.Get("Competition IDs and Compdata object IDs are separate. Existing club league memberships are preserved."),
+        ATLink.Core.UiText.Get("Competition graphics, trophies, badges, broadcast presentation and career-mode registration may require game-specific assets or configuration."),
+        ATLink.Core.UiText.Get("A successful export is not proof that the competition is playable. Install with the appropriate game tools and validate in game."),
+        ATLink.Core.UiText.Get("Relative schedule dates use an illustrative reference season; verify the game's season/date conversion before release.")}.Concat(FootballBehaviour.Warnings(this)).ToArray();
+    public string ChangeSummary=>string.Join("\n",Inserts.GroupBy(i=>i.Table.StartsWith("LanguageStrings")?ATLink.Core.UiText.Get("Localized names"):i.Table switch{"competition"=>ATLink.Core.UiText.Get("Competition identities"),"leagues"=>ATLink.Core.UiText.Get("League identities"),"competitionballs"=>ATLink.Core.UiText.Get("Ball/weather variants"),"competitionsponsorlinks"=>ATLink.Core.UiText.Get("Sponsor presentation links"),_=>ATLink.Core.UiText.Get("Other database records")}).Select(g=>ATLink.Core.UiText.Format("{0}: {1} new records", g.Key, g.Count())));
     public IReadOnlyList<CompetitionProjectMapping> CompetitionMappings=>importedMappings.Concat(Inserts.Where(i=>i.Table=="competition").Select(i=>
     {
         string id=i.Values["competitionid"];
@@ -322,17 +323,17 @@ public sealed partial class CompetitionProjectContext
     {
         foreach(var group in Inserts.GroupBy(i=>i.Table))
         {
-            var table=(group.Key.StartsWith("LanguageStrings")?Localization:Base)?.Tables.Single(t=>t.Name==group.Key)??throw new InvalidDataException("Database context missing.");
-            if(table.RowCount+group.Count()>65535)throw new InvalidDataException("Database table capacity exceeded: "+group.Key);
+            var table=(group.Key.StartsWith("LanguageStrings")?Localization:Base)?.Tables.Single(t=>t.Name==group.Key)??throw new InvalidDataException(ATLink.Core.UiText.Get("Database context missing."));
+            if(table.RowCount+group.Count()>65535)throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Database table capacity exceeded: "), group.Key));
             var keys=table.Fields.Where(f=>f.IsKey).Select(f=>f.Name).ToArray();if(table.Name=="competitionballs")keys=["competitionid","weather","stage"];
             var existing=table.Data.Rows.Cast<DataRow>().Select(r=>string.Join("\u001f",keys.Select(k=>FootballCatalog.Value(r,k)))).ToHashSet();
-            foreach(var entry in group){foreach(var field in table.Fields)DatabaseDocument.ValidateValue(field,entry.Values[field.Name]);if(keys.Length>0&&!existing.Add(string.Join("\u001f",keys.Select(k=>entry.Values[k]))))throw new InvalidDataException("New database records have a conflicting key in "+group.Key);}
+            foreach(var entry in group){foreach(var field in table.Fields)DatabaseDocument.ValidateValue(field,entry.Values[field.Name]);if(keys.Length>0&&!existing.Add(string.Join("\u001f",keys.Select(k=>entry.Values[k]))))throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("New database records have a conflicting key in "), group.Key));}
         }
-        foreach(var entry in Inserts.Where(i=>i.Table=="competition"))if(Objects.Count(o=>o.Kind==3&&o.Code=="C"+entry.Values["competitionid"])!=1)throw new InvalidDataException("A prepared database competition must have exactly one matching Compdata competition.");
+        foreach(var entry in Inserts.Where(i=>i.Table=="competition"))if(Objects.Count(o=>o.Kind==3&&o.Code=="C"+entry.Values["competitionid"])!=1)throw new InvalidDataException(ATLink.Core.UiText.Get("A prepared database competition must have exactly one matching Compdata competition."));
     }
     public IReadOnlyList<FifaModInput> PrepareFifaModFiles()
     {
-        if(Game!="FC27")throw new InvalidDataException("FIFAMOD export currently supports FC27 only.");
+        if(Game!="FC27")throw new InvalidDataException(ATLink.Core.UiText.Get("FIFAMOD export currently supports FC27 only."));
         var errors=CompetitionEditing.Validate(Project);
         if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));
         ValidateIntegration();
@@ -348,14 +349,14 @@ public sealed partial class CompetitionProjectContext
         var projectLimits=Project.Files.SingleOrDefault(f=>f.RelativePath.Equals(limitsName,StringComparison.OrdinalIgnoreCase));
         byte[]? limits=configuredLimits is not null?File.ReadAllBytes(configuredLimits):File.Exists(limitsPath)?File.ReadAllBytes(limitsPath)
             :File.Exists(installedLimitsPath)?File.ReadAllBytes(installedLimitsPath):projectLimits?.Serialize();
-        if(limits is null)throw new InvalidDataException("The FC27 Live Editor limits profile is missing: "+limitsPath);
+        if(limits is null)throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("The FC27 Live Editor limits profile is missing: "), limitsPath));
         files.Add(new(FifaModFile.CompdataPath+limitsName,limits));
         return files;
     }
     public void ExportFifaMod(string target,string cachePath,FifaModDetails details)
     {
         var files=PrepareFifaModFiles();
-        if(files.Count==0)throw new InvalidDataException("There are no changed files to export.");
+        if(files.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("There are no changed files to export."));
         var catalog=FifaModCatalog.Read(cachePath,files.Select(f=>f.GamePath));
         FifaModFile.Write(target,details,catalog,files);
         // A deployable mod does not save editing metadata. Keep the project-save warning.
@@ -364,7 +365,7 @@ public sealed partial class CompetitionProjectContext
 
     void ExportFolder(string target,bool markSaved)
     {
-        if(Directory.Exists(target)||File.Exists(target))throw new IOException("Choose a new folder.");
+        if(Directory.Exists(target)||File.Exists(target))throw new IOException(ATLink.Core.UiText.Get("Choose a new folder."));
         var errors=CompetitionEditing.Validate(Project);if(errors.Count>0)throw new InvalidDataException(string.Join("\n",errors.Take(8)));ValidateIntegration();string temporary=target+"."+Guid.NewGuid().ToString("N")+".tmp";
         Directory.CreateDirectory(temporary);
         try
@@ -402,20 +403,20 @@ public sealed partial class CompetitionProjectContext
     public string CreationPreview(int templateId,string name,TournamentFormat format,int groups,int size,int participants)=>$"Create {name} using {ObjectName(templateId)} as database template.\n{format}: {groups} group(s), {size} teams per group; {participants} assigned teams.\nNew Compdata objects, separate competition/league IDs and localization keys will be prepared. Domestic club memberships will stay unchanged.";
     public int Create(int templateId,string name,TournamentFormat format,int groups,int size,IReadOnlyList<string> teams,DateOnly first,int interval,string time,bool returnLegs,int bench,int substitutions,int win,int draw,int loss,int qualifiersPerGroup=0,bool copyStructure=false)
     {
-        if(Base is null||Localization is null)throw new InvalidDataException("A full base database and localization are required for integrated creation.");
+        if(Base is null||Localization is null)throw new InvalidDataException(ATLink.Core.UiText.Get("A full base database and localization are required for integrated creation."));
         if(!copyStructure)
         {
-            if(groups is <1 or >64||size is <2 or >128)throw new InvalidDataException("Choose 1–64 groups and 2–128 teams per group.");
-            if(format==TournamentFormat.Cup&&(groups!=1||(size&(size-1))!=0))throw new InvalidDataException("A cup needs one group and 2, 4, 8, 16, 32, 64 or 128 teams.");
-            if(teams.Count!=0&&teams.Count!=groups*size)throw new InvalidDataException($"Select exactly {groups*size} teams, or leave all places unassigned.");
-            if(teams.Distinct().Count()!=teams.Count||teams.Any(id=>!Teams.Any(t=>t.Id==id)))throw new InvalidDataException("Participants must be distinct installed teams.");
-            if(interval is <1 or >365||first<ReferenceDate)throw new InvalidDataException("Choose a first match on or after the reference date and an interval of 1–365 days.");
-            if(bench is <0 or >30||substitutions<0||substitutions>bench||win<0||draw<0||loss<0)throw new InvalidDataException("Check the points, bench size and substitution count.");
+            if(groups is <1 or >64||size is <2 or >128)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose 1–64 groups and 2–128 teams per group."));
+            if(format==TournamentFormat.Cup&&(groups!=1||(size&(size-1))!=0))throw new InvalidDataException(ATLink.Core.UiText.Get("A cup needs one group and 2, 4, 8, 16, 32, 64 or 128 teams."));
+            if(teams.Count!=0&&teams.Count!=groups*size)throw new InvalidDataException(ATLink.Core.UiText.Format("Select exactly {0} teams, or leave all places unassigned.", groups*size));
+            if(teams.Distinct().Count()!=teams.Count||teams.Any(id=>!Teams.Any(t=>t.Id==id)))throw new InvalidDataException(ATLink.Core.UiText.Get("Participants must be distinct installed teams."));
+            if(interval is <1 or >365||first<ReferenceDate)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a first match on or after the reference date and an interval of 1–365 days."));
+            if(bench is <0 or >30||substitutions<0||substitutions>bench||win<0||draw<0||loss<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Check the points, bench size and substitution count."));
         }
-        var template=Objects.Single(o=>o.Id==templateId&&o.Kind==3);if(!int.TryParse(template.Code.TrimStart('C','c'),out int sourceDbId))throw new InvalidDataException("This template has no known database competition mapping.");
+        var template=Objects.Single(o=>o.Id==templateId&&o.Kind==3);if(!int.TryParse(template.Code.TrimStart('C','c'),out int sourceDbId))throw new InvalidDataException(ATLink.Core.UiText.Get("This template has no known database competition mapping."));
         DataRow StagedRow(DatabaseTable table,CompetitionDbInsert staged){var row=table.Data.NewRow();foreach(var entry in staged.Values)if(table.Data.Columns.Contains(entry.Key))row[entry.Key]=entry.Value;return row;}
         IEnumerable<DataRow> WorkingRows(DatabaseTable table)=>table.Data.Rows.Cast<DataRow>().Concat(Inserts.Where(i=>i.Table==table.Name).ToArray().Select(i=>StagedRow(table,i)));
-        var competition=Base.Tables.Single(t=>t.Name=="competition");var source=WorkingRows(competition).SingleOrDefault(r=>FootballCatalog.Value(r,"competitionid")==sourceDbId.ToString())??throw new InvalidDataException("Choose a template present in the game's working competition table.");
+        var competition=Base.Tables.Single(t=>t.Name=="competition");var source=WorkingRows(competition).SingleOrDefault(r=>FootballCatalog.Value(r,"competitionid")==sourceDbId.ToString())??throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a template present in the game's working competition table."));
         var leagues=Base.Tables.Single(t=>t.Name=="leagues");var sourceLeague=WorkingRows(leagues).FirstOrDefault(r=>FootballCatalog.Value(r,"leagueid")==sourceDbId.ToString());
         int next=1;var used=competition.Data.Rows.Cast<DataRow>().Select(r=>int.Parse((string)r["competitionid"])).Concat(leagues.Data.Rows.Cast<DataRow>().Select(r=>int.Parse((string)r["leagueid"]))).Concat(Inserts.Select(i=>i.Values.TryGetValue("competitionid",out string? id)?int.Parse(id):i.Values.TryGetValue("leagueid",out id)?int.Parse(id):-1)).Concat(Objects.Where(o=>o.Kind==3&&int.TryParse(o.Code.TrimStart('C','c'),out _)).Select(o=>int.Parse(o.Code[1..]))).ToHashSet();while(used.Contains(next))next++;
         foreach(var table in Base.Tables)
@@ -423,7 +424,7 @@ public sealed partial class CompetitionProjectContext
                 if(table.Data.Columns.Contains(column))foreach(DataRow r in table.Data.Rows)if(int.TryParse(r[column].ToString(),out int occupied))used.Add(occupied);
         var hashes=Localization.Tables.Where(t=>t.Data.Columns.Contains("hashid")).SelectMany(t=>t.Data.Rows.Cast<DataRow>()).Select(r=>r["hashid"].ToString()).ToHashSet();
         while(used.Contains(next)||new[]{"TrophyName_Abbr15_"+next,"TrophyName_"+next}.Any(key=>hashes.Contains(unchecked((int)LanguageHash.Compute(key)).ToString())))next++;
-        if(sourceLeague is not null&&next>4000)throw new InvalidDataException("No free league ID within the metadata limits.");
+        if(sourceLeague is not null&&next>4000)throw new InvalidDataException(ATLink.Core.UiText.Get("No free league ID within the metadata limits."));
         string code="C"+next;var preview=copyStructure?CompetitionTools.PreviewClone(Project,templateId.ToString(),code,name):TournamentBuilder.Preview(Project,new(template.ParentId,code,name,format,groups,size,teams,returnLegs,ReferenceDate,first,interval,time,true,true,bench,substitutions,win,draw,loss));
         CompetitionTools.Apply(Project,preview);int newObject=Objects.Single(o=>o.Code==code&&o.Kind==3).Id;
         if(!copyStructure&&teams.Count>0)
@@ -435,8 +436,8 @@ public sealed partial class CompetitionProjectContext
         }
         if(!copyStructure&&qualifiersPerGroup>0)
         {
-            if(format==TournamentFormat.Cup||qualifiersPerGroup>size)throw new InvalidDataException("Choose qualifiers for a league/group stage, no more than its team count.");
-            int total=groups*qualifiersPerGroup;if(total<2||(total&(total-1))!=0)throw new InvalidDataException("Total knockout qualifiers must be 2, 4, 8, 16…");
+            if(format==TournamentFormat.Cup||qualifiersPerGroup>size)throw new InvalidDataException(ATLink.Core.UiText.Get("Choose qualifiers for a league/group stage, no more than its team count."));
+            int total=groups*qualifiersPerGroup;if(total<2||(total&(total-1))!=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Total knockout qualifiers must be 2, 4, 8, 16…"));
             var firstPhase=Objects.First(o=>o.ParentId==newObject&&o.Kind==4);var initial=Objects.Where(o=>o.ParentId==firstPhase.Id&&o.Kind==5).ToArray();
             var seeds=Enumerable.Range(1,qualifiersPerGroup).SelectMany(rank=>initial.Select(g=>(Group:g.Id,Rank:rank))).ToArray();
             int id=Objects.Max(o=>o.Id),stageNumber=2,day=first.DayNumber-ReferenceDate.DayNumber+((size%2==0?size-1:size)*(returnLegs?2:1))*interval;
@@ -462,9 +463,9 @@ public sealed partial class CompetitionProjectContext
         if(sourceLeague is not null){Stage(leagues,sourceLeague,"leagueid",next.ToString());var last=Inserts[^1];var values=last.Values.ToDictionary(p=>p.Key,p=>p.Value);values["leaguename"]=name;DatabaseDocument.ValidateValue(leagues.Fields.Single(f=>f.Name=="leaguename"),name);Inserts[^1]=new("leagues",values);}
         foreach(string tableName in new[]{"competitionballs","competitionsponsorlinks"})
         {var table=Base.Tables.FirstOrDefault(t=>t.Name==tableName);if(table is null)continue;foreach(var row in WorkingRows(table).Where(r=>FootballCatalog.Value(r,"competitionid")==sourceDbId.ToString()).ToArray())Stage(table,row,"competitionid",next.ToString());}
-        var locTable=Localization.Tables.FirstOrDefault(t=>t.Data.Columns.Contains("hashid")&&t.Data.Columns.Contains("sourcetext")&&t.RowCount+Inserts.Count(i=>i.Table==t.Name)+2<=65535)??throw new InvalidDataException("No localization table has space for the new competition names.");
+        var locTable=Localization.Tables.FirstOrDefault(t=>t.Data.Columns.Contains("hashid")&&t.Data.Columns.Contains("sourcetext")&&t.RowCount+Inserts.Count(i=>i.Table==t.Name)+2<=65535)??throw new InvalidDataException(ATLink.Core.UiText.Get("No localization table has space for the new competition names."));
         foreach(string key in new[]{"TrophyName_Abbr15_"+next,"TrophyName_"+next})
-        {string hash=unchecked((int)LanguageHash.Compute(key)).ToString();if(Localization.Tables.Any(t=>t.Data.Columns.Contains("hashid")&&t.Data.Rows.Cast<DataRow>().Any(r=>(string)r["hashid"]==hash))||Inserts.Any(i=>i.Table.StartsWith("LanguageStrings")&&i.Values.GetValueOrDefault("hashid")==hash))throw new InvalidDataException("Localization key collision. Choose another template/ID.");var values=locTable.Fields.ToDictionary(f=>f.Name,f=>f.Name switch{"hashid"=>hash,"stringid"=>key,"sourcetext"=>name,_=>""});foreach(var f in locTable.Fields)DatabaseDocument.ValidateValue(f,values[f.Name]);Inserts.Add(new(locTable.Name,values));}
+        {string hash=unchecked((int)LanguageHash.Compute(key)).ToString();if(Localization.Tables.Any(t=>t.Data.Columns.Contains("hashid")&&t.Data.Rows.Cast<DataRow>().Any(r=>(string)r["hashid"]==hash))||Inserts.Any(i=>i.Table.StartsWith("LanguageStrings")&&i.Values.GetValueOrDefault("hashid")==hash))throw new InvalidDataException(ATLink.Core.UiText.Get("Localization key collision. Choose another template/ID."));var values=locTable.Fields.ToDictionary(f=>f.Name,f=>f.Name switch{"hashid"=>hash,"stringid"=>key,"sourcetext"=>name,_=>""});foreach(var f in locTable.Fields)DatabaseDocument.ValidateValue(f,values[f.Name]);Inserts.Add(new(locTable.Name,values));}
         return newObject;
     }
 }

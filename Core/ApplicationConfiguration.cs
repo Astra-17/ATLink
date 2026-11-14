@@ -22,6 +22,7 @@ public sealed record ApplicationConfiguration
     public string LastSelectedGame { get; init; } = "FC26";
     [JsonIgnore] public string CommonDataRoot { get; init; } = "";
     public string PreferredLanguage { get; init; } = "";
+    public string InterfaceLanguage { get; init; } = "";
     public Dictionary<string, GameConfiguration> Games { get; init; } = [];
 
     public ApplicationConfiguration WithGame(string game, GameConfiguration settings) => this with
@@ -61,15 +62,15 @@ public sealed class ApplicationConfigurationStore
         try
         {
             var loaded = JsonSerializer.Deserialize<ApplicationConfiguration>(File.ReadAllText(Path))
-                ?? throw new InvalidDataException("Configuration is empty.");
+                ?? throw new InvalidDataException(ATLink.Core.UiText.Get("Configuration is empty."));
             if (loaded.SchemaVersion is not (1 or 2))
             {
                 incompatibleVersion = true;
-                throw new InvalidDataException("This configuration was created by an unsupported ATLink version.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("This configuration was created by an unsupported ATLink version."));
             }
             if (loaded.LastSelectedGame is not ("FC26" or "FC27") || loaded.Games is null ||
                 loaded.Games.Any(pair => pair.Key is not ("FC26" or "FC27") || pair.Value is null))
-                throw new InvalidDataException("Invalid configuration structure.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid configuration structure."));
             Current = Normalize(loaded);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or ArgumentException or NotSupportedException)
@@ -93,8 +94,11 @@ public sealed class ApplicationConfigurationStore
 
     ApplicationConfiguration Normalize(ApplicationConfiguration config)
     {
+        string interfaceLanguage=UiText.ResolveLanguage(config.InterfaceLanguage,config.PreferredLanguage);
         var games=new[]{"FC26","FC27"}.ToDictionary(game=>game,game=>Resolve(game,config));
+        foreach(string game in games.Keys.ToArray())games[game]=games[game] with {DatabaseLanguage=UiText.LocalizationCode(interfaceLanguage)};
         return config with {SchemaVersion=2,CommonDataRoot=bundledRoot,Games=games,
+            InterfaceLanguage=interfaceLanguage,
             PreferredLanguage=string.IsNullOrWhiteSpace(config.PreferredLanguage)?games[config.LastSelectedGame].DatabaseLanguage:config.PreferredLanguage};
     }
 
@@ -103,7 +107,7 @@ public sealed class ApplicationConfigurationStore
 
     public GameConfiguration Defaults(string game, string commonRoot)
     {
-        if (game is not ("FC26" or "FC27")) throw new ArgumentException("Unsupported game.");
+        if (game is not ("FC26" or "FC27")) throw new ArgumentException(ATLink.Core.UiText.Get("Unsupported game."));
         string root = game == "FC27" ? System.IO.Path.Combine(commonRoot, "FC27") : commonRoot;
         return new()
         {
@@ -162,12 +166,12 @@ public sealed class ApplicationConfigurationStore
             RequireFile(settings.MetadataPath);
             var data=CreateData(game,configuration);
             if(!data.Languages.Any(language=>language.Code==settings.DatabaseLanguage))
-                return Repair("Language database and metadata: "+settings.DatabaseLanguage+" ("+game+")");
+                return Repair(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Language database and metadata: "), settings.DatabaseLanguage, " (", game, ")"));
             if(purpose is DataPurpose.Competition or DataPurpose.FifaMod)
                 RequireFile(System.IO.Path.Combine(settings.CompdataFolder,"compobj.txt"));
             if(purpose==DataPurpose.FifaMod)
             {
-                if(game!="FC27")return "FIFAMOD export currently supports FC27 only.";
+                if(game!="FC27")return ATLink.Core.UiText.Get("FIFAMOD export currently supports FC27 only.");
                 RequireFile(settings.FifaModCachePath);
                 FifaModCacheSelection.ReadBuild(settings.FifaModCachePath);
                 RequireFile(settings.LimitsPath);
@@ -175,7 +179,7 @@ public sealed class ApplicationConfigurationStore
                 if(limits.RootElement.ValueKind!=JsonValueKind.Object ||
                     !limits.RootElement.TryGetProperty("MAX_FCEDATA_COMPOBJECTS",out _) ||
                     limits.RootElement.EnumerateObject().Any(property=>property.Value.ValueKind!=JsonValueKind.Number||!property.Value.TryGetInt32(out int value)||value<0))
-                    return Repair("Invalid Live Editor limits: "+settings.LimitsPath);
+                    return Repair(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Invalid Live Editor limits: "), settings.LimitsPath));
             }
             return null;
         }
@@ -185,25 +189,28 @@ public sealed class ApplicationConfigurationStore
 
     static void RequireFile(string path)
     {
-        if(!File.Exists(path))throw new FileNotFoundException("Missing integrated resource: "+path,path);
+        if(!File.Exists(path))throw new FileNotFoundException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Missing integrated resource: "), path),path);
     }
-    static string Repair(string resource)=>resource+"\nRepair or update ATLink to restore its integrated resources.";
+    static string Repair(string resource)=>ATLink.Core.UiText.Concat(resource, ATLink.Core.UiText.Get("\nRepair or update ATLink to restore its integrated resources."));
 
     // Preferences can be saved even when an unrelated optional resource is unavailable.
     public void Validate(string game, ApplicationConfiguration configuration)
     {
         if(game is not ("FC26" or "FC27") || configuration.LastSelectedGame is not ("FC26" or "FC27"))
-            throw new InvalidDataException("Invalid game selection.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid game selection."));
         if(configuration.PreferredLanguage is null || configuration.Games is null)
-            throw new InvalidDataException("Invalid application preferences.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid application preferences."));
+        if(configuration.InterfaceLanguage is not ("" or "fr" or "en"))
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid interface language."));
     }
     public void Save(ApplicationConfiguration configuration) => Save(configuration, null);
 
     internal void Save(ApplicationConfiguration configuration, Action? beforePublish)
     {
-        if (incompatibleVersion) throw new InvalidOperationException("Use the ATLink version that created this configuration. The file has been preserved.");
+        if (incompatibleVersion) throw new InvalidOperationException(ATLink.Core.UiText.Get("Use the ATLink version that created this configuration. The file has been preserved."));
         if (configuration.SchemaVersion is not (1 or 2) || configuration.LastSelectedGame is not ("FC26" or "FC27") || configuration.Games is null)
-            throw new InvalidDataException("Invalid application configuration.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Invalid application configuration."));
+        Validate(configuration.LastSelectedGame,configuration);
         configuration=Normalize(configuration);
         Directory.CreateDirectory(legacyFolder);
         string temporary = Path + "." + Guid.NewGuid().ToString("N") + ".tmp";

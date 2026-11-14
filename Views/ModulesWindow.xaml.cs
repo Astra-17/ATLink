@@ -27,10 +27,20 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         if(!File.Exists(national))national=Path.Combine(RuntimeData.Root,"FC26_NATIONAL_TEAM_IDS.csv");
         if(File.Exists(national)){try{catalog.LoadNationalTeams(national);}catch(Exception ex){Status.Text=ex.Message;}}
         Switch(initial);
+        Loaded+=(_,_)=>{document.DisplayLocalizationChanged+=RefreshLocalizedNames;RefreshLocalizedNames();};
+        Unloaded+=(_,_)=>document.DisplayLocalizationChanged-=RefreshLocalizedNames;
+    }
+    void RefreshLocalizedNames()
+    {
+        string? selectedId=(Results.SelectedItem as EntityItem)?.Id;
+        if(kind!="transfers")items=catalog.Entities(kind);
+        if(kind is not ("players" or "transfers")){Refresh();Results.SelectedItem=items.FirstOrDefault(i=>i.Id==selectedId);}
+        if(PlayerContent.Content is PlayerBrowser browser)browser.RefreshLocalizedNames();
     }
     private void Switch(string module)
     {
         if(PlayerContent.Content is PlayerEditor pending&&!pending.CanLeave())return;
+        NavigationRail.Visibility=Visibility.Visible;NavigationColumn.Width=new GridLength(230);
         kind=module=="stadiums"&&document.Tables.All(t=>t.Name!="stadiums")?"ssfstadiums":module;
         foreach(Button button in ModuleNavigation.Children)
         {
@@ -54,14 +64,14 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
             browser.EditRequested+=item=>{Results.SelectedItem=item;EditClick(this,new RoutedEventArgs());};
             browser.CreateRequested+=item=>{Results.SelectedItem=item;CreateClick(this,new RoutedEventArgs());};
             PlayerContent.Content=browser;
-            Status.Text=$"{catalog.Entities("players").Count:N0} players.";
+            Status.Text=ATLink.Core.UiText.Format("{0:N0} players.", catalog.Entities("players").Count);
         }
         else if(kind=="transfers")
         {
             PlayerContent.Content=new TransfersPage(catalog);
-            Status.Text="Verify leagues or add a player manually.";
+            Status.Text=ATLink.Core.UiText.Get("Verify leagues or add a player manually.");
         }
-        else {PlayerContent.Content=null;Status.Text=$"{items.Count:N0} {kind}. Select an entry to edit.";}
+        else {PlayerContent.Content=null;Status.Text=ATLink.Core.UiText.Format("{0:N0} {1}. Select an entry to edit.", items.Count, kind);}
     }
     private void Refresh()=>Results.ItemsSource=items.Where(i=>i.Name.Contains(Search.Text,StringComparison.CurrentCultureIgnoreCase)||i.Id.Contains(Search.Text)).ToArray();
     private void ModuleClick(object sender,RoutedEventArgs e){try{Switch((string)((Button)sender).Tag);}catch(Exception ex){Error(ex);}}
@@ -83,22 +93,23 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
                 var playerEditor=new PlayerEditor(catalog,item);
                 playerEditor.BackRequested+=()=>Switch("players");
                 PlayerContent.Content=playerEditor;
+                NavigationRail.Visibility=Visibility.Collapsed;NavigationColumn.Width=new GridLength(0);
                 return;
             }
             var editor=EditorFor(item,item.Name);
-            if(editor is IWorkspacePage hosted)hosted.Closed+=ok=>{if(ok){string search=Search.Text;Switch(kind=="ssfstadiums"?"stadiums":kind);Search.Text=search;Status.Text="Changes applied in memory.";}};
+            if(editor is IWorkspacePage hosted)hosted.Closed+=ok=>{if(ok){string search=Search.Text;Switch(kind=="ssfstadiums"?"stadiums":kind);Search.Text=search;Status.Text=ATLink.Core.UiText.Get("Changes applied in memory.");}};
             WorkspaceController.Open(editor);
         }
         catch(Exception ex){Error(ex);}
     }
     private void CreateClick(object sender,RoutedEventArgs e)
     {
-        if(Results.SelectedItem is not EntityItem template){Status.Text="Select an existing entry to use as a template.";return;}
+        if(Results.SelectedItem is not EntityItem template){Status.Text=ATLink.Core.UiText.Get("Select an existing entry to use as a template.");return;}
         DataRow? row=null;
         try
         {
             var table=catalog.Table(kind);row=TableEditing.Add(table,template.Row);
-            var created=new EntityItem(FootballCatalog.Value(row,kind=="teams"?"teamid":kind=="players"?"playerid":kind is "leagues"?"leagueid":"stadiumid"),"New "+kind.TrimEnd('s'),"",row);
+            var created=new EntityItem(FootballCatalog.Value(row,kind=="teams"?"teamid":kind=="players"?"playerid":kind is "leagues"?"leagueid":"stadiumid"),ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("New "), kind.TrimEnd('s')),"",row);
             var editor=kind=="teams"?new TeamWorkspace(catalog,created):(UserControl)new EntityEditor(catalog,table,row,created.Name,namesFrom:template.Row);
             if(editor is IWorkspacePage hosted)hosted.Closed+=ok=>{if(!ok&&row?.RowState==DataRowState.Added)row.Delete();Switch(kind);};
             WorkspaceController.Open(editor);
@@ -116,7 +127,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         if(PlayerContent.Content is PlayerEditor editor&&!editor.TryApply())return;
         CommitSquadName();
         var dialog=ShellDialogs.ForDatabase(document);if(!ShellDialogs.Open(dialog,this))return;
-        try{document.SaveAs(dialog.FileName);Status.Text="Saved: "+dialog.FileName;}catch(Exception ex){Error(ex);}
+        try{document.SaveAs(dialog.FileName);Status.Text=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Saved: "), dialog.FileName);}catch(Exception ex){Error(ex);}
     }
     void SubtitleKey(object sender,KeyEventArgs e)
     {

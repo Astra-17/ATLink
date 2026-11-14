@@ -16,9 +16,9 @@ public static class CompetitionArtworkImages
         using var input=new MemoryStream(png,false);
         var decoder=new PngBitmapDecoder(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad);
         var image=Straight(decoder.Frames[0]);
-        if(image.PixelWidth!=width||image.PixelHeight!=height)throw new InvalidDataException("Incorrect image dimensions.");
+        if(image.PixelWidth!=width||image.PixelHeight!=height)throw new InvalidDataException(ATLink.Core.UiText.Get("Incorrect image dimensions."));
         var pixels=Pixels(image);
-        if(!Enumerable.Range(0,width*height).Any(i=>pixels[i*4+3]!=0))throw new InvalidDataException("The image is entirely transparent. Choose a visible logo or competition name image.");
+        if(!Enumerable.Range(0,width*height).Any(i=>pixels[i*4+3]!=0))throw new InvalidDataException(ATLink.Core.UiText.Get("The image is entirely transparent. Choose a visible logo or competition name image."));
         return image;
     }
     static BitmapSource Straight(BitmapSource image)

@@ -75,7 +75,19 @@ UI captures are written to Checks/output/ui/studio at 1400x850 and 960x580.
 
 ## Football-first authoring
 
-The Add competition flow uses five steps: Format (including Type), Teams, Schedule & venues, Rules & rewards, and Review.
+The Add competition flow uses ten steps: Format, Name & belonging, The competition path,
+Linked competitions, Teams, Schedule & venues, Rewards, Rules, Advancement, and Review.
+Format is selected with four centered cards; selecting the current format again preserves the draft.
+Names support full and short labels for every recognized game language. Blank labels fall back
+on the main name or localized full name. A translation without available language data stays
+in the draft and blocks creation with an explicit message.
+Linked competitions has its own step; Matchups and Season behaviour remain under Teams.
+Rewards only edits prizes, draw dates live under Schedule & venues, and general/per-phase
+rules and discipline live under Rules. Advancement is an empty placeholder.
+Only Custom exposes Add a phase. Guided group stages require equal, even-sized groups
+of at least two teams and qualification counts compatible with the next phase.
+The UI check `--creation-journey` covers all four formats, navigation and late-field
+correction, multilingual name export/reopen, and renders at 1400 and 960 pixels.
 Technical preparation phases and historical initial standings are not participants
 or played rounds. Native SETUP objects remain in the data and Expert editor.
 
@@ -107,3 +119,37 @@ Settings displays configured supported options per played phase, including inher
 
 ## DBM season behaviour
 See [COMPETITION-PARITY.md](COMPETITION-PARITY.md) for the guided season engine, source/operation mappings, creation/duplication flow, calendar behaviour, preservation policy and verification commands.
+
+## Creation: step 9 — Advancement
+
+**Who goes where** shows the incoming places of every played phase, including
+the first group allocation. Use the source selectors on each group or tie card.
+Selecting a source already in use swaps both places; each source is used once.
+Knockout models share their state with **Teams → Matchups**. Group allocations
+have separate reset and reproducible-draw buttons. Allocation Undo/Redo covers
+both group and knockout edits. Future winners and group positions stay dynamic.
+Two-legged ties share one pairing and automatically reverse the return leg.
+
+**Ranking & advancement rules** uses the same phase Rules objects as Settings.
+The available catalogue is random draw, maximum teams per association, the ten
+supported ranking/tie-break criteria, and compatible points carryover with
+0–100% retained and round up/down. Check ranking criteria, then use the arrows to
+set priority. **Competition default** preserves inheritance. This view does not
+give guessed meanings to additional native keys or add unverified criteria.
+
+Points carryover requires corresponding table groups; use **Keep previous groups**
+to allocate their qualifiers without mixing groups. Mixed-group carryover,
+missing sources and removed customized phases block validation with an explanation.
+Links to other competitions remain in step 4. A destination with two linked
+qualifying winners shows its direct clubs and one reserved winner per group;
+customized allocations are applied after the linked entry sources are created.
+
+Review includes the resulting allocations and rules. Creation remains one project
+transaction; abandoning the wizard writes no native data. The schedule simulation
+uses the same allocations as native advancement export. Native resource identities
+are resolved only during compilation, not from dates or displayed names.
+
+Validation: `ATLink.UIChecks --advancement <root>` covers destination swaps,
+shared Settings, ordered criteria, points carryover, linked reserved entries,
+native conversion, export/reopening, history and 1400/960px layouts. File checks
+and simulation results remain distinct from validation in FC27.

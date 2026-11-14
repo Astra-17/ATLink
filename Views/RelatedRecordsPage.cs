@@ -14,10 +14,10 @@ public sealed class RelatedRecordsPage : UserControl, IWorkspacePage
     {
         var dock=new DockPanel();
         StudioWindow.Style(this,dock);
-        var back=new Button{Content="Back",HorizontalAlignment=HorizontalAlignment.Right};
+        var back=new Button{Content=ATLink.Core.UiText.Get("Back"),HorizontalAlignment=HorizontalAlignment.Right};
         back.Click+=(_,_)=>Closed?.Invoke(false);
         var header=new Border{Background=StudioPalette.Get("PanelBrush"),Padding=new Thickness(16)};
-        var bar=new DockPanel();DockPanel.SetDock(back,Dock.Right);bar.Children.Add(back);bar.Children.Add(new TextBlock{Text=title+" · Related records",FontSize=22,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});
+        var bar=new DockPanel();DockPanel.SetDock(back,Dock.Right);bar.Children.Add(back);bar.Children.Add(new TextBlock{Text=ATLink.Core.UiText.Concat(title, ATLink.Core.UiText.Get(" · Related records")),FontSize=22,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});
         header.Child=bar;DockPanel.SetDock(header,Dock.Top);dock.Children.Add(header);
         var tabs=new TabControl();
         foreach(string name in tables)

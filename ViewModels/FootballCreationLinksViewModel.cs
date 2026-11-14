@@ -22,7 +22,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     public FootballDraftChoice? Lower {get;set;}
     public FootballDraftChoice? CalendarSource {get;set;}
     public FootballDraftChoice? ExcludedCompetition {get;set;}
-    public IReadOnlyList<FootballChoice> PromotionChoices {get;}=[new(0,"First of each group"),new(1,"Winners of the semi-finals")];
+    public IReadOnlyList<FootballChoice> PromotionChoices {get;}=[new(0,ATLink.Core.UiText.Get("First of each group")),new(1,ATLink.Core.UiText.Get("Winners of the semi-finals"))];
     FootballChoice? promotion;
     public FootballChoice? Promotion
     {
@@ -43,7 +43,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     public bool UseSourceTime {get;set;}=true;
     public string CalendarKickoff {get;set;}="21:00";
     bool addQualifiers;public bool AddQualifiers {get=>addQualifiers;set{addQualifiers=value;Notify();owner.RefreshEntries();}}
-    public string QualifierName {get;set;}="Qualifying playoffs";
+    public string QualifierName {get;set;}=ATLink.Core.UiText.Get("Qualifying playoffs");
     public FootballCompetitionNamesViewModel QualifierNames {get;}=new();
     public CompetitionArtworkViewModel QualifierArtwork {get;}
     FootballDraftChoice? destination;
@@ -52,7 +52,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
         get=>destination;
         set{destination=value;Notify();RefreshDirectTeams();owner.RefreshEntries();}
     }
-    public IReadOnlyList<FootballChoice> Paths {get;}=[new(0,"First qualifying path"),new(1,"Second qualifying path")];
+    public IReadOnlyList<FootballChoice> Paths {get;}=[new(0,ATLink.Core.UiText.Get("First qualifying path")),new(1,ATLink.Core.UiText.Get("Second qualifying path"))];
     public IReadOnlyList<FootballChoice> Leagues {get;}
     public IReadOnlyList<int> Counts {get;}=Enumerable.Range(1,32).ToArray();
     public IReadOnlyList<string> Times {get;}=Enumerable.Range(0,96).Select(n=>$"{n/4:00}:{n%4*15:00}").ToArray();
@@ -61,14 +61,14 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     public ObservableCollection<FootballLinkedDateViewModel> Dates {get;}=[];
     public ObservableCollection<FootballDirectClubViewModel> DirectClubs {get;}=[];
     public int RequiredDirect {get;private set;}
-    public string DirectCount=>$"{DirectClubs.Count(c=>c.Selected)}/{RequiredDirect} direct clubs";
-    public string QuotaCount=>string.Join(" · ",Paths.Select(p=>(p.Id==0?"First path":"Second path")+" "+Quotas.Where(q=>q.Path?.Id==p.Id).Sum(q=>q.Places)+"/32"));
-    public string Summary {get;private set;}="No linked competitions selected.";
+    public string DirectCount=>ATLink.Core.UiText.Format("{0}/{1} direct clubs", DirectClubs.Count(c=>c.Selected), RequiredDirect);
+    public string QuotaCount=>ATLink.Core.UiText.Join(" · ",Paths.Select(p=>(p.Id==0?ATLink.Core.UiText.Get("First path"):ATLink.Core.UiText.Get("Second path"))+" "+Quotas.Where(q=>q.Path?.Id==p.Id).Sum(q=>q.Places)+"/32"));
+    public string Summary {get;private set;}=ATLink.Core.UiText.Get("No linked competitions selected.");
     public string Error {get;private set;}="";
 
     public FootballCreationLinksViewModel(FootballCreationViewModel owner)
     {
-        this.owner=owner;QualifierArtwork=new(owner.Context);
+        this.owner=owner;QualifierNames.Configure(Context);QualifierArtwork=new(owner.Context);
         Leagues=owner.Season.Leagues;
         Promotion=PromotionChoices[0];
         Quotas.CollectionChanged+=(_,e)=>
@@ -76,7 +76,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
             if(e.NewItems is not null)foreach(FootballQuotaViewModel q in e.NewItems)q.Changed=()=>Notify(nameof(QuotaCount));
             Notify(nameof(QuotaCount));
         };
-        string[] rounds=["Round of 32","Round of 16","Quarter-finals","Semi-finals","Playoffs"];
+        string[] rounds=[ATLink.Core.UiText.Get("Round of 32"),ATLink.Core.UiText.Get("Round of 16"),"Quarter-finals","Semi-finals",ATLink.Core.UiText.Get("Playoffs")];
         int[] days=[17,20,23,26,28];
         for(int i=0;i<5;i++)Dates.Add(new(){Name=rounds[i],Date=Context.SeasonStart.AddDays(days[i]).ToDateTime(TimeOnly.MinValue),Round=new(Context,rounds[i])});
         RefreshChoices();
@@ -106,14 +106,14 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
             return(model.Region,model.Phases.FirstOrDefault());
         }
         var draft=Model(reference);
-        try{return(draft?.Region?.Id??-1,draft?.Format.Snapshot().FirstOrDefault());}catch{return(-1,null);}
+        try{return(draft?.Region?.Id??-1,draft?.Format.StructureSnapshot().FirstOrDefault());}catch{return(-1,null);}
     }
     public void RefreshChoices()
     {
-        var none=new FootballDraftChoice("None",null);
+        var none=new FootballDraftChoice(ATLink.Core.UiText.Get("None"),null);
         var drafts=KnownDrafts().ToArray();
         Choices=[none,..Context.Objects.Where(o=>o.Kind==3).Select(o=>new FootballDraftChoice(o.DisplayName,new(FootballReferenceKind.Existing,o.Id))),
-            ..drafts.Select(d=>new FootballDraftChoice(d.Name+(d==owner?" (current draft)":" (draft)"),
+            ..drafts.Select(d=>new FootballDraftChoice(d.Name+(d==owner?ATLink.Core.UiText.Get(" (current draft)"):ATLink.Core.UiText.Get(" (draft)")),
                 new(d==owner?FootballReferenceKind.Current:FootballReferenceKind.New,DraftKey:d.DraftKey)))];
         var own=Structure(Current);
         NeighbourChoices=[none,..Choices.Where(c=>
@@ -160,7 +160,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     }
     public void AcceptNew(FootballCreationViewModel child)
     {
-        if(child.ParentDraft!=owner)throw new InvalidDataException("This draft belongs to another creation.");
+        if(child.ParentDraft!=owner)throw new InvalidDataException(ATLink.Core.UiText.Get("This draft belongs to another creation."));
         NewDrafts.Add(child);RefreshChoices();
         Lower=NeighbourChoices.FirstOrDefault(c=>c.Reference?.DraftKey==child.DraftKey)??NeighbourChoices[0];
         if(Same(child.Links.Higher?.Reference,Current))Promotion=PromotionChoices.Single(p=>p.Id==child.Links.Promotion?.Id);
@@ -198,31 +198,31 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     public FootballDraftPlayoffs? PlayoffPlan()
     {
         if(!AddQualifiers)return null;
-        var target=QualifierDestination?.Reference??throw new InvalidDataException("Choose the competition receiving the playoff winners.");
+        var target=QualifierDestination?.Reference??throw new InvalidDataException(ATLink.Core.UiText.Get("Choose the competition receiving the playoff winners."));
         var quotas=Quotas.Select(q=>new FootballNationalQuota(q.Path?.Id??-1,q.League?.Id??-1,q.Places)).ToArray();
         FootballLinkedCompetitions.ValidateQuotas(Context,quotas);
-        if(string.IsNullOrWhiteSpace(QualifierName))throw new InvalidDataException("Name the qualifying competition.");
+        if(string.IsNullOrWhiteSpace(QualifierName))throw new InvalidDataException(ATLink.Core.UiText.Get("Name the qualifying competition."));
         if(DirectClubs.Count(c=>c.Selected)!=RequiredDirect||RequiredDirect<=0)
-            throw new InvalidDataException("Select "+RequiredDirect+" direct entrants for the receiving competition.");
+            throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Select "), RequiredDirect, ATLink.Core.UiText.Get(" direct entrants for the receiving competition.")));
         var dates=Dates.Select(d=>new FootballPlayoffDate(d.Date.HasValue?DateOnly.FromDateTime(d.Date.Value):
-            throw new InvalidDataException("Choose all playoff dates."),d.FirstKickoff,d.SecondKickoff)).ToArray();
-        if(dates.Zip(dates.Skip(1)).Any(p=>p.First.Date>=p.Second.Date))throw new InvalidDataException("Choose five playoff dates in chronological order.");
-        if(Same(ExcludedCompetition?.Reference,target))throw new InvalidDataException("The receiving competition is already excluded automatically.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose all playoff dates.")),d.FirstKickoff,d.SecondKickoff)).ToArray();
+        if(dates.Zip(dates.Skip(1)).Any(p=>p.First.Date>=p.Second.Date))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose five playoff dates in chronological order."));
+        if(Same(ExcludedCompetition?.Reference,target))throw new InvalidDataException(ATLink.Core.UiText.Get("The receiving competition is already excluded automatically."));
         return new(QualifierName,target,ExcludedCompetition?.Reference,DirectClubs.Where(c=>c.Selected).Select(c=>c.Club.Id).ToArray(),quotas,dates){Rounds=Dates.Select(d=>d.Round!.Snapshot()).ToArray(),Names=QualifierNames.Snapshot(Context,QualifierName),Artwork=QualifierArtwork.Snapshot()};
     }
     public FootballDraftCalendar? CalendarPlan()=>CalendarSource?.Reference is {} source?
         new(Current,source,UseSourceTime?null:CalendarKickoff):null;
     public void Validate()
     {
-        if(Higher?.Reference is not null&&Same(Higher.Reference,Lower?.Reference))throw new InvalidDataException("Choose different higher and lower divisions.");
+        if(Higher?.Reference is not null&&Same(Higher.Reference,Lower?.Reference))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose different higher and lower divisions."));
         if(Higher?.Reference is not null&&Lower?.Reference is not null&&Structure(Current).Phase?.Kind==FootballPhaseKind.Groups)
-            throw new InvalidDataException("The custom exchange currently connects two divisions. Choose one neighbouring division.");
-        if(Same(CalendarSource?.Reference,Current))throw new InvalidDataException("Choose another competition as the calendar source.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("The custom exchange currently connects two divisions. Choose one neighbouring division."));
+        if(Same(CalendarSource?.Reference,Current))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose another competition as the calendar source."));
         if(Structure(Current).Phase?.Kind==FootballPhaseKind.League)
             foreach(var pair in new[]{(Choice:Higher,Reverse:"info_league_releg"),(Choice:Lower,Reverse:"info_league_promo")})
                 if(pair.Choice?.Reference is {Kind:FootballReferenceKind.Existing,ExistingId:int id}&&
                     int.TryParse(Context.EffectiveRules(id).FirstOrDefault(r=>r.Key==pair.Reverse).Value,out int existing)&&existing>0)
-                    throw new InvalidDataException(pair.Choice.Name+" already has another neighbouring division. Review that relationship before adding this one.");
+                    throw new InvalidDataException(ATLink.Core.UiText.Concat(pair.Choice.Name, ATLink.Core.UiText.Get(" already has another neighbouring division. Review that relationship before adding this one.")));
         _=PlayoffPlan();
         if(!UseSourceTime)_=TournamentBuilder.Time(CalendarKickoff);
     }
@@ -232,22 +232,22 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
         {
             RefreshChoices();Validate();Error="";
             var text=new List<string>();
-            if(Higher?.Reference is not null)text.Add("Higher division: "+Higher.Name);
-            if(Lower?.Reference is not null)text.Add("Lower division: "+Lower.Name);
-            if(NeighbourPlan() is not null)text.Add("Promoted teams: "+Promotion?.Name);
+            if(Higher?.Reference is not null)text.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Higher division: "), Higher.Name));
+            if(Lower?.Reference is not null)text.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Lower division: "), Lower.Name));
+            if(NeighbourPlan() is not null)text.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Promoted teams: "), Promotion?.Name));
             if(PlayoffPlan() is {} playoff)
             {
-                text.Add(playoff.Name+": two winners join "+QualifierDestination!.Name+" in the same edition.");
+                text.Add(ATLink.Core.UiText.Concat(playoff.Name, ATLink.Core.UiText.Get(": two winners join "), QualifierDestination!.Name, ATLink.Core.UiText.Get(" in the same edition.")));
                 text.Add(DirectCount+"; "+QuotaCount+".");
                 var removed=DirectClubs.Where(t=>!t.Selected).Select(t=>t.Club.Name).ToArray();
-                if(removed.Length>0)text.Add("Removed from direct entry: "+string.Join(", ",removed));
+                if(removed.Length>0)text.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Removed from direct entry: "), ATLink.Core.UiText.Join(", ",removed)));
             }
-            if(CalendarPlan() is not null)text.Add("Group matchdays from "+CalendarSource!.Name+(UseSourceTime?" with the same kickoffs.":" at "+CalendarKickoff+"."));
+            if(CalendarPlan() is not null)text.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Group matchdays from "), CalendarSource!.Name, (UseSourceTime?ATLink.Core.UiText.Get(" with the same kickoffs."):ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get(" at "), CalendarKickoff, "."))));
             if(AddQualifiers)text.AddRange(QualifierNames.Snapshot(Context,QualifierName).Select(n=>n.Language+": "+n.FullName+" / "+n.ShortName));
             if(AddQualifiers)text.Add(QualifierArtwork.Summary);
             if(AddQualifiers)text.AddRange(Dates.Select(d=>d.Name+": "+d.Round!.Summary));
-            text.AddRange(NewDrafts.Select(d=>"New linked competition: "+d.Name));
-            Summary=text.Count==0?"No linked competitions selected.":string.Join("\n",text);
+            text.AddRange(NewDrafts.Select(d=>ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("New linked competition: "), d.Name)));
+            Summary=text.Count==0?ATLink.Core.UiText.Get("No linked competitions selected."):ATLink.Core.UiText.Join("\n",text);
         }
         catch(Exception ex){Error=ex.Message;}
         Notify(nameof(Summary));Notify(nameof(Error));
@@ -255,7 +255,7 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
     public void SynchronizeCalendar(HashSet<Guid> visited,HashSet<Guid> visiting)
     {
         if(visited.Contains(owner.DraftKey))return;
-        if(!visiting.Add(owner.DraftKey))throw new InvalidDataException("The linked calendars form a cycle.");
+        if(!visiting.Add(owner.DraftKey))throw new InvalidDataException(ATLink.Core.UiText.Get("The linked calendars form a cycle."));
         if(CalendarPlan() is {} plan)
         {
             var sourceDraft=Model(plan.Source);
@@ -275,17 +275,17 @@ public sealed class FootballCreationLinksViewModel : FootballNotify,IFootballQuo
             }
             else
             {
-                int source=plan.Source.ExistingId??throw new InvalidDataException("The calendar source is unavailable.");
+                int source=plan.Source.ExistingId??throw new InvalidDataException(ATLink.Core.UiText.Get("The calendar source is unavailable."));
                 var phase=FootballLinkedCompetitions.GroupPhase(Context,source);
                 days=Context.Calendar(source).Where(s=>s.ObjectId==phase.NativeId||phase.NativeGroups.Contains(s.ObjectId))
                     .Select(s=>new FootballMatchdayDraft(0,s.Round,s.Date(Context.ReferenceDate),s.Time,s.Minimum,s.Maximum)).ToArray();
             }
             owner.Calendar.Synchronize();
-            var group=owner.Calendar.Phases.FirstOrDefault()??throw new InvalidDataException("Add a group phase first.");
+            var group=owner.Calendar.Phases.FirstOrDefault()??throw new InvalidDataException(ATLink.Core.UiText.Get("Add a group phase first."));
             var rounds=days.GroupBy(d=>d.Round).ToArray();
             if(rounds.Length!=group.Rounds||rounds.Any(g=>g.Select(d=>d.Date).Distinct().Count()!=1||plan.Kickoff is null&&g.Select(d=>d.Kickoff).Distinct().Count()!=1))
-                throw new InvalidDataException("Linked group calendars need matching matchdays with one date and kickoff per day.");
-            owner.Calendar.Mode="Choose matchday dates";owner.Calendar.Synchronize();
+                throw new InvalidDataException(ATLink.Core.UiText.Get("Linked group calendars need matching matchdays with one date and kickoff per day."));
+            owner.Calendar.Mode=ATLink.Core.UiText.Get("Choose matchday dates");owner.Calendar.Synchronize();
             foreach(var row in owner.Calendar.Matchdays.Where(d=>d.PhaseIndex==0).ToArray())owner.Calendar.Matchdays.Remove(row);
             foreach(var day in rounds.Select(g=>g.First()).OrderBy(d=>d.Round))
                 owner.Calendar.Matchdays.Add(new(){PhaseIndex=0,PhaseKey=group.Key,PhaseName=group.Name,Round=day.Round,Date=day.Date.ToDateTime(TimeOnly.MinValue),

@@ -21,7 +21,7 @@ public sealed class TransfersPage:UserControl
     readonly List<UnmatchedTransfer> unmatched=[];
     readonly StackPanel leagueRows=new();
     readonly TextBlock status=new();
-    readonly Button unmatchedButton=new(){Content="View unmatched",Padding=new Thickness(12,6,12,6),Visibility=Visibility.Collapsed};
+    readonly Button unmatchedButton=new(){Content=ATLink.Core.UiText.Get("View unmatched"),Padding=new Thickness(12,6,12,6),Visibility=Visibility.Collapsed};
     readonly Ellipse verifyDot=new(){Width=14,Height=14,Margin=new Thickness(10,0,0,0),VerticalAlignment=VerticalAlignment.Center,Fill=new SolidColorBrush(Color.FromRgb(0x6B,0x6B,0x6B))};
     CancellationTokenSource? verifyCancellation;
     readonly Func<IEnumerable<string>,CancellationToken,Task<IReadOnlyList<MarketTransfer>>> fetch;
@@ -37,7 +37,7 @@ public sealed class TransfersPage:UserControl
     public ProgressBar DownloadProgress {get;}=new(){Height=8,Width=620,Maximum=100,Visibility=Visibility.Collapsed,Margin=new Thickness(0,0,0,8)};
     readonly bool nativeFetch;
     bool busy;
-    readonly Button addLeague=new(){Content="Add",Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left};
+    readonly Button addLeague=new(){Content=ATLink.Core.UiText.Get("Add"),Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left};
     readonly Dictionary<string,EntityItem> players;
     public Button VerifyButton {get;}
     public Button AddManuallyButton {get;}
@@ -71,17 +71,17 @@ public sealed class TransfersPage:UserControl
         var root=new DockPanel();
         StudioWindow.Style(this,root);
         var header=new StackPanel{Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left};
-        header.Children.Add(Label("Transfers",30,true));
-        var sub=Label("Verify Transfermarkt movements, edit them, then apply.",13);sub.Foreground=B("MutedBrush");sub.Margin=new Thickness(0,6,0,16);header.Children.Add(sub);
+        header.Children.Add(Label(ATLink.Core.UiText.Get("Transfers"),30,true));
+        var sub=Label(ATLink.Core.UiText.Get("Verify Transfermarkt movements, edit them, then apply."),13);sub.Foreground=B("MutedBrush");sub.Margin=new Thickness(0,6,0,16);header.Children.Add(sub);
 
-        VerifyButton=new Button{Content="Verify",Padding=new Thickness(16,8,16,8),Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center,Background=B("AccentBrush")};
+        VerifyButton=new Button{Content=ATLink.Core.UiText.Get("Verify"),Padding=new Thickness(16,8,16,8),Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center,Background=B("AccentBrush")};
         VerifyButton.Click+=async(_,_)=>await VerifyAsync();
         AddLeagueRow(leagues,false);
         header.Children.Add(leagueRows);
         addLeague.Click+=(_,_)=>AddLeagueRow(leagues,true);
         header.Children.Add(addLeague);
 
-        AddManuallyButton=new Button{Content="Add manually",Padding=new Thickness(16,9,16,9),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left,Background=new SolidColorBrush(Color.FromRgb(0x1F,0x9C,0x19)),Foreground=Brushes.White};
+        AddManuallyButton=new Button{Content=ATLink.Core.UiText.Get("Add manually"),Padding=new Thickness(16,9,16,9),Margin=new Thickness(0,0,0,12),HorizontalAlignment=HorizontalAlignment.Left,Background=new SolidColorBrush(Color.FromRgb(0x1F,0x9C,0x19)),Foreground=Brushes.White};
         AddManuallyButton.Click+=(_,_)=>AddManually();
         header.Children.Add(AddManuallyButton);
 
@@ -92,23 +92,23 @@ public sealed class TransfersPage:UserControl
         statusRow.Children.Add(status);header.Children.Add(statusRow);header.Children.Add(DownloadProgress);
         DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
 
-        ApplyButton=new Button{Content="Apply",Padding=new Thickness(18,9,18,9),MinWidth=110,Background=B("AccentBrush"),HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};
+        ApplyButton=new Button{Content=ATLink.Core.UiText.Get("Apply"),Padding=new Thickness(18,9,18,9),MinWidth=110,Background=B("AccentBrush"),HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};
         ApplyButton.Click+=(_,_)=>Apply();
         DockPanel.SetDock(ApplyButton,Dock.Bottom);root.Children.Add(ApplyButton);
 
-        EmptyMessage=Label("No transfers yet. Verify a league or add a player manually.",15);
+        EmptyMessage=Label(ATLink.Core.UiText.Get("No transfers yet. Verify a league or add a player manually."),15);
         EmptyMessage.Foreground=B("MutedBrush");EmptyMessage.HorizontalAlignment=HorizontalAlignment.Center;EmptyMessage.VerticalAlignment=VerticalAlignment.Center;
-        SelectAllButton=new Button{Content="Select all",Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,8,0)};
+        SelectAllButton=new Button{Content=ATLink.Core.UiText.Get("Select all"),Padding=new Thickness(14,8,14,8),Margin=new Thickness(0,0,8,0)};
         SelectAllButton.Click+=(_,_)=>ToggleSelectAll();
-        RemoveSelectedButton=new Button{Content="Remove",Padding=new Thickness(14,8,14,8),IsEnabled=false};
+        RemoveSelectedButton=new Button{Content=ATLink.Core.UiText.Get("Remove"),Padding=new Thickness(14,8,14,8),IsEnabled=false};
         RemoveSelectedButton.Click+=(_,_)=>RemoveSelected();
         var actions=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
         actions.Children.Add(SelectAllButton);actions.Children.Add(RemoveSelectedButton);
         draftView=CollectionViewSource.GetDefaultView(drafts);
         draftView.Filter=MatchesSearch;
-        SearchBox=new TextBox{Width=220,MaxWidth=260,MinHeight=32,Padding=new Thickness(8,6,8,6),VerticalAlignment=VerticalAlignment.Center,ToolTip="Search transfers"};
+        SearchBox=new TextBox{Width=220,MaxWidth=260,MinHeight=32,Padding=new Thickness(8,6,8,6),VerticalAlignment=VerticalAlignment.Center,ToolTip=ATLink.Core.UiText.Get("Search transfers")};
         var searchHost=new Grid{Width=220,MaxWidth=260,Margin=new Thickness(0,0,12,0),VerticalAlignment=VerticalAlignment.Center};
-        var searchHint=new TextBlock{Text="Search transfers",Foreground=B("MutedBrush"),Margin=new Thickness(10,0,0,0),VerticalAlignment=VerticalAlignment.Center,IsHitTestVisible=false};
+        var searchHint=new TextBlock{Text=ATLink.Core.UiText.Get("Search transfers"),Foreground=B("MutedBrush"),Margin=new Thickness(10,0,0,0),VerticalAlignment=VerticalAlignment.Center,IsHitTestVisible=false};
         searchHost.Children.Add(SearchBox);searchHost.Children.Add(searchHint);
         SearchBox.TextChanged+=(_,_)=>{searchHint.Visibility=string.IsNullOrEmpty(SearchBox.Text)?Visibility.Visible:Visibility.Collapsed;draftView.Refresh();};
         DockPanel.SetDock(searchHost,Dock.Left);tableToolbar.Children.Add(searchHost);
@@ -137,17 +137,17 @@ public sealed class TransfersPage:UserControl
         var combo=new ComboBox{ItemsSource=leagues,MinHeight=36,Width=420,MaxDropDownHeight=220,HorizontalAlignment=HorizontalAlignment.Left,IsEditable=false,IsTextSearchEnabled=true};
         combo.ItemTemplate=LeagueTemplate();
         if(leagues.Length>0)combo.SelectedIndex=0;
-        combo.ToolTip="Transfermarkt competition";
+        combo.ToolTip=ATLink.Core.UiText.Get("Transfermarkt competition");
         var dot=extra?new Ellipse{Width=14,Height=14,Margin=new Thickness(10,0,0,0),VerticalAlignment=VerticalAlignment.Center,Fill=NeutralDot}:verifyDot;
         var state=new LeagueState(combo,dot);leagueStates.Add(state);
         combo.SelectionChanged+=(_,_)=>InvalidateImport(state);
         row.Children.Add(combo);
-        var verify=extra?new Button{Content="Verify",Padding=new Thickness(16,8,16,8),Margin=new Thickness(8,0,0,0),Background=B("AccentBrush")}:VerifyButton;
+        var verify=extra?new Button{Content=ATLink.Core.UiText.Get("Verify"),Padding=new Thickness(16,8,16,8),Margin=new Thickness(8,0,0,0),Background=B("AccentBrush")}:VerifyButton;
         if(extra)verify.Click+=async(_,_)=>await VerifyAsync(state);
         row.Children.Add(verify);
         if(extra)
         {
-            var remove=new Button{Content="Remove",Padding=new Thickness(10,8,10,8),Margin=new Thickness(8,0,0,0)};
+            var remove=new Button{Content=ATLink.Core.UiText.Get("Remove"),Padding=new Thickness(10,8,10,8),Margin=new Thickness(8,0,0,0)};
             remove.Click+=(_,_)=>{InvalidateImport(state);leagueStates.Remove(state);leagueRows.Children.Remove(row);};
             row.Children.Add(remove);
         }
@@ -201,14 +201,14 @@ public sealed class TransfersPage:UserControl
         combo.SetValue(ItemsControl.ItemsSourceProperty,clubs);
         combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(TransferDraft.Destination)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});
         combo.SetValue(ComboBox.IsEditableProperty,true);combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);
-        combo.SetValue(ComboBox.DisplayMemberPathProperty,"Label");
+        combo.SetValue(ComboBox.DisplayMemberPathProperty,ATLink.Core.UiText.Get("Label"));
         combo.SetValue(ComboBox.ItemTemplateProperty,ClubCombo.LabelTemplate());
         combo.SetValue(VirtualizingPanel.IsVirtualizingProperty,true);
         combo.SetValue(ScrollViewer.CanContentScrollProperty,true);
         combo.SetValue(FrameworkElement.MinHeightProperty,36d);
         combo.SetValue(ItemsControl.ItemsPanelProperty,new ItemsPanelTemplate(new FrameworkElementFactory(typeof(VirtualizingStackPanel))));
         root.AppendChild(combo);
-        return new DataGridTemplateColumn{Header="New Club",CellTemplate=new DataTemplate{VisualTree=root},SortMemberPath=nameof(TransferDraft.DestinationName),Width=new DataGridLength(1.3,DataGridLengthUnitType.Star),MinWidth=260};
+        return new DataGridTemplateColumn{Header=ATLink.Core.UiText.Get("New Club"),CellTemplate=new DataTemplate{VisualTree=root},SortMemberPath=nameof(TransferDraft.DestinationName),Width=new DataGridLength(1.3,DataGridLengthUnitType.Star),MinWidth=260};
     }
 
     static DataGridTemplateColumn FieldColumn(string header,string binding,double width)
@@ -313,7 +313,7 @@ public sealed class TransfersPage:UserControl
     async Task VerifyAsync(LeagueState state)
     {
         if(busy)return;
-        if(state.Combo.SelectedItem is not LeagueChoice choice){status.Text="Choose a league.";return;}
+        if(state.Combo.SelectedItem is not LeagueChoice choice){status.Text=ATLink.Core.UiText.Get("Choose a league.");return;}
         var urls=new[]{choice.Option.TransfermarktUrl!};
         InvalidateImport(state);activeLeague=state;
         var previousDrafts=drafts.ToHashSet(ReferenceEqualityComparer.Instance);
@@ -323,7 +323,7 @@ public sealed class TransfersPage:UserControl
         AddManuallyButton.IsEnabled=false;addLeague.IsEnabled=false;leagueRows.IsEnabled=false;Grid.IsEnabled=false;
         UpdateSelectionButtons();
         DownloadProgress.Visibility=Visibility.Visible;DownloadProgress.IsIndeterminate=true;DownloadProgress.Value=0;
-        status.Text=$"Downloading {choice.Option.Display}…";
+        status.Text=ATLink.Core.UiText.Format("Downloading {0}…", choice.Option.Display);
         try
         {
             var progress=new Progress<TransferProgress>(p=>{
@@ -334,7 +334,7 @@ public sealed class TransfersPage:UserControl
             });
             var fetched=nativeFetch?await TransferImport.FetchAsync(urls,token,progress):await fetch(urls,token);
             token.ThrowIfCancellationRequested();
-            DownloadProgress.IsIndeterminate=true;status.Text="Matching players and clubs with the loaded database…";
+            DownloadProgress.IsIndeterminate=true;status.Text=ATLink.Core.UiText.Get("Matching players and clubs with the loaded database…");
             // The catalog may have been edited since the page was opened.
             var resolver=new TransferLiveResolver(catalog,EnrichedPlayers.Load());
             var result=await Task.Run(()=>resolver.Resolve(fetched),token);
@@ -366,13 +366,13 @@ public sealed class TransfersPage:UserControl
                 {
                     unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,
                         !availablePlayers.Contains(transfer.PlayerId)?"player_not_in_database":"destination_not_in_database",
-                        $"Resolved ID {transfer.PlayerId} → {transfer.ToTeamId} is absent from the open database."){Sequence=transfer.Sequence,PlayerId=transfer.PlayerId,IsLoan=transfer.IsLoan,IsLoanToBuy=transfer.IsLoanToBuy,LoanEndDate=transfer.LoanEndDate});
+                        ATLink.Core.UiText.Format("Resolved ID {0} → {1} is absent from the open database.", transfer.PlayerId, transfer.ToTeamId)){Sequence=transfer.Sequence,PlayerId=transfer.PlayerId,IsLoan=transfer.IsLoan,IsLoanToBuy=transfer.IsLoanToBuy,LoanEndDate=transfer.LoanEndDate});
                     continue;
                 }
                 var currentLinks=clubCounts[transfer.PlayerId].ToArray();
-                string? block=catalog.NationalTeamIds.Count==0?"Load national team IDs first.":
-                    catalog.NationalTeamIds.Contains(transfer.ToTeamId)?"National team destination is forbidden.":
-                    currentLinks.Length!=1?$"{currentLinks.Length} club links; manual review required.":null;
+                string? block=catalog.NationalTeamIds.Count==0?ATLink.Core.UiText.Get("Load national team IDs first."):
+                    catalog.NationalTeamIds.Contains(transfer.ToTeamId)?ATLink.Core.UiText.Get("National team destination is forbidden."):
+                    currentLinks.Length!=1?ATLink.Core.UiText.Format("{0} club links; manual review required.", currentLinks.Length):null;
                 if(block is not null)
                 {
                     unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,"database_transfer_blocked",block){Sequence=transfer.Sequence,PlayerId=transfer.PlayerId,IsLoan=transfer.IsLoan,IsLoanToBuy=transfer.IsLoanToBuy,LoanEndDate=transfer.LoanEndDate});
@@ -385,7 +385,7 @@ public sealed class TransfersPage:UserControl
                 if(transfer.IsLoan&&(transfer.LoanEndDate is null||transfer.LoanError.Length>0))
                 {
                     unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,UnresolvedReasons.InvalidTransferData,
-                        transfer.LoanError.Length>0?transfer.LoanError:"Date de fin du prêt introuvable sur le profil Transfermarkt.")
+                        transfer.LoanError.Length>0?transfer.LoanError:ATLink.Core.UiText.Get("Date de fin du prêt introuvable sur le profil Transfermarkt."))
                     {Sequence=transfer.Sequence,PlayerId=transfer.PlayerId,IsLoan=true,IsLoanToBuy=transfer.IsLoanToBuy,LoanEndDate=transfer.LoanEndDate});
                     continue;
                 }
@@ -393,7 +393,7 @@ public sealed class TransfersPage:UserControl
                 {
                     string reason=transfer.LoanSourceError.Length>0?transfer.LoanSourceError:UnresolvedReasons.SourceTeamNotFound;
                     unmatched.Add(new UnmatchedTransfer(transfer.PlayerName,transfer.FromClub,transfer.ToClub,reason,
-                        reason==UnresolvedReasons.AmbiguousSourceTeam?"Plusieurs clubs source correspondent à ce nom.":"Club source du prêt introuvable dans la DB.")
+                        reason==UnresolvedReasons.AmbiguousSourceTeam?ATLink.Core.UiText.Get("Plusieurs clubs source correspondent à ce nom."):ATLink.Core.UiText.Get("Club source du prêt introuvable dans la DB."))
                     {Sequence=transfer.Sequence,PlayerId=transfer.PlayerId,IsLoan=true,IsLoanToBuy=transfer.IsLoanToBuy,LoanEndDate=transfer.LoanEndDate});
                     continue;
                 }
@@ -402,10 +402,10 @@ public sealed class TransfersPage:UserControl
             }
             SetVerifyDot(true);
             int loans=drafts.Count(d=>d.Imported&&d.IsLoan);
-            status.Text=$"{fetched.Count} movements checked · {added} ready ({loans} loans) · {already} already at destination · {unmatched.Count} unmatched. Contract and number are optional.";
+            status.Text=ATLink.Core.UiText.Format("{0} movements checked · {1} ready ({2} loans) · {3} already at destination · {4} unmatched. Contract and number are optional.", fetched.Count, added, loans, already, unmatched.Count);
             unmatchedButton.Visibility=unmatched.Count==0?Visibility.Collapsed:Visibility.Visible;
         }
-        catch(OperationCanceledException){SetVerifyDot(null);status.Text="Verification cancelled.";}
+        catch(OperationCanceledException){SetVerifyDot(null);status.Text=ATLink.Core.UiText.Get("Verification cancelled.");}
         catch(Exception ex){SetVerifyDot(false);status.Text=ex.Message;}
         finally
         {
@@ -423,7 +423,7 @@ public sealed class TransfersPage:UserControl
         var dialog=new UnmatchedTransfersWindow(unmatched.ToArray(),catalog,entry=>{
             unmatched.Remove(entry);
             unmatchedButton.Visibility=unmatched.Count==0?Visibility.Collapsed:Visibility.Visible;
-            status.Text=$"Transfer applied · {unmatched.Count} unmatched. Pending save.";
+            status.Text=ATLink.Core.UiText.Format("Transfer applied · {0} unmatched. Pending save.", unmatched.Count);
         });
         if(Window.GetWindow(this) is Window owner)dialog.Owner=owner;
         dialog.ShowDialog();
@@ -436,7 +436,7 @@ public sealed class TransfersPage:UserControl
         if(dialog.ShowDialog()==true&&dialog.Draft is TransferDraft draft)
         {
             draft.Sequence=drafts.Select(d=>d.Sequence).DefaultIfEmpty(0).Max()+1;
-            drafts.Add(draft);RefreshEmpty();status.Text="Player added.";
+            drafts.Add(draft);RefreshEmpty();status.Text=ATLink.Core.UiText.Get("Player added.");
         }
     }
 
@@ -473,15 +473,15 @@ public sealed class TransfersPage:UserControl
 
     void Apply()
     {
-        if(drafts.Count==0){status.Text="No transfers yet. Verify a league or add a player manually.";return;}
+        if(drafts.Count==0){status.Text=ATLink.Core.UiText.Get("No transfers yet. Verify a league or add a player manually.");return;}
         try
         {
             var edits=drafts.Select((draft,index)=>
             {
-                if(draft.Destination is not ClubOption club)throw new InvalidDataException($"{draft.PlayerName}: choose a destination club.");
+                if(draft.Destination is not ClubOption club)throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: choose a destination club.", draft.PlayerName));
                 DateOnly? loanEnd=null;DateOnly parsed=default;
                 if(draft.IsLoan&&!DateOnly.TryParseExact(draft.LoanEnd,"dd/MM/yyyy",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out parsed))
-                    throw new InvalidDataException($"{draft.PlayerName}: choose a valid loan end date.");
+                    throw new InvalidDataException(ATLink.Core.UiText.Format("{0}: choose a valid loan end date.", draft.PlayerName));
                 else if(draft.IsLoan)loanEnd=parsed;
                 return new NativeTransferEdit(index+1,draft.PlayerId,club.Id,draft.Contract,draft.Number,draft.IsLoan,draft.IsLoanToBuy,loanEnd,
                     draft.IsLoan&&draft.LoanSourceTeamId.Length>0?draft.LoanSourceTeamId:null);
@@ -490,7 +490,7 @@ public sealed class TransfersPage:UserControl
             batch.Apply();
             int changed=batch.Steps.Count(s=>!s.AlreadyThere),already=batch.Steps.Count(s=>s.AlreadyThere);
             drafts.Clear();RefreshEmpty();
-            status.Text=$"{changed} movements applied · {batch.CreatedLoans} loans created · {already} already at destination · {batch.CancelledLoans} old loans and {batch.CancelledPresignedContracts} presigned contracts cancelled. Pending save.";
+            status.Text=ATLink.Core.UiText.Format("{0} movements applied · {1} loans created · {2} already at destination · {3} old loans and {4} presigned contracts cancelled. Pending save.", changed, batch.CreatedLoans, already, batch.CancelledLoans, batch.CancelledPresignedContracts);
         }
         catch(Exception ex){status.Text=ex.Message;ShellDialogs.Message(this,ex.Message,"ATLink");}
     }

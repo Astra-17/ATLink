@@ -21,10 +21,10 @@ public static class TransfermarktScraper
     private static IEnumerable<HtmlNode> Nodes(HtmlNode node,string xpath)=>node.SelectNodes(xpath)?.Cast<HtmlNode>()??[];
     public static async Task<IReadOnlyList<MarketTransfer>> Fetch(string url,CancellationToken token=default)
     {
-        if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme!="https"||!TransfermarktHttp.IsProfile(uri))throw new InvalidDataException("URL HTTPS Transfermarkt attendue.");
+        if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme!="https"||!TransfermarktHttp.IsProfile(uri))throw new InvalidDataException(ATLink.Core.UiText.Get("URL HTTPS Transfermarkt attendue."));
         using var client=TransfermarktHttp.Create();
         using var response=await client.GetAsync(uri,token);
-        if(!response.IsSuccessStatusCode)throw new HttpRequestException($"Transfermarkt: HTTP {(int)response.StatusCode}. Vous pouvez charger un fichier HTML enregistré ou le CSV du scraper existant.");
+        if(!response.IsSuccessStatusCode)throw new HttpRequestException(ATLink.Core.UiText.Format("Transfermarkt: HTTP {0}. Vous pouvez charger un fichier HTML enregistré ou le CSV du scraper existant.", (int)response.StatusCode));
         return ParseHtml(await response.Content.ReadAsStringAsync(token));
     }
     public static IReadOnlyList<MarketTransfer> ParseHtml(string html)
@@ -39,14 +39,14 @@ public static class TransfermarktScraper
             var box=table.Ancestors("div").FirstOrDefault(n=>n.GetAttributeValue("class","").Split(' ').Contains("box"));
             var heading=box?.SelectSingleNode("./h2|./div/h2");
             var clubLink=heading?.SelectSingleNode(".//a");string club=Clean(clubLink?.GetAttributeValue("title","")??"");if(club.Length==0)club=Clean(heading?.InnerText??"");
-            if(club.Length==0||club.ToLowerInvariant().StartsWith("transferts"))throw new InvalidDataException("Club du tableau non identifié : aucune importation partielle n'est effectuée.");
+            if(club.Length==0||club.ToLowerInvariant().StartsWith("transferts"))throw new InvalidDataException(ATLink.Core.UiText.Get("Club du tableau non identifié : aucune importation partielle n'est effectuée."));
             if(!groups.TryGetValue(club,out var entries)){entries=[];groups.Add(club,entries);}
             foreach(var row in Nodes(table,".//tbody/tr").Where(r=>r.Ancestors("table").FirstOrDefault()==table))
             {
                 if(IsLoanEnd(row.InnerText))continue;
                 var cells=Nodes(row,"./td").ToArray();var playerLink=row.SelectSingleNode(".//a[contains(@href,'/profil/spieler/')]");if(playerLink is null)continue;
                 string player=Clean(playerLink.InnerText);if(player.Length==0)player=Clean(playerLink.GetAttributeValue("title",""));
-                if(index>=cells.Length)throw new InvalidDataException("Colonne du club manquante.");var cell=cells[index];var otherLink=cell.SelectSingleNode(".//a[contains(@href,'/verein/')]");
+                if(index>=cells.Length)throw new InvalidDataException(ATLink.Core.UiText.Get("Colonne du club manquante."));var cell=cells[index];var otherLink=cell.SelectSingleNode(".//a[contains(@href,'/verein/')]");
                 string other=Clean(otherLink?.GetAttributeValue("title","")??"");if(other.Length==0)other=Clean(otherLink?.InnerText??"");
                 if(other.Length==0){var img=cell.SelectSingleNode(".//img");other=Clean(img?.GetAttributeValue("title",img.GetAttributeValue("alt",""))??cell.InnerText);}
                 if(other.Length%2==0&&other[..(other.Length/2)].Equals(other[(other.Length/2)..],StringComparison.OrdinalIgnoreCase))other=other[..(other.Length/2)];
@@ -54,7 +54,7 @@ public static class TransfermarktScraper
             }
         }
         var result=new List<MarketTransfer>();foreach(var group in groups)foreach(var row in group.Value.OrderBy(r=>r.Phase))result.Add(new(result.Count+1,row.Player,row.Phase==1?row.Other:group.Key,row.Phase==1?group.Key:row.Other,row.Phase==1?"arrival":"departure"));
-        if(result.Count==0)throw new InvalidDataException("Aucun tableau de transferts reconnu.");return result;
+        if(result.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Aucun tableau de transferts reconnu."));return result;
     }
     static readonly string[] LoanEnds=["end of loan","fin de pret","fin de prêt","leih ende","retour de pret","retour de prêt","leiheende","loan end"];
     static bool IsLoanEnd(string text)
@@ -64,10 +64,10 @@ public static class TransfermarktScraper
     }
     public static IReadOnlyList<MarketTransfer> ParseCsv(string csv)
     {
-        var rows=TableEditing.Parse(csv.TrimStart('\uFEFF'),TableEditing.Separator(csv));if(rows.Count<2)throw new InvalidDataException("CSV vide.");
-        int Column(string name){int index=Array.IndexOf(rows[0],name);return index>=0?index:throw new InvalidDataException($"Colonne manquante: {name}");}
+        var rows=TableEditing.Parse(csv.TrimStart('\uFEFF'),TableEditing.Separator(csv));if(rows.Count<2)throw new InvalidDataException(ATLink.Core.UiText.Get("CSV vide."));
+        int Column(string name){int index=Array.IndexOf(rows[0],name);return index>=0?index:throw new InvalidDataException(ATLink.Core.UiText.Format("Colonne manquante: {0}", name));}
         int sequence=Column("sequence"),player=Column("player_name"),old=Column("old_club"),dest=Column("new_club");
-        return rows.Skip(1).Select(r=>r.Length==rows[0].Length?new MarketTransfer(int.Parse(r[sequence]),r[player],r[old],r[dest],""):throw new InvalidDataException("Ligne CSV invalide.")).OrderBy(r=>r.Sequence).ToArray();
+        return rows.Skip(1).Select(r=>r.Length==rows[0].Length?new MarketTransfer(int.Parse(r[sequence]),r[player],r[old],r[dest],""):throw new InvalidDataException(ATLink.Core.UiText.Get("Ligne CSV invalide."))).OrderBy(r=>r.Sequence).ToArray();
     }
 }
 public sealed class TransferResolver

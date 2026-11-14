@@ -33,9 +33,9 @@ public static class FootballParticipants
     }
     public static void Assign(CompetitionProjectContext c,int competition,FootballParticipant participant,string? team)
     {
-        if(!participant.Named)throw new InvalidDataException("These teams qualify through their league. Their selection rule is preserved; use Expert to change it.");
-        if(team is not null&&!c.Teams.Any(t=>t.Id==team))throw new InvalidDataException("Choose a team installed in this game.");
-        if(team is not null&&team!=participant.TeamId&&Read(c,competition).Any(p=>p.TeamId==team))throw new InvalidDataException("This team already participates. Choose another team.");
+        if(!participant.Named)throw new InvalidDataException(ATLink.Core.UiText.Get("These teams qualify through their league. Their selection rule is preserved; use Expert to change it."));
+        if(team is not null&&!c.Teams.Any(t=>t.Id==team))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a team installed in this game."));
+        if(team is not null&&team!=participant.TeamId&&Read(c,competition).Any(p=>p.TeamId==team))throw new InvalidDataException(ATLink.Core.UiText.Get("This team already participates. Choose another team."));
         var scope=c.Scope(competition);
         c.Edit("tasks.txt",t=>
         {
@@ -49,7 +49,7 @@ public static class FootballParticipants
     {
         var targets=c.Objects.Where(o=>o.Id==visibleTarget&&o.Kind==5||o.ParentId==visibleTarget&&o.Kind==5).Select(o=>o.Id).ToHashSet();
         var place=Read(c,competition).FirstOrDefault(p=>p.Unassigned&&p.Enters.Any(targets.Contains));
-        if(place is null)throw new InvalidDataException("No unassigned place is available here. Existing qualifications or league selection rules are kept intact.");
+        if(place is null)throw new InvalidDataException(ATLink.Core.UiText.Get("No unassigned place is available here. Existing qualifications or league selection rules are kept intact."));
         Assign(c,competition,place,team);
     }
 }

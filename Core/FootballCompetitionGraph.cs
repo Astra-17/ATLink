@@ -33,16 +33,16 @@ public static class FootballCompetitionGraph
     public static IReadOnlyDictionary<Guid,int> Create(CompetitionProjectContext c,FootballCreationGraph graph)
     {
         if(graph.Competitions.Count==0||graph.Competitions.Select(n=>n.Key).Distinct().Count()!=graph.Competitions.Count)
-            throw new InvalidDataException("Choose distinct competition drafts.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose distinct competition drafts."));
         foreach(var node in graph.Competitions)FootballCompetitionCompiler.Validate(node.Phases);
         var ids=new Dictionary<Guid,int>();
         int Resolve(FootballCompetitionReference reference)
         {
             if(reference.Kind==FootballReferenceKind.Existing)
                 return c.Objects.SingleOrDefault(o=>o.Id==reference.ExistingId&&o.Kind==3)?.Id
-                    ??throw new InvalidDataException("A linked competition no longer exists.");
+                    ??throw new InvalidDataException(ATLink.Core.UiText.Get("A linked competition no longer exists."));
             return reference.DraftKey is Guid key&&ids.TryGetValue(key,out int id)?id:
-                throw new InvalidDataException("A linked competition draft is unavailable.");
+                throw new InvalidDataException(ATLink.Core.UiText.Get("A linked competition draft is unavailable."));
         }
         c.Execute("Create linked competitions",()=>
         {
@@ -53,7 +53,10 @@ public static class FootballCompetitionGraph
                 // A linked qualifying tournament supplies the two missing clubs later in
                 // this transaction. Do not require fictitious temporary direct entrants.
                 var initial=reserved&&node.Teams.Count==node.Phases[0].Participants-2?Array.Empty<string>():node.Teams;
-                ids.Add(node.Key,FootballCompetitionCompiler.Create(c,node.Kind,node.Region,node.Name,node.Phases,initial,node.Rules,node.Behaviour));
+                // Entry tables can be supplied/rebuilt by linked competitions below.
+                // Apply a user-defined first-group allocation only after those sources exist.
+                var phases=node.Phases.Select((p,i)=>reserved&&i==0&&p.Kind!=FootballPhaseKind.Knockout?p with{Matchups=[]}:p).ToArray();
+                ids.Add(node.Key,FootballCompetitionCompiler.Create(c,node.Kind,node.Region,node.Name,phases,initial,node.Rules,node.Behaviour));
                 FootballCompetitionNames.Apply(c,ids[node.Key],node.Names);
                 if(node.Artwork is not null)c.SetArtwork(ids[node.Key],node.Artwork);
                 if(node.RegionalRegistration)c.SetRule(ids[node.Key],"nation_id",["0"]);
@@ -84,7 +87,7 @@ public static class FootballCompetitionGraph
                         lower.HasValue?(current,lower.Value):((int,int)?)null}.Where(e=>e.HasValue).Select(e=>e!.Value))
                     {
                         if(exchanges.TryGetValue(edge,out var policy)&&policy!=relationship.Promotion)
-                            throw new InvalidDataException("Choose the same promotion rule on both sides of this relationship.");
+                            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose the same promotion rule on both sides of this relationship."));
                         exchanges[edge]=relationship.Promotion;
                     }
                 }
@@ -93,6 +96,14 @@ public static class FootballCompetitionGraph
                 FootballLinkedCompetitions.ConfigureDivisions(c,exchange.Key.Upper,exchange.Key.Lower,exchange.Value);
             foreach(var calendar in graph.Calendars)
                 FootballLinkedCompetitions.ShareGroupDates(c,Resolve(calendar.Destination),Resolve(calendar.Source),calendar.Kickoff);
+            foreach(var node in graph.Competitions.Where(n=>n.Phases[0].Kind!=FootballPhaseKind.Knockout&&n.Phases[0].Matchups.Any(m=>m.Explicit)))
+            {
+                int id=ids[node.Key];var native=FootballCompetitionAdapter.Read(c,id);
+                var phases=node.Phases.Select((p,i)=>i==0?p:p with{Matchups=[]}).ToArray();
+                var participants=graph.Playoffs.FirstOrDefault(p=>p.Destination.DraftKey==node.Key)?.DirectTeams??node.Teams;
+                int pool=FootballQualifications.EntryPools(c,id).Single();
+                FootballMatchups.Apply(c,id,phases,native.Phases.Select(p=>p.NativeGroups.ToArray()).ToArray(),native.Phases.Select(p=>p.NativeId!.Value).ToArray(),participants,pool,true);
+            }
         });
         return ids;
     }

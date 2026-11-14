@@ -37,17 +37,15 @@ public static class FootballInternationalCalendar
         var days=Read(c);var seen=new HashSet<(int,int)>();var lines=new List<string>();
         foreach(var move in moves)
         {
-            if(!seen.Add((move.ObjectId,move.Round)))throw new InvalidDataException("A matchday has two date changes.");
+            if(!seen.Add((move.ObjectId,move.Round)))throw new InvalidDataException(ATLink.Core.UiText.Get("A matchday has two date changes."));
             var day=days.SingleOrDefault(d=>d.ObjectId==move.ObjectId&&d.Round==move.Round)
-                ??throw new InvalidDataException("The international matchday no longer exists.");
-            if(!day.Rows.SequenceEqual(move.OriginalRows))throw new InvalidDataException("The international calendar changed. Reopen the calendar before applying.");
-            if(move.Date<c.ReferenceDate)throw new InvalidDataException("The date precedes this project's calendar origin.");
+                ??throw new InvalidDataException(ATLink.Core.UiText.Get("The international matchday no longer exists."));
+            if(!day.Rows.SequenceEqual(move.OriginalRows))throw new InvalidDataException(ATLink.Core.UiText.Get("The international calendar changed. Reopen the calendar before applying."));
+            if(move.Date<c.ReferenceDate)throw new InvalidDataException(ATLink.Core.UiText.Get("The date precedes this project's calendar origin."));
             var dependents=c.Objects.Where(o=>o.Kind==3&&c.EffectiveRules(o.Id).Where(r=>r.Key=="schedule_use_dates_comp")
                 .Any(r=>int.TryParse(r.Value,out int source)&&c.Objects.Any(obj=>obj.Id==source)&&c.Scope(source).Contains(day.ObjectId)))
                 .Select(o=>o.DisplayName).Distinct().ToArray();
-            lines.Add($"{day.Competition} · {day.Kind} · Matchday {day.Round}: {string.Join(" / ",day.NativeDates)} → {move.Date:dd MMM yyyy} · {day.Rows.Count} slots"+
-                (day.Source.Length>0?" · Shared date source: "+day.Source:"")+
-                (dependents.Length>0?" · Also used by: "+string.Join(", ",dependents):""));
+            lines.Add(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Format("{0} · {1} · Matchday {2}: {3} → {4:dd MMM yyyy} · {5} slots", day.Competition, day.Kind, day.Round, string.Join(" / ",day.NativeDates), move.Date, day.Rows.Count), (day.Source.Length>0?ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get(" · Shared date source: "), day.Source):""), (dependents.Length>0?ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get(" · Also used by: "), string.Join(", ",dependents)):"")));
         }
         return lines;
     }

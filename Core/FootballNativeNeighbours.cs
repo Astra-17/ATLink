@@ -51,13 +51,13 @@ public static partial class FootballLinkedCompetitions
     public static IReadOnlyList<FootballNativeLinkChange> PreviewNativeNeighbours(CompetitionProjectContext c,int competition,int? higher,int? lower)
     {
         RequireFc27(c);
-        if(!IsDomesticDivision(c,competition))throw new InvalidDataException("Choose a national league.");
+        if(!IsDomesticDivision(c,competition))throw new InvalidDataException(ATLink.Core.UiText.Get("Choose a national league."));
         var compatible=CompatibleNeighbours(c,competition);
         var currentLinks=Neighbours(c,competition);
         if(higher==competition||lower==competition||higher.HasValue&&higher==lower||
             higher.HasValue&&!compatible.Contains(higher.Value)&&higher!=currentLinks.Higher?.CompetitionId||
             lower.HasValue&&!compatible.Contains(lower.Value)&&lower!=currentLinks.Lower?.CompetitionId)
-            throw new InvalidDataException("Choose different compatible national divisions, or None.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Choose different compatible national divisions, or None."));
         var changes=new List<FootballNativeLinkChange>();
         int own=FootballSeason.DatabaseId(c,competition);
         void Change(int owner,string key,int? db)
@@ -65,8 +65,8 @@ public static partial class FootballLinkedCompetitions
             string? old=c.EffectiveRules(owner).FirstOrDefault(r=>r.Key==key).Value;
             int? oldId=int.TryParse(old,out int n)&&n>0?n:null;
             if(oldId==db)return;
-            changes.Add(new(owner,key,db,c.ObjectName(owner)+" · "+(key=="info_league_promo"?"Higher division":"Lower division")+" → "+(db.HasValue?
-                c.Objects.FirstOrDefault(o=>o.Kind==3&&o.Code=="C"+db)?.DisplayName??"Unresolved destination":"None")));
+            changes.Add(new(owner,key,db,c.ObjectName(owner)+" · "+(key=="info_league_promo"?ATLink.Core.UiText.Get("Higher division"):ATLink.Core.UiText.Get("Lower division"))+" → "+(db.HasValue?
+                c.Objects.FirstOrDefault(o=>o.Kind==3&&o.Code=="C"+db)?.DisplayName??ATLink.Core.UiText.Get("Unresolved destination"):ATLink.Core.UiText.Get("None"))));
         }
         void Link(string key,string reverse,int? target)
         {
@@ -83,7 +83,7 @@ public static partial class FootballLinkedCompetitions
             {
                 var existing=c.EffectiveRules(next).FirstOrDefault(r=>r.Key==reverse).Value;
                 if(int.TryParse(existing,out int occupied)&&occupied>0&&occupied!=own)
-                    throw new InvalidDataException(c.ObjectName(next)+" already has another "+(reverse=="info_league_promo"?"higher":"lower")+" division. Review that relationship first.");
+                    throw new InvalidDataException(ATLink.Core.UiText.Concat(c.ObjectName(next), ATLink.Core.UiText.Get(" already has another "), (reverse=="info_league_promo"?"higher":"lower"), ATLink.Core.UiText.Get(" division. Review that relationship first.")));
                 Change(next,reverse,own);
             }
             if(!same)Change(competition,key,nextDb);
@@ -95,7 +95,7 @@ public static partial class FootballLinkedCompetitions
             var seen=new HashSet<int>();int? cursor=competition;
             while(cursor is int id&&IsDomesticDivision(c,id))
             {
-                if(!seen.Add(id))throw new InvalidDataException("These division links would create a cycle.");
+                if(!seen.Add(id))throw new InvalidDataException(ATLink.Core.UiText.Get("These division links would create a cycle."));
                 var changed=changes.FirstOrDefault(change=>change.Competition==id&&change.Key==key);
                 int? database=changed is not null?changed.Destination:
                     int.TryParse(c.EffectiveRules(id).FirstOrDefault(r=>r.Key==key).Value,out int target)&&target>0?target:null;

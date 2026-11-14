@@ -47,7 +47,7 @@ public sealed partial class CompetitionProjectContext
     public void SetTranslation(string code, string key, string text)
     {
         key = key.Trim();
-        if (key.Length == 0) throw new InvalidDataException("Enter a localization key.");
+        if (key.Length == 0) throw new InvalidDataException(ATLink.Core.UiText.Get("Enter a localization key."));
         var (document, _) = TranslationSource(code);
         var edit = new CompetitionTranslation(code, key, text);
         ApplyTranslation(document, edit, validateOnly: true);
@@ -58,8 +58,10 @@ public sealed partial class CompetitionProjectContext
     (DatabaseDocument Document, string Metadata) TranslationSource(string code)
     {
         if (code == PrimaryLanguage && Localization is not null) return (Localization, LocMetadata);
+        if(displayLanguages.TryGetValue(code,out var cached))
+            return (cached,Languages.Single(l=>l.Code==code).MetadataPath);
         var language = Languages.SingleOrDefault(l => l.Code == code)
-            ?? throw new InvalidDataException("Localization is unavailable: " + code);
+            ?? throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Localization is unavailable: "), code));
         return (DatabaseDocument.Open(language.DatabasePath, language.MetadataPath), language.MetadataPath);
     }
 
@@ -76,14 +78,14 @@ public sealed partial class CompetitionProjectContext
             if (row is null) continue;
             string key = (string)row["stringid"];
             if (key.Length > 0 && edit.Key != hash && !key.Equals(edit.Key, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Localization key collision: " + edit.Key);
+                throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Localization key collision: "), edit.Key));
             DatabaseDocument.ValidateValue(table.Fields.Single(f => f.Name == "sourcetext"), edit.Text);
             if (!validateOnly && (string)row["sourcetext"] != edit.Text) row["sourcetext"] = edit.Text;
             return;
         }
-        if (int.TryParse(edit.Key, out _)) throw new InvalidDataException("Unknown localization hash: " + edit.Key);
+        if (int.TryParse(edit.Key, out _)) throw new InvalidDataException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Unknown localization hash: "), edit.Key));
         var destination = tables.FirstOrDefault(t => t.RowCount < ushort.MaxValue)
-            ?? throw new InvalidDataException("No space for a new localization key.");
+            ?? throw new InvalidDataException(ATLink.Core.UiText.Get("No space for a new localization key."));
         var values = destination.Fields.Select(f => f.Name switch
         {
             "hashid" => hash, "stringid" => edit.Key, "sourcetext" => edit.Text, _ => ""
@@ -101,7 +103,7 @@ public sealed partial class CompetitionProjectContext
         foreach (string code in codes.Distinct())
         {
             var (source, metadata) = TranslationSource(code);
-            var document = code == PrimaryLanguage ? Clone(source, metadata) : source;
+            var document = Clone(source, metadata);
             if (code == PrimaryLanguage) ApplyInserts(document, inserts);
             foreach (var edit in translations.Where(t => t.Language == code)) ApplyTranslation(document, edit);
             yield return (Path.GetFileName(source.SourcePath), metadata, document.Serialize());

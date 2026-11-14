@@ -54,8 +54,8 @@ public partial class PlayerTransferWindow : Window
     {
         CurrentClubPanel.Visibility=Visibility.Visible;
         CurrentClubCrest.Source=sourceClub is null?null:EntityImages.Crest(sourceClub);
-        CurrentClubName.Text=choices.FirstOrDefault(c=>c.Id==sourceClub)?.Name??"No unique club in the loaded database";
-        DestinationLabel.Text="New club";
+        CurrentClubName.Text=choices.FirstOrDefault(c=>c.Id==sourceClub)?.Name??ATLink.Core.UiText.Get("No unique club in the loaded database");
+        DestinationLabel.Text=ATLink.Core.UiText.Get("New club");
         Clubs.SelectedItem=null;Clubs.Text="";
         SetMode(loan);
         LoanToBuy.IsChecked=loanToBuy;
@@ -68,7 +68,7 @@ public partial class PlayerTransferWindow : Window
         isLoan=loan;TransferMode.IsChecked=!loan;LoanMode.IsChecked=loan;
         ContractPanel.Visibility=loan?Visibility.Collapsed:Visibility.Visible;
         LoanPanel.Visibility=loan?Visibility.Visible:Visibility.Collapsed;
-        Heading.Text=loan?"Loan player":"Transfer player";
+        Heading.Text=loan?ATLink.Core.UiText.Get("Loan player"):ATLink.Core.UiText.Get("Transfer player");
     }
     void ClubTextChanged(object sender,TextChangedEventArgs e)
     {
@@ -150,16 +150,16 @@ public partial class PlayerTransferWindow : Window
     }
     void ConfirmClick(object sender,RoutedEventArgs e)
     {
-        if(sourceClub is null){ErrorText.Text="This player must have exactly one club link to transfer.";return;}
-        if(ChosenClub is not ClubChoice club){ErrorText.Text="Choose a destination club.";return;}
-        if(club.Id==sourceClub){ErrorText.Text="Choose a club different from the current club.";return;}
+        if(sourceClub is null){ErrorText.Text=ATLink.Core.UiText.Get("This player must have exactly one club link to transfer.");return;}
+        if(ChosenClub is not ClubChoice club){ErrorText.Text=ATLink.Core.UiText.Get("Choose a destination club.");return;}
+        if(club.Id==sourceClub){ErrorText.Text=ATLink.Core.UiText.Get("Choose a club different from the current club.");return;}
         string? jersey=string.IsNullOrWhiteSpace(JerseyNumber.Text)?null:JerseyNumber.Text.Trim();
         try
         {
             if(isLoan)
             {
                 if(!DateOnly.TryParseExact(LoanEndDate.Text,"dd/MM/yyyy",CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out var end))
-                {ErrorText.Text="Choose a valid loan end date.";return;}
+                {ErrorText.Text=ATLink.Core.UiText.Get("Choose a valid loan end date.");return;}
                 PlayerTransfer.ApplyLoan(catalog,player.Id,club.Id,end,LoanToBuy.IsChecked==true,jersey);
             }
             else
@@ -167,11 +167,11 @@ public partial class PlayerTransferWindow : Window
                 string year=ContractYear.Text.Trim();
                 var field=catalog.Table("players").Fields.Single(f=>f.Name=="contractvaliduntil");
                 if(!int.TryParse(year,out int numeric)||numeric<Math.Max(1900,field.Minimum)||numeric>Math.Min(9999,field.Maximum))
-                {ErrorText.Text="Enter a valid contract expiry year.";return;}
+                {ErrorText.Text=ATLink.Core.UiText.Get("Enter a valid contract expiry year.");return;}
                 PlayerTransfer.Apply(catalog,player.Id,club.Id,year,jersey);
             }
             DestinationId=club.Id;DialogResult=true;
         }
-        catch(Exception){ErrorText.Text="The transfer could not be applied. Check the player and club links, then try again.";}
+        catch(Exception){ErrorText.Text=ATLink.Core.UiText.Get("The transfer could not be applied. Check the player and club links, then try again.");}
     }
 }

@@ -30,13 +30,13 @@ public sealed class EnrichedPlayers
             file=Path.Combine(RuntimeData.Root,"players_enrich.json");
         if(!File.Exists(file))
             file=Path.Combine(Directory.GetCurrentDirectory(),"files","players_enrich.json");
-        if(!File.Exists(file))throw new FileNotFoundException("players_enrich.json is required to match Transfermarkt names.");
+        if(!File.Exists(file))throw new FileNotFoundException(ATLink.Core.UiText.Get("players_enrich.json is required to match Transfermarkt names."));
         var stamp=new FileInfo(file);
         if(cached is not null&&cachedPath==file&&cachedLength==stamp.Length&&cachedWrite==stamp.LastWriteTimeUtc)return cached;
         using var stream=File.OpenRead(file);
         using var document=JsonDocument.Parse(stream);
         if(!document.RootElement.TryGetProperty("players",out var array)||array.ValueKind!=JsonValueKind.Array)
-            throw new InvalidDataException("players_enrich.json has no players array.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("players_enrich.json has no players array."));
         var players=new List<EnrichedPlayerInfo>();
         foreach(var player in array.EnumerateArray())
         {

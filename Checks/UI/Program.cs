@@ -14,6 +14,11 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--interface-language")){InterfaceLanguageUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--interface-language")??"."));return;}
+        if(args.Contains("--advancement")){AdvancementUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--advancement")??"."));return;}
+        if(args.Contains("--player-appearance")){PlayerAppearanceUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-appearance")??"."));return;}
+        if(args.Contains("--player-info")){PlayerInfoUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-info")??"."));return;}
+        if(args.Contains("--creation-journey")){CreationJourneyUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--creation-journey")??"."));return;}
         if(args.Contains("--window-chrome")){WindowChromeUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--window-chrome")??"."));return;}
         if(args.Contains("--competition-logos")){CompetitionLogosUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--competition-logos")??"."));return;}
         if(args.Contains("--project-actions")){ProjectActionsUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--project-actions")??"."));return;}

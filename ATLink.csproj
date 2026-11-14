@@ -15,7 +15,7 @@
   <ItemGroup><Compile Remove="Core/**/*.cs;Checks/**/*.cs;artifacts/**/*.cs"/><ProjectReference Include="Core/ATLink.Core.csproj"/></ItemGroup>
   <ItemGroup><PackageReference Include="BCnEncoder.Net" Version="2.3.0" /></ItemGroup>
   <ItemGroup><Page Remove="artifacts/**/*.xaml"/></ItemGroup>
-  <ItemGroup><Resource Include="Resource/ATLink.ico" /><Resource Include="Resource/ATLink.png" /></ItemGroup>
+  <ItemGroup><Resource Include="Resource/ATLink.ico" /><Resource Include="Resource/ATLink.png" /><Resource Include="Resource/*.png" Exclude="Resource/ATLink.png" /></ItemGroup>
 <ItemGroup>
   <Content Include="docs/fifarating-LICENSE.txt" Link="fifarating-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   <Content Include="docs/UTILISATION.md" Link="UTILISATION.md" CopyToOutputDirectory="PreserveNewest" />

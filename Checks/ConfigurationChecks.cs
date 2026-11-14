@@ -7,8 +7,9 @@ static class ConfigurationChecks
     {
         string folder=Path.Combine(root,"Checks/output/configuration-"+Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
-        try{RunChecks(root,folder);}
-        finally{Directory.Delete(folder,true);}
+        var previous=System.Globalization.CultureInfo.CurrentUICulture;
+        try{System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo("fr-FR");RunChecks(root,folder);}
+        finally{System.Globalization.CultureInfo.CurrentUICulture=previous;Directory.Delete(folder,true);}
     }
 
     static void RunChecks(string root,string folder)
@@ -20,19 +21,19 @@ static class ConfigurationChecks
         var store=new ApplicationConfigurationStore(path,data);
         Check(!File.Exists(path),"Legacy migration is read-only");
         Check(store.Game("FC27").DatabaseLanguage=="fre_fr"&&store.Game("FC27").ExportAuthor=="Astra","Legacy DB language and author preserved");
-        var config=store.Current.WithGame("FC27",store.Game("FC27") with {Configured=true}) with {PreferredLanguage="jpn_jp"};
+        var config=store.Current.WithGame("FC27",store.Game("FC27") with {Configured=true}) with {InterfaceLanguage="fr"};
         store.Validate("FC27",config);store.Save(config);
         var reopened=new ApplicationConfigurationStore(path,data);
-        Check(reopened.Current.LastSelectedGame=="FC27"&&reopened.Current.PreferredLanguage=="jpn_jp","Game and future language persist");
-        Check(reopened.Game("FC27").DatabaseLanguage=="fre_fr"&&reopened.CreateData("FC27").SuggestedLanguage().Code=="fre_fr","Future language leaves active DB language unchanged");
+        Check(reopened.Current.LastSelectedGame=="FC27"&&reopened.Current.InterfaceLanguage=="fr","Game and interface language persist");
+        Check(reopened.Game("FC27").DatabaseLanguage=="fre_fr"&&reopened.CreateData("FC27").SuggestedLanguage().Code=="fre_fr","Interface language selects the corresponding game LOC");
         Check(reopened.AvailableLanguages.Count==21,"All integrated languages are offered");
         string json=File.ReadAllText(path);
         Check(!json.Contains("Path")&&!json.Contains("Folder")&&!json.Contains("CommonDataRoot")&&json.Contains("PreferredLanguage"),"Saved preferences contain no resource paths");
         Check(reopened.FindProblem("FC27",purpose:DataPurpose.FifaMod) is null,"Integrated FC27 cache and limits validate");
         Check(reopened.FindProblem("FC26") is null&&reopened.FindProblem("FC26",purpose:DataPurpose.Competition) is not null,"Missing FC26 Compdata only blocks competition functions");
         byte[] saved=File.ReadAllBytes(path);
-        try{reopened.Save(config with {PreferredLanguage="eng_us"},()=>throw new IOException("Injected failure"));throw new Exception("Failure expected");}catch(IOException){}
-        Check(saved.SequenceEqual(File.ReadAllBytes(path))&&reopened.Current.PreferredLanguage=="jpn_jp","Atomic failure preserves disk and memory preferences");
+        try{reopened.Save(config with {InterfaceLanguage="en"},()=>throw new IOException("Injected failure"));throw new Exception("Failure expected");}catch(IOException){}
+        Check(saved.SequenceEqual(File.ReadAllBytes(path))&&reopened.Current.InterfaceLanguage=="fr","Atomic failure preserves disk and memory preferences");
         Check(!Directory.EnumerateFiles(folder,"*.tmp").Any(),"Failed save removes temporary file");
         File.WriteAllText(path,JsonSerializer.Serialize(new {SchemaVersion=1,LastSelectedGame="FC27",CommonDataRoot="Z:/old-app",Games=new Dictionary<string,object>{["FC27"]=new {Configured=true,DatabasePath="Z:/custom.db",MetadataPath="Z:/custom.xml",CompdataFolder="Z:/custom",LanguageFolders=new[]{"Z:/loc"},DatabaseLanguage="fre_fr",FifaModCachePath="Z:/cache",LimitsPath="Z:/limits",ExportAuthor="Existing author"}}}));
         var migrated=new ApplicationConfigurationStore(path,data);

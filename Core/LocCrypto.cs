@@ -29,19 +29,19 @@ public static class LocCrypto
     {
         if (data.Length >= 8 && data.AsSpan(0, 8).SequenceEqual(Header)) return (byte[])data.Clone();
         if (data.Length < 32 || data.Length % 16 != 0)
-            throw new InvalidDataException("Fichier LOC chiffré invalide.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Fichier LOC chiffré invalide."));
         byte[] plain = Transform(data, PaddingMode.PKCS7, encrypt: false);
         if (plain.Length < 28 || !plain.AsSpan(0, 8).SequenceEqual(Header))
-            throw new InvalidDataException("Échec du déchiffrement LOC.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("Échec du déchiffrement LOC."));
         int size = BinaryPrimitives.ReadInt32LittleEndian(plain.AsSpan(8, 4));
-        if (size != plain.Length) throw new InvalidDataException("Taille LOC déchiffrée incohérente.");
+        if (size != plain.Length) throw new InvalidDataException(ATLink.Core.UiText.Get("Taille LOC déchiffrée incohérente."));
         return plain;
     }
 
     public static byte[] Encrypt(byte[] plain)
     {
         if (plain.Length < 28 || !plain.AsSpan(0, 8).SequenceEqual(Header))
-            throw new InvalidDataException("DB LOC brute attendue pour le chiffrement.");
+            throw new InvalidDataException(ATLink.Core.UiText.Get("DB LOC brute attendue pour le chiffrement."));
         return Transform(plain, PaddingMode.PKCS7, encrypt: true);
     }
 

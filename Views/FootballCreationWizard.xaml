@@ -1,4 +1,4 @@
-<UserControl x:Class="ATLink.Views.FootballCreationWizard" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
+<UserControl xmlns:loc="clr-namespace:ATLink.Services" x:Class="ATLink.Views.FootballCreationWizard" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
   <UserControl.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -13,86 +13,78 @@
     </ResourceDictionary>
   </UserControl.Resources>
   <DockPanel Margin="22">
-    <TextBlock DockPanel.Dock="Top" Text="Add a competition" FontSize="28" FontWeight="Bold" Margin="0,0,0,18" />
+    <TextBlock DockPanel.Dock="Top" Text="{loc:Text T147f6b8628074a}" FontSize="28" FontWeight="Bold" Margin="0,0,0,18" />
     <StackPanel DockPanel.Dock="Bottom">
       <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Margin="0,12" />
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button Content="Cancel" Click="Cancel" Margin="4" />
-          <Button x:Name="PreviousButton" Content="Previous" Click="Previous" Margin="4" />
-          <Button x:Name="NextButton" Content="Next" Click="Next" Margin="4" />
-          <Button x:Name="CreateButton" Content="Create competition" Click="Create" Margin="4" Background="{DynamicResource AccentBrush}" />
+          <Button Content="{loc:Text T19766ed6ccb2f4}" Click="Cancel" Margin="4" />
+          <Button x:Name="PreviousButton" Content="{loc:Text Ta57b08a480b822}" Click="Previous" Margin="4" />
+          <Button x:Name="NextButton" Content="{loc:Text T1ff57a29d7c9d1}" Click="Next" Margin="4" />
+          <Button x:Name="CreateButton" Content="{loc:Text T3b7c980bbc7e8f}" Click="Create" Margin="4" Background="{DynamicResource AccentBrush}" />
         </StackPanel>
         <TextBlock x:Name="StepLabel" VerticalAlignment="Center" />
       </DockPanel>
     </StackPanel>
-    <TabControl x:Name="Steps" SelectionChanged="StepChanged">
-      <TabItem Header="1 · Format">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="18">
-            <TextBlock Text="What would you like to organize?" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
-            <ComboBox ItemsSource="{Binding Types}" SelectedItem="{Binding Type}" DisplayMemberPath="Name" />
-            <TextBlock Text="{Binding Type.Description}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8" />
-            <TextBlock Text="Changing the competition type resets its proposed rounds. Dates, venues and rewards are configured in the following steps." Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,18" />
-            <TextBlock Text="Competition name" Margin="0,0,0,6" />
-            <TextBox Text="{Binding Name,UpdateSourceTrigger=PropertyChanged}" /><local:FootballCompetitionNamesEditor DataContext="{Binding Names}"/><CheckBox Content="Regional cup registration" IsChecked="{Binding RegionalRegistration}" ToolTip="Use the regional cup registration found in the Community League blueprint. This does not change club memberships." Margin="0,8"/><CheckBox Content="Include reaching the group stage in club objectives" IsChecked="{Binding GroupStageObjective}" Margin="0,8"/>
-            <TextBlock Text="Country or region" Margin="0,14,0,6" />
+    <TabControl x:Name="Steps" SelectionChanged="StepChanged"><TabControl.Template><ControlTemplate TargetType="TabControl"><DockPanel><ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"><TabPanel IsItemsHost="True"/></ScrollViewer><ContentPresenter ContentSource="SelectedContent" Margin="0,8,0,0"/></DockPanel></ControlTemplate></TabControl.Template>
+<TabItem Header="{loc:Text T32d39ea8fb8c35}"><ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Types}" HorizontalAlignment="Center" VerticalAlignment="Center"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Button Width="180" Height="180" Margin="8" Click="ChooseFormat" Background="#FF171425" BorderBrush="#FF35284F" Foreground="#FFC3B5E3"><Button.Template><ControlTemplate TargetType="Button"><Border x:Name="Card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2" CornerRadius="16"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Card" Property="BorderBrush" Value="#FFC3B5E3"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Card" Property="BorderThickness" Value="4"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Button.Template><StackPanel><Viewbox Width="48" Height="48" Margin="0,0,0,18"><Path Data="{Binding Icon}" Stroke="#FFC3B5E3" StrokeThickness="2" StrokeLineJoin="Round"/></Viewbox><TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" FontSize="17" MaxWidth="156"/><TextBlock Text="{loc:Text T57fd7a0cf33f26}" Visibility="{Binding Selected,Converter={StaticResource Visible}}" HorizontalAlignment="Center"/></StackPanel></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer></TabItem>
+<TabItem Header="{loc:Text T1417bc5d935980}"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="18">            <TextBlock Text="{loc:Text Tf01e63d854881c}" Margin="0,0,0,6" />
+            <TextBox Text="{Binding Name,UpdateSourceTrigger=PropertyChanged}" /><local:FootballCompetitionNamesEditor DataContext="{Binding Names}"/><CheckBox Content="{loc:Text T3d7eabe17842a6}" IsChecked="{Binding RegionalRegistration}" ToolTip="{loc:Text T8c135cfae22b8b}" Margin="0,8"/><CheckBox Content="{loc:Text Tf9d3ec9e0d90b8}" IsChecked="{Binding GroupStageObjective}" Margin="0,8"/>
+            <TextBlock Text="{loc:Text T45cf4974de872c}" Margin="0,14,0,6" />
             <ComboBox ItemsSource="{Binding Regions}" SelectedItem="{Binding Region}" DisplayMemberPath="Name" />
-            <TextBlock Text="Only regions currently supported for this format are listed." Foreground="{DynamicResource MutedBrush}" Margin="0,6" TextWrapping="Wrap" />
-            <TextBlock Text="Choose the rounds teams will actually play. Preparation is handled automatically." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,14" />
-            <local:FootballFormatEditor CreationFlow="True" DataContext="{Binding Format}" />
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-      <TabItem Header="2 · Teams">
+            <TextBlock Text="{loc:Text T3565dd3cd938c6}" Foreground="{DynamicResource MutedBrush}" Margin="0,6" TextWrapping="Wrap" />
+<local:CompetitionArtworkEditor DataContext="{Binding Format.Artwork}"/></StackPanel></ScrollViewer></TabItem>
+<TabItem Header="{loc:Text T2b95b048fd0809}"><ScrollViewer VerticalScrollBarVisibility="Auto"><local:FootballFormatEditor Margin="18" CreationFlow="True" ShowArtwork="False" AllowAddPhase="{Binding DataContext.IsCustom,RelativeSource={RelativeSource AncestorType=local:FootballCreationWizard}}" DataContext="{Binding Format}"/></ScrollViewer></TabItem>
+<TabItem x:Name="CreationLinksTab" Header="{loc:Text T43f412a7b24ec9}"><local:FootballCreationLinksEditor Margin="16" DataContext="{Binding Links}"/></TabItem>
+      <TabItem Header="{loc:Text Ta5f57d13d4cb6a}">
         <TabControl x:Name="TeamsAndRulesTabs" Margin="16" SelectionChanged="TeamsSectionChanged">
-          <TabItem Header="Teams">
+          <TabItem Header="{loc:Text T1e1a1c078af288}">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition />
                 <ColumnDefinition />
               </Grid.ColumnDefinitions>
               <DockPanel Margin="0,0,12,0">
-                <TextBox DockPanel.Dock="Top" Text="{Binding Search,UpdateSourceTrigger=PropertyChanged}" ToolTip="Search club names" />
-                <Button DockPanel.Dock="Bottom" Content="Add team →" Click="AddTeam" Margin="0,10" />
+                <TextBox DockPanel.Dock="Top" Text="{Binding Search,UpdateSourceTrigger=PropertyChanged}" ToolTip="{loc:Text T633016ce278e74}" />
+                <Button DockPanel.Dock="Bottom" Content="{loc:Text T6beb398a414e75}" Click="AddTeam" Margin="0,10" />
                 <ListBox x:Name="AvailableTeamsList" ItemsSource="{Binding Teams}" SelectionMode="Multiple" SelectionChanged="AvailableTeamsChanged" VirtualizingPanel.IsVirtualizing="True" ItemTemplate="{StaticResource CompetitionTeamTemplate}" />
               </DockPanel>
               <DockPanel Grid.Column="1">
                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                   <DockPanel>
                     <TextBlock x:Name="SelectedTeamCounter" DockPanel.Dock="Right" Text="{Binding ParticipantCounter}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" TextAlignment="Right" Margin="12,0,0,0" />
-                    <TextBlock Text="Selected teams" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{loc:Text T278deff355e958}" FontWeight="SemiBold" VerticalAlignment="Center" />
                   </DockPanel>
-                  <TextBlock Text="Leave this list empty to configure qualification sources." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,6,0,0" />
+                  <TextBlock Text="{loc:Text T02dd68206174fe}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,6,0,0" />
                 </StackPanel>
-                <Button DockPanel.Dock="Bottom" Content="Remove team" Click="RemoveTeam" Margin="0,10" />
+                <Button DockPanel.Dock="Bottom" Content="{loc:Text T97139514245b46}" Click="RemoveTeam" Margin="0,10" />
                 <ListBox ItemsSource="{Binding Participants}" SelectedItem="{Binding SelectedParticipant}" ItemTemplate="{StaticResource CompetitionTeamTemplate}" VirtualizingPanel.IsVirtualizing="True" />
               </DockPanel>
             </Grid>
           </TabItem>
-          <TabItem x:Name="MatchupsTab" Header="Matchups" Visibility="{Binding HasMatchups,Converter={StaticResource Visible}}"><local:FootballMatchupsEditor DataContext="{Binding Matchups}"/></TabItem><TabItem x:Name="CreationLinksTab" Header="Linked competitions"><local:FootballCreationLinksEditor DataContext="{Binding Links}"/></TabItem><TabItem Header="Season behaviour">
+          <TabItem x:Name="MatchupsTab" Header="{loc:Text Te69f339085ff10}" Visibility="{Binding HasMatchups,Converter={StaticResource Visible}}"><local:FootballMatchupsEditor DataContext="{Binding Matchups}"/></TabItem><TabItem Header="{loc:Text Tcd0ae2a56dd6da}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <local:FootballSeasonEditor ShowCalendar="False" x:Name="SeasonEditor" DataContext="{Binding Season}" />
             </ScrollViewer>
           </TabItem>
         </TabControl>
       </TabItem>
-      <TabItem Header="3 · Schedule &amp; venues">
+      <TabItem Header="{loc:Text T18ab7d32de2d77}">
         <TabControl x:Name="ScheduleTabs" Margin="16">
-          <TabItem Header="Dates &amp; matches">
+          <TabItem Header="{loc:Text T290daf8648df60}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <local:CreationCalendarEditor DataContext="{Binding Calendar}" />
             </ScrollViewer>
           </TabItem>
-          <TabItem Header="Venues">
+<TabItem Header="{loc:Text T9a1fe74e5bc101}"><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl Margin="16" ItemsSource="{Binding Format.Phases}"><ItemsControl.ItemTemplate><DataTemplate><local:FootballPhaseEssentials ShowPrize="False" ShowVenues="False" ShowDiscipline="False" ShowDrawDates="True" ShowIntroduction="False"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer></TabItem>          <TabItem Header="{loc:Text Tdb98af75c9353f}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="16">
-                <TextBlock Text="Where will the matches be played?" FontSize="24" FontWeight="Bold" />
-                <TextBlock Text="Use the usual home grounds or choose a stadium for a whole round, such as the final. Per-match stadium assignments remain unavailable until their native mapping is verified." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
+                <TextBlock Text="{loc:Text T5d7b4d420cf93f}" FontSize="24" FontWeight="Bold" />
+                <TextBlock Text="{loc:Text T0e9158364019e6}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
                 <ItemsControl ItemsSource="{Binding Format.Phases}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <local:FootballPhaseEssentials ShowPrize="False" ShowDiscipline="False" ShowIntroduction="False" />
+                      <local:FootballPhaseEssentials ShowPrize="False" ShowDrawDates="False" ShowDiscipline="False" ShowIntroduction="False" />
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -101,29 +93,29 @@
           </TabItem>
         </TabControl>
       </TabItem>
-      <TabItem Header="4 · Rules &amp; rewards">
+<TabItem Header="{loc:Text T7cc2c18a8e52dc}"><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl Margin="16" ItemsSource="{Binding Format.Phases}"><ItemsControl.ItemTemplate><DataTemplate><local:FootballPhaseEssentials ShowPrize="True" ShowVenues="False" ShowDiscipline="False" ShowDrawDates="False" ShowIntroduction="False"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer></TabItem>      <TabItem Header="{loc:Text T4dec4e1914c533}">
         <TabControl x:Name="RulesTabs" SelectionChanged="RulesSectionChanged" Margin="16">
-          <TabItem Header="Competition defaults">
+          <TabItem Header="{loc:Text T2787d9cddd03c4}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="16">
-                <TextBlock Text="Rules shared by every phase" FontSize="24" FontWeight="Bold" />
-                <TextBlock Text="Set the common rules here. Customize an individual phase in Phase rules &amp; rewards." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
+                <TextBlock Text="{loc:Text Tbeab4c7f45f01c}" FontSize="24" FontWeight="Bold" />
+                <TextBlock Text="{loc:Text T8be30276a2436f}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
                 <local:FootballRulesPanel DataContext="{Binding GeneralRules}" />
               </StackPanel>
             </ScrollViewer>
           </TabItem>
-          <TabItem Header="Phase rules &amp; rewards">
+          <TabItem Header="{loc:Text T8c5b1ceb1cecc9}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="16">
-                <TextBlock Text="Rewards and rules for each phase" FontSize="24" FontWeight="Bold" />
-                <TextBlock Text="Each round has its own prize. Match rules inherit the competition defaults until you customize them." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
+                <TextBlock Text="{loc:Text Tbc7a43578370a0}" FontSize="24" FontWeight="Bold" />
+                <TextBlock Text="{loc:Text Tbf103c1c471b7c}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,18" />
                 <ItemsControl ItemsSource="{Binding Format.Phases}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <Expander Header="{Binding Name}" IsExpanded="True" Margin="0,0,0,18">
                         <StackPanel Margin="8,12">
-                          <local:FootballPhaseEssentials ShowVenues="False" ShowIntroduction="False" />
-                          <Expander Header="Match rules for this phase" Margin="0,12">
+                          <local:FootballPhaseEssentials ShowPrize="False" ShowDrawDates="False" ShowVenues="False" ShowIntroduction="False" />
+                          <Expander Header="{loc:Text T3aeb81eb1faa44}" Margin="0,12">
                             <local:FootballRulesPanel DataContext="{Binding Rules}" />
                           </Expander>
                         </StackPanel>
@@ -136,12 +128,12 @@
           </TabItem>
         </TabControl>
       </TabItem>
-      <TabItem Header="5 · Review">
+      <TabItem Header="{loc:Text Tf8c75685b15a90}"><local:FootballAdvancementEditor DataContext="{Binding Advancement}"/></TabItem><TabItem Header="{loc:Text T850664322f7b70}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="20">
-            <TextBlock Text="Ready to create?" FontSize="24" FontWeight="Bold" />
+            <TextBlock Text="{loc:Text T58fd86c33c59b7}" FontSize="24" FontWeight="Bold" />
 
-            <Button Content="Refresh preview" Click="Preview" HorizontalAlignment="Left" Margin="0,14" />
+            <Button Content="{loc:Text T5b529abadacc1d}" Click="Preview" HorizontalAlignment="Left" Margin="0,14" />
             <TextBlock Text="{Binding Review}" TextWrapping="Wrap" FontSize="15" LineHeight="23" />
           </StackPanel>
         </ScrollViewer>

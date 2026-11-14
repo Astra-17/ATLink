@@ -32,17 +32,17 @@ public static class TournamentBuilder
     public static CompetitionClone Preview(CompdataProject project,TournamentDraft draft)
     {
         var objects=Objects(project);
-        if(!objects.Any(o=>o.Id==draft.ParentId&&o.Kind is >=0 and <=2))throw new InvalidDataException("Choisir un pays, une confédération ou le monde existant.");
-        if(!Regex.IsMatch(draft.Code,@"^[A-Za-z]\d+$")||objects.Any(o=>o.Kind==3&&o.Code.Equals(draft.Code,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Code de compétition unique requis (C123).");
-        if(string.IsNullOrWhiteSpace(draft.Name)||draft.Name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException("Nom non vide, sans virgule ni retour à la ligne requis.");
-        if(draft.Groups is <1 or >64||draft.TeamsPerGroup is <2 or >128)throw new InvalidDataException("1–64 groupes et 2–128 équipes par groupe requis.");
-        if(draft.Format==TournamentFormat.Cup&&(draft.Groups!=1||(draft.TeamsPerGroup&(draft.TeamsPerGroup-1))!=0))throw new InvalidDataException("Une coupe nécessite un groupe et 2, 4, 8, 16, 32, 64 ou 128 équipes.");
+        if(!objects.Any(o=>o.Id==draft.ParentId&&o.Kind is >=0 and <=2))throw new InvalidDataException(ATLink.Core.UiText.Get("Choisir un pays, une confédération ou le monde existant."));
+        if(!Regex.IsMatch(draft.Code,@"^[A-Za-z]\d+$")||objects.Any(o=>o.Kind==3&&o.Code.Equals(draft.Code,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException(ATLink.Core.UiText.Get("Code de compétition unique requis (C123)."));
+        if(string.IsNullOrWhiteSpace(draft.Name)||draft.Name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Nom non vide, sans virgule ni retour à la ligne requis."));
+        if(draft.Groups is <1 or >64||draft.TeamsPerGroup is <2 or >128)throw new InvalidDataException(ATLink.Core.UiText.Get("1–64 groupes et 2–128 équipes par groupe requis."));
+        if(draft.Format==TournamentFormat.Cup&&(draft.Groups!=1||(draft.TeamsPerGroup&(draft.TeamsPerGroup-1))!=0))throw new InvalidDataException(ATLink.Core.UiText.Get("Une coupe nécessite un groupe et 2, 4, 8, 16, 32, 64 ou 128 équipes."));
         int total=draft.Format==TournamentFormat.Empty?0:draft.Groups*draft.TeamsPerGroup;
-        if(draft.Teams.Count!=0&&draft.Teams.Count!=total)throw new InvalidDataException($"Fournir exactement {total} identifiants d'équipes ou laisser la liste vide.");
-        if(draft.Teams.Distinct().Count()!=draft.Teams.Count||draft.Teams.Any(t=>!int.TryParse(t,out int id)||id<=0))throw new InvalidDataException("Les équipes doivent avoir des identifiants positifs et distincts.");
-        if(draft.IntervalDays is <1 or >365||draft.FirstMatch<draft.SeasonStart)throw new InvalidDataException("Date du premier match et intervalle invalides.");
+        if(draft.Teams.Count!=0&&draft.Teams.Count!=total)throw new InvalidDataException(ATLink.Core.UiText.Format("Fournir exactement {0} identifiants d'équipes ou laisser la liste vide.", total));
+        if(draft.Teams.Distinct().Count()!=draft.Teams.Count||draft.Teams.Any(t=>!int.TryParse(t,out int id)||id<=0))throw new InvalidDataException(ATLink.Core.UiText.Get("Les équipes doivent avoir des identifiants positifs et distincts."));
+        if(draft.IntervalDays is <1 or >365||draft.FirstMatch<draft.SeasonStart)throw new InvalidDataException(ATLink.Core.UiText.Get("Date du premier match et intervalle invalides."));
         string time=Time(draft.Kickoff);
-        if(draft.Bench is <0 or >30||draft.Substitutions<0||draft.Substitutions>draft.Bench||draft.WinPoints<0||draft.DrawPoints<0||draft.LossPoints<0)throw new InvalidDataException("Règles de points/remplacements invalides.");
+        if(draft.Bench is <0 or >30||draft.Substitutions<0||draft.Substitutions>draft.Bench||draft.WinPoints<0||draft.DrawPoints<0||draft.LossPoints<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Règles de points/remplacements invalides."));
         int next=objects.Select(o=>o.Id).DefaultIfEmpty(0).Max(),originalMax=next;
         var add=new Dictionary<string,List<string>>(StringComparer.OrdinalIgnoreCase);
         void Line(string file,params object[] values){if(!add.TryGetValue(file,out var rows))add[file]=rows=[];rows.Add(string.Join(',',values.Select(v=>Convert.ToString(v,CultureInfo.InvariantCulture))));}
@@ -102,13 +102,13 @@ public static class TournamentBuilder
     public static string Time(string value)
     {
         string compact=value.Replace(":","");
-        if(compact.Length!=4||!int.TryParse(compact[..2],out int hour)||hour>23||hour<0||!int.TryParse(compact[2..],out int minute)||minute>59||minute<0)throw new InvalidDataException("Heure attendue : HH:mm.");
+        if(compact.Length!=4||!int.TryParse(compact[..2],out int hour)||hour>23||hour<0||!int.TryParse(compact[2..],out int minute)||minute>59||minute<0)throw new InvalidDataException(ATLink.Core.UiText.Get("Heure attendue : HH:mm."));
         return compact;
     }
     public sealed record Fixture(int Round,string Home,string Away);
     public static IReadOnlyList<Fixture> RoundRobin(IReadOnlyList<string> teams,bool returnLegs)
     {
-        if(teams.Count<2||teams.Distinct().Count()!=teams.Count)throw new InvalidDataException("Au moins deux équipes distinctes requises.");
+        if(teams.Count<2||teams.Distinct().Count()!=teams.Count)throw new InvalidDataException(ATLink.Core.UiText.Get("Au moins deux équipes distinctes requises."));
         var ring=teams.Select(t=>(string?)t).ToList();if(ring.Count%2!=0)ring.Add(null);
         var games=new List<Fixture>();int rounds=ring.Count-1;
         for(int r=0;r<rounds;r++)

@@ -30,7 +30,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
         }
         if(table.Name=="players")
         {
-            var import=new Button{Content="Import profile / estimate ratings",Margin=new Thickness(8),Padding=new Thickness(12)};
+            var import=new Button{Content=ATLink.Core.UiText.Get("Import profile / estimate ratings"),Margin=new Thickness(8),Padding=new Thickness(12)};
             Group("Identity").Children.Add(import);
             import.Click+=(_,_)=>
             {
@@ -45,14 +45,14 @@ public partial class EntityEditor : UserControl, IWorkspacePage
                         if(dialog.CommonName is not null)DatabaseDocument.ValidateValue(catalog.Table("editedplayernames").Fields.Single(f=>f.Name=="commonname"),dialog.CommonName);
                         foreach(var entry in updates)entry.Set(dialog.Values[entry.Field.Name]);
                         if(dialog.CommonName is not null)names["commonname"].Text=dialog.CommonName;
-                        ErrorText.Text="Profile loaded into this draft. Review the fields, then Apply and Back.";
+                        ErrorText.Text=ATLink.Core.UiText.Get("Profile loaded into this draft. Review the fields, then Apply and Back.");
                     }
                     catch(Exception ex){ErrorText.Text=ex.Message;}
                 };
                 WorkspaceController.Open(dialog);
             };
             var map=catalog.Names();var edited=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==FootballCatalog.Value(namesFrom??row,"playerid"));
-            foreach(var (field,id,label) in new[]{("firstname","firstnameid","First name"),("surname","lastnameid","Surname"),("commonname","commonnameid","Common name"),("playerjerseyname","playerjerseynameid","Jersey name")})
+            foreach(var (field,id,label) in new[]{("firstname","firstnameid",ATLink.Core.UiText.Get("First name")),("surname","lastnameid",ATLink.Core.UiText.Get("Surname")),("commonname","commonnameid",ATLink.Core.UiText.Get("Common name")),("playerjerseyname","playerjerseynameid",ATLink.Core.UiText.Get("Jersey name"))})
             {
                 string value=edited is null?map.GetValueOrDefault(FootballCatalog.Value(row,id),""):FootballCatalog.Value(edited,field);
                 initialNames[field]=value;names[field]=Input(Group("Identity"),label,value,$"ID {FootballCatalog.Value(row,id)}");
@@ -60,7 +60,7 @@ public partial class EntityEditor : UserControl, IWorkspacePage
         }
         foreach(var f in table.Fields.OrderBy(f=>f.IsKey?0:1).ThenBy(f=>f.Name,StringComparer.OrdinalIgnoreCase))
         {
-            string category=f.IsKey||f.Name.Contains("name")||f.Name.Contains("birth")||f.Name.Contains("national")?"Identity":f.Name.Contains("colour")||f.Name.Contains("color")||f.Name.Contains("hair")||f.Name.Contains("head")||f.Name.Contains("skin")||f.Name.Contains("accessory")?"Appearance":f.Name.Contains("rating")||f.Name.Contains("skill")||f.Name.Contains("speed")||f.Name.Contains("shoot")||f.Name.Contains("pass")||f.Name.Contains("potential")?"Attributes":"Advanced";
+            string category=f.IsKey||f.Name.Contains("name")||f.Name.Contains("birth")||f.Name.Contains("national")?ATLink.Core.UiText.Get("Identity"):f.Name.Contains("colour")||f.Name.Contains("color")||f.Name.Contains("hair")||f.Name.Contains("head")||f.Name.Contains("skin")||f.Name.Contains("accessory")?ATLink.Core.UiText.Get("Appearance"):f.Name.Contains("rating")||f.Name.Contains("skill")||f.Name.Contains("speed")||f.Name.Contains("shoot")||f.Name.Contains("pass")||f.Name.Contains("potential")?ATLink.Core.UiText.Get("Attributes"):ATLink.Core.UiText.Get("Advanced");
             var panel=Group(category);
             IReadOnlyList<FieldChoice>? choices=f.Name.Equals("nationality",StringComparison.OrdinalIgnoreCase)
                 ? catalog.NationNames().OrderBy(pair=>pair.Value,StringComparer.OrdinalIgnoreCase).Select(pair=>new FieldChoice(pair.Key,pair.Value)).ToArray()
@@ -84,14 +84,14 @@ public partial class EntityEditor : UserControl, IWorkspacePage
             {
                 var combo=new ComboBox{ItemsSource=choices,IsEditable=true,IsTextSearchEnabled=true,IsEnabled=!f.IsKey,SelectedItem=choices.FirstOrDefault(c=>c.Value==FootballCatalog.Value(row,f.Name))};
                 if(combo.SelectedItem is null)combo.Text=FootballCatalog.Value(row,f.Name);
-                host=Block(panel,f.Name,combo,"Liste spécialisée · valeur numérique conservée");
+                host=Block(panel,f.Name,combo,ATLink.Core.UiText.Get("Liste spécialisée · valeur numérique conservée"));
                 read=()=>combo.SelectedItem is FieldChoice choice?choice.Value:combo.Text.Trim();
                 write=v=>{combo.SelectedItem=choices.FirstOrDefault(c=>c.Value==v);if(combo.SelectedItem is null)combo.Text=v;};
             }
             inputs.Add((f,read,write));
             if(f.Type==3 && (f.Name.Contains("assetid") || f.Name is "hairtypecode" or "facialhairtypecode" or "skintonecode" or "haircolorcode" or "facialhaircolorcode"))
             {
-                var pick=new Button{Content="Choose visual asset",Margin=new Thickness(0,5,0,0)};
+                var pick=new Button{Content=ATLink.Core.UiText.Get("Choose visual asset"),Margin=new Thickness(0,5,0,0)};
                 pick.Click+=(_,_)=>{var picker=new AssetPickerWindow(f.Name);picker.Closed+=ok=>{if(!ok)return;try{DatabaseDocument.ValidateValue(f,picker.SelectedId!);write(picker.SelectedId!);}catch(Exception ex){ErrorText.Text=ex.Message;}};WorkspaceController.Open(picker);};
                 host.Children.Add(pick);
             }

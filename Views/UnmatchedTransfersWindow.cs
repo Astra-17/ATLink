@@ -13,16 +13,16 @@ public sealed class UnmatchedTransfersWindow:Window
 {
     public UnmatchedTransfersWindow(IReadOnlyList<UnmatchedTransfer> transfers,FootballCatalog? catalog=null,Action<UnmatchedTransfer>? resolved=null)
     {
-        Title="Unmatched transfers";Width=820;Height=480;MinWidth=640;MinHeight=360;
+        Title=ATLink.Core.UiText.Get("Unmatched transfers");Width=820;Height=480;MinWidth=640;MinHeight=360;
         WindowStartupLocation=WindowStartupLocation.CenterOwner;ShowInTaskbar=false;
         Resources.MergedDictionaries.Add(new ResourceDictionary{Source=new Uri("/ATLink;component/Themes/Studio.xaml",UriKind.Relative)});
         Style=TryFindResource(typeof(Window)) as Style;
         Background=StudioPalette.Get("BackgroundBrush");Foreground=StudioPalette.Get("TextBrush");FontFamily=new FontFamily("Segoe UI");
         var root=new DockPanel{Margin=new Thickness(18)};
         var header=new DockPanel{Margin=new Thickness(0,0,0,12)};
-        var close=new Button{Content="Close",IsCancel=true,Padding=new Thickness(14,8,14,8)};
+        var close=new Button{Content=ATLink.Core.UiText.Get("Close"),IsCancel=true,Padding=new Thickness(14,8,14,8)};
         DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
-        var countLabel=new TextBlock{Text=$"{transfers.Count} unmatched transfer{(transfers.Count==1?"":"s")}",FontSize=18,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};header.Children.Add(countLabel);
+        var countLabel=new TextBlock{Text=UiText.Plural(transfers.Count,"{0} unmatched transfer","{0} unmatched transfers"),FontSize=18,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};header.Children.Add(countLabel);
         DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);
         var entries=new ObservableCollection<UnmatchedTransfer>(transfers); var grid=new DataGrid{ItemsSource=entries,AutoGenerateColumns=false,IsReadOnly=true,CanUserAddRows=false,CanUserDeleteRows=false,HeadersVisibility=DataGridHeadersVisibility.Column,EnableRowVirtualization=true,GridLinesVisibility=DataGridGridLinesVisibility.Horizontal};
         grid.Columns.Add(new DataGridTextColumn{Header="#",Binding=new Binding(nameof(UnmatchedTransfer.Sequence)),Width=50});
@@ -39,13 +39,13 @@ public sealed class UnmatchedTransfersWindow:Window
             var player=entry.PlayerId is null?null:catalog.Entities("players").FirstOrDefault(p=>p.Id==entry.PlayerId);
             if(player is null)
             {
-                ShellDialogs.Message(this,"This player could not be uniquely identified in the loaded database.","Unmatched transfer");
+                ShellDialogs.Message(this,ATLink.Core.UiText.Get("This player could not be uniquely identified in the loaded database."),ATLink.Core.UiText.Get("Unmatched transfer"));
                 return;
             }
             var dialog=new PlayerTransferWindow(catalog,player,true,entry.IsLoan,entry.IsLoanToBuy,entry.LoanEndDate){Owner=this};
             if(dialog.ShowDialog()==true)
             {
-                entries.Remove(entry);countLabel.Text=$"{entries.Count} unmatched transfers";resolved?.Invoke(entry);
+                entries.Remove(entry);countLabel.Text=ATLink.Core.UiText.Format("{0} unmatched transfers", entries.Count);resolved?.Invoke(entry);
             }
             e.Handled=true;
         };

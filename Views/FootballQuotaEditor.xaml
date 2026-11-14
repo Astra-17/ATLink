@@ -1,28 +1,28 @@
-<UserControl x:Class="ATLink.Views.FootballQuotaEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
+<UserControl xmlns:loc="clr-namespace:ATLink.Services" x:Class="ATLink.Views.FootballQuotaEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
  <UserControl.Resources>
   <Style x:Key="Heading" TargetType="TextBlock"><Setter Property="FontSize" Value="18"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Margin" Value="0,16,0,8"/></Style>
   <Style x:Key="Hint" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="0,5,0,10"/></Style>
   <Style TargetType="DatePickerTextBox"><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="{DynamicResource PanelBrush}"/></Style>
  </UserControl.Resources>
  <StackPanel>
-      <TextBlock Text="National league quotas" Style="{StaticResource Heading}"/>
+      <TextBlock Text="{loc:Text Tf0fce4c776b083}" Style="{StaticResource Heading}"/>
       <TextBlock Text="{Binding QuotaCount}" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold"/>
-      <WrapPanel Margin="0,10"><Button Content="+ Add league" Click="AddQuota" Margin="0,0,8,8"/><Button Content="Remove selected league" Click="RemoveQuota" Margin="0,0,8,8"/><Button Content="Use European quotas" Click="DefaultQuotas" Margin="0,0,8,8"/></WrapPanel>
+      <WrapPanel Margin="0,10"><Button Content="{loc:Text T88b92903e1c39c}" Click="AddQuota" Margin="0,0,8,8"/><Button Content="{loc:Text Td49ecd76800f5d}" Click="RemoveQuota" Margin="0,0,8,8"/></WrapPanel>
       <DataGrid x:Name="QuotaGrid" ItemsSource="{Binding Quotas}" SelectedItem="{Binding SelectedQuota}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" MaxHeight="400" HeadersVisibility="Column" HorizontalScrollBarVisibility="Auto">
        <DataGrid.Columns>
-        <DataGridTemplateColumn Header="Path" Width="190"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Paths,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Path,UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Name"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="National league" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Leagues,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding League,UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Name" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Name" MinWidth="190"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Clubs" Width="80"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Counts,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Places,UpdateSourceTrigger=PropertyChanged}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="{loc:Text T62fa5a5b0d3c31}" Width="190"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Paths,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Path,UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Name"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="{loc:Text T90b9af5c551ac7}" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Leagues,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding League,UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Name" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Name" MinWidth="190"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="{loc:Text T98348a90362db8}" Width="80"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.Counts,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Places,UpdateSourceTrigger=PropertyChanged}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
        </DataGrid.Columns>
       </DataGrid>
-      <TextBlock Text="Five rounds, two kickoff times" Style="{StaticResource Heading}"/>
-      <TextBlock Text="Both paths share each date. The final round contains two playoffs, each awarding one place in the receiving competition." Style="{StaticResource Hint}"/>
+      <TextBlock Text="{loc:Text Td2e769f253586a}" Style="{StaticResource Heading}"/>
+      <TextBlock Text="{loc:Text T3cef69e8a09a38}" Style="{StaticResource Hint}"/>
       <ItemsControl ItemsSource="{Binding Dates}"><ItemsControl.ItemTemplate><DataTemplate>
        <StackPanel><WrapPanel Margin="0,4"><TextBlock Text="{Binding Name}" Width="130" VerticalAlignment="Center"/><DatePicker SelectedDate="{Binding Date}" Width="155" Margin="0,0,10,0"/><ComboBox ItemsSource="{Binding DataContext.Times,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding FirstKickoff}" IsEditable="True" Width="95" Margin="0,0,10,0"/><ComboBox ItemsSource="{Binding DataContext.Times,RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding SecondKickoff}" IsEditable="True" Width="95"/></WrapPanel>
-      <Expander Header="Rules &amp; rewards" Margin="0,5,0,12"><StackPanel DataContext="{Binding Round}"><local:FootballPhaseEssentials ShowIntroduction="False" ShowVenues="False" ShowDiscipline="False"/><local:FootballRulesPanel DataContext="{Binding Rules}"/></StackPanel></Expander></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-      <Expander Header="Direct entrants for the first edition" Margin="0,16">
+      <Expander Header="{loc:Text Ta0f39b822bde22}" Margin="0,5,0,12"><StackPanel DataContext="{Binding Round}"><local:FootballPhaseEssentials ShowIntroduction="False" ShowVenues="False" ShowDiscipline="False"/><local:FootballRulesPanel DataContext="{Binding Rules}"/></StackPanel></Expander></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+      <Expander Header="{loc:Text T21909c661ef915}" Margin="0,16">
        <StackPanel><TextBlock Text="{Binding DirectCount}" Foreground="{DynamicResource AccentBrush}" Margin="0,10"/>
-        <TextBlock Text="Choose the direct entrants from this competition's selected clubs. Two places are reserved for the playoff winners. The preview lists clubs removed from direct entry." Style="{StaticResource Hint}"/>
+        <TextBlock Text="{loc:Text Te6ca16ffce378d}" Style="{StaticResource Hint}"/>
         <ItemsControl ItemsSource="{Binding DirectClubs}"><ItemsControl.ItemTemplate><DataTemplate>
          <CheckBox IsChecked="{Binding Selected}" Margin="0,3"><StackPanel Orientation="Horizontal"><Image Source="{Binding Club.Crest}" Width="26" Height="26" Stretch="Uniform" Margin="0,0,10,0"/><TextBlock Text="{Binding Club.Name}" VerticalAlignment="Center"/></StackPanel></CheckBox>
         </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>

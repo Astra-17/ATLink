@@ -15,9 +15,10 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel model=new();
     private readonly Views.WorkspaceController workspace;
-    private readonly ApplicationConfigurationStore configuration=new();
+    private readonly ApplicationConfigurationStore configuration;
     private StudioData studioData;
     private bool changingGame=true;
+    readonly Dictionary<(string Game,string Code),DatabaseDocument> sessionLanguages=[];
     private void GameChanged(object sender,SelectionChangedEventArgs e)
     {
         if(changingGame||!IsInitialized||GamePicker.SelectedItem is not ComboBoxItem {Tag:string game}||game==studioData.Game)return;
@@ -38,8 +39,13 @@ public partial class MainWindow : Window
         }
         catch(Exception ex){RestoreGamePicker();Error(ex);}
     }
-    public MainWindow()
+    public MainWindow():this(new ApplicationConfigurationStore()) { }
+    public MainWindow(ApplicationConfigurationStore configuration)
     {
+        this.configuration=configuration;
+        ATLink.Services.InterfaceLocalization.Initialize();
+        UiText.Current.SetLanguage(configuration.Current.InterfaceLanguage);
+        Views.WindowAppearance.SetSettingsCommand(this,new RelayCommand(()=>OpenSettings(false),()=>!model.Busy));
         studioData=configuration.CreateData(configuration.Current.LastSelectedGame);
         InitializeComponent();DataContext=model;Closing+=OnClosing;model.PropertyChanged+=ModelChanged;
         workspace=new Views.WorkspaceController(model,this);model.ResetWorkspace=workspace.Clear;
@@ -92,26 +98,60 @@ public partial class MainWindow : Window
         RuntimeData.Root=configuration.Current.CommonDataRoot;
         studioData=configuration.CreateData(configuration.Current.LastSelectedGame);
         RestoreGamePicker();
-        model.Status=studioData.Game+" selected. Choose a database.";
+        if(!model.HasDocument)model.Status=ATLink.Core.UiText.Concat(studioData.Game, ATLink.Core.UiText.Get(" selected. Choose a database."));
     }
 
     bool ConfigureGame(string game,bool initial=false,string? problem=null)
     {
-        var dialog=new Views.ConfigurationWindow(configuration,game,initial,candidate=>
-        {
-            var previous=configuration.Game(studioData.Game);
-            var next=candidate.Games[candidate.LastSelectedGame];
-            bool sourcesChanged=candidate.LastSelectedGame!=studioData.Game||candidate.CommonDataRoot!=configuration.Current.CommonDataRoot||
-                previous.DatabasePath!=next.DatabasePath||previous.MetadataPath!=next.MetadataPath||
-                previous.CompdataFolder!=next.CompdataFolder||previous.DatabaseLanguage!=next.DatabaseLanguage||
-                previous.LimitsPath!=next.LimitsPath||!previous.LanguageFolders.SequenceEqual(next.LanguageFolders);
-            if(sourcesChanged&&!MayDiscard())return false;
-            configuration.Save(candidate);
-            if(sourcesChanged)model.Close();
-            ApplyConfiguration();
-            return true;
-        },problem){Owner=this};
+        var dialog=new Views.ConfigurationWindow(configuration,game,initial,ApplySettings,problem){Owner=this};
         return dialog.ShowDialog()==true;
+    }
+
+    bool ApplySettings(ApplicationConfiguration candidate)
+    {
+        var previous=configuration.Game(studioData.Game);
+        var next=candidate.Games[candidate.LastSelectedGame];
+        bool languageChanged=candidate.InterfaceLanguage!=configuration.Current.InterfaceLanguage;
+        bool sourcesChanged=candidate.LastSelectedGame!=studioData.Game||candidate.CommonDataRoot!=configuration.Current.CommonDataRoot||
+            previous.DatabasePath!=next.DatabasePath||previous.MetadataPath!=next.MetadataPath||
+            previous.CompdataFolder!=next.CompdataFolder||previous.LimitsPath!=next.LimitsPath||
+            !previous.LanguageFolders.SequenceEqual(next.LanguageFolders);
+        if(sourcesChanged&&!MayDiscard())return false;
+
+        DatabaseDocument? preparedLanguage=null;
+        var preparedContexts=new List<(CompetitionProjectContext Context,DatabaseDocument Document)>();
+        if(languageChanged)
+        {
+            string code=UiText.LocalizationCode(candidate.InterfaceLanguage);
+            preparedLanguage=SessionLocalization(candidate.LastSelectedGame,code);
+            if(!sourcesChanged)
+                foreach(var context in workspace.CompetitionContexts)
+                    preparedContexts.Add((context,context.PrepareDisplayLocalization(code)));
+        }
+
+        configuration.Save(candidate);
+        if(sourcesChanged)model.Close();
+        ApplyConfiguration();
+        if(languageChanged)
+        {
+            if(!sourcesChanged&&model.Document is not null&&preparedLanguage is not null)
+            {
+                if(model.Localization is {} current)sessionLanguages[(studioData.Game,Path.GetFileNameWithoutExtension(current.SourcePath))]=current;
+                model.SetLocalization(preparedLanguage);
+            }
+            foreach(var prepared in preparedContexts)prepared.Context.SetDisplayLocalization(prepared.Document);
+            UiText.Current.SetLanguage(configuration.Current.InterfaceLanguage);
+        }
+        return true;
+    }
+
+    DatabaseDocument SessionLocalization(string game,string code)
+    {
+        if(model.Localization is {} current&&game==studioData.Game&&Path.GetFileNameWithoutExtension(current.SourcePath)==code)return current;
+        if(sessionLanguages.TryGetValue((game,code),out var cached))return cached;
+        var loaded=configuration.CreateData(game).OpenLocalization(code);
+        sessionLanguages[(game,code)]=loaded;
+        return loaded;
     }
 
     bool EnsureConfigured(DataPurpose purpose=DataPurpose.Database)
@@ -119,7 +159,7 @@ public partial class MainWindow : Window
         if(!configuration.Game(studioData.Game).Configured&&!ConfigureGame(studioData.Game))return false;
         string? problem=configuration.FindProblem(studioData.Game,purpose:purpose);
         if(problem is null)return true;
-        MessageBox.Show(this,problem,"Integrated resources",MessageBoxButton.OK,MessageBoxImage.Warning);
+        MessageBox.Show(this,problem,ATLink.Core.UiText.Get("Integrated resources"),MessageBoxButton.OK,MessageBoxImage.Warning);
         return false;
     }
     private async void BaseDbClick(object sender,RoutedEventArgs e)
@@ -128,7 +168,7 @@ public partial class MainWindow : Window
         try
         {
             if(!EnsureConfigured())return;
-            model.Busy=true;model.Status="Opening the included database…";
+            model.Busy=true;model.Status=ATLink.Core.UiText.Get("Opening the included database…");
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenBase(code));
             model.Load(result.Main,result.Loc);OpenPlayers();
@@ -152,17 +192,17 @@ public partial class MainWindow : Window
     private bool MayDiscard()
     {
         var competition=model.Page is Views.CompetitionStudio studio?studio.Model.Context:model.Page is Views.CompetitionCreationWizard wizard?wizard.ProjectContext:model.Page is Views.FootballCreationWizard football?football.ProjectContext:null;
-        if((competition?.HasUnexportedChanges==true||model.Page is Views.CompetitionStudio {Model.Season.HasPending:true})&&MessageBox.Show(this,"Leave the competition project without exporting its changes?","Unexported competition changes",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return false;
-        return model.Document?.HasChanges!=true&&model.Localization?.HasChanges!=true||MessageBox.Show(this,"Abandonner les modifications en mémoire ?","Modifications non enregistrées",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;
+        if((competition?.HasUnexportedChanges==true||model.Page is Views.CompetitionStudio {Model.Season.HasPending:true})&&MessageBox.Show(this,ATLink.Core.UiText.Get("Leave the competition project without exporting its changes?"),ATLink.Core.UiText.Get("Unexported competition changes"),MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return false;
+        return model.Document?.HasChanges!=true&&model.Localization?.HasChanges!=true||MessageBox.Show(this,ATLink.Core.UiText.Get("Abandonner les modifications en mémoire ?"),ATLink.Core.UiText.Get("Modifications non enregistrées"),MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;
     }
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy || model.Document is null)return;
         if(!TableGrid.CommitEdit(DataGridEditingUnit.Cell,true)||!TableGrid.CommitEdit(DataGridEditingUnit.Row,true))return;
         if(model.Localization?.HasChanges==true){try{SaveFullProject();}catch(Exception ex){Error(ex);}return;}
-        var save=Views.ShellDialogs.ForDatabase(model.Document,"Enregistrer dans un nouveau fichier");
+        var save=Views.ShellDialogs.ForDatabase(model.Document,ATLink.Core.UiText.Get("Enregistrer dans un nouveau fichier"));
         if(save.ShowDialog(this)!=true)return;
-        try{model.Document.SaveAs(save.FileName);model.Status=$"Copie enregistrée : {save.FileName}. L'original reste inchangé.";}catch(Exception ex){Error(ex);}
+        try{model.Document.SaveAs(save.FileName);model.Status=ATLink.Core.UiText.Format("Copie enregistrée : {0}. L'original reste inchangé.", save.FileName);}catch(Exception ex){Error(ex);}
     }
     private void RevertClick(object sender,RoutedEventArgs e){if(model.Busy || !MayDiscard())return;TableGrid.CancelEdit();TableGrid.CancelEdit(DataGridEditingUnit.Row);model.Revert();}
     private void ExportClick(object sender,RoutedEventArgs e)
@@ -178,7 +218,7 @@ public partial class MainWindow : Window
             IEnumerable<DataRow> rows=data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted);
             if(id.Count>0)rows=rows.OrderBy(r=>TableOrdering.NumericId(r[id[0]]?.ToString())).ThenBy(r=>id.Count>1?TableOrdering.NumericId(r[id[1]]?.ToString()):0);
             foreach(DataRow row in rows)writer.WriteLine(string.Join(",",row.ItemArray.Select(x=>Quote(x??""))));
-            model.Status="Table exportée en CSV.";
+            model.Status=ATLink.Core.UiText.Get("Table exportée en CSV.");
         }catch(Exception ex){Error(ex);}
     }
     private void ModelChanged(object? sender, PropertyChangedEventArgs e)
@@ -217,9 +257,9 @@ public partial class MainWindow : Window
         static string Quote(string value)=>"\""+value.Replace("\"","\"\"")+"\"";
         var lines=new List<string>{string.Join('\t',model.SelectedTable.Fields.Select(f=>Quote(f.Name)))};
         lines.AddRange(rows.Select(r=>string.Join('\t',model.SelectedTable.Fields.Select(f=>Quote(r[f.Name].ToString()??"")))));
-        Clipboard.SetText(string.Join(Environment.NewLine,lines));model.Status=$"Copied {rows.Length} rows with headers.";
+        Clipboard.SetText(string.Join(Environment.NewLine,lines));model.Status=ATLink.Core.UiText.Format("Copied {0} rows with headers.", rows.Length);
     }
-    private void CountClick(object sender, RoutedEventArgs e) => model.Status = $"{model.Rows?.Count ?? 0:N0} matching rows · {TableGrid.SelectedItems.Count:N0} selected";
+    private void CountClick(object sender, RoutedEventArgs e) => model.Status = ATLink.Core.UiText.Format("{0:N0} matching rows · {1:N0} selected", model.Rows?.Count ?? 0, TableGrid.SelectedItems.Count);
     private void GoToColumnClick(object sender, RoutedEventArgs e)
     {
         var column = TableGrid.Columns.FirstOrDefault(c => c.SortMemberPath == model.SearchColumn);
@@ -228,7 +268,7 @@ public partial class MainWindow : Window
     private void FindClick(object sender, RoutedEventArgs e)
     {
         if (TableGrid.Items.Count > 0) { TableGrid.SelectedIndex = 0; GoToColumnClick(sender, e); TableGrid.Focus(); }
-        else model.Status = "No matching rows.";
+        else model.Status = ATLink.Core.UiText.Get("No matching rows.");
     }
     private void GridSorting(object sender, DataGridSortingEventArgs e)
     {
@@ -255,35 +295,35 @@ public partial class MainWindow : Window
     private void NewClick(object sender,RoutedEventArgs e)
     {
         if(model.SelectedTable is null)return;
-        try{TableEditing.Add(model.SelectedTable,(TableGrid.SelectedItem as DataRowView)?.Row);model.RefreshPage();model.Status="New row added.";}catch(Exception ex){Error(ex);}
+        try{TableEditing.Add(model.SelectedTable,(TableGrid.SelectedItem as DataRowView)?.Row);model.RefreshPage();model.Status=ATLink.Core.UiText.Get("New row added.");}catch(Exception ex){Error(ex);}
     }
     private void DeleteClick(object sender,RoutedEventArgs e)
     {
         if(model.SelectedTable is null||model.Document is null)return;
         var rows=TableGrid.SelectedItems.Cast<DataRowView>().Select(r=>r.Row).ToArray();if(rows.Length==0)return;
-        try{new FootballCatalog(model.Document).ValidateDelete(model.SelectedTable,rows);if(MessageBox.Show(this,$"Delete {rows.Length} rows?","Delete",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;foreach(var row in rows)row.Delete();model.RefreshPage();}catch(Exception ex){Error(ex);}
+        try{new FootballCatalog(model.Document).ValidateDelete(model.SelectedTable,rows);if(MessageBox.Show(this,ATLink.Core.UiText.Format("Delete {0} rows?", rows.Length),ATLink.Core.UiText.Get("Delete"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;foreach(var row in rows)row.Delete();model.RefreshPage();}catch(Exception ex){Error(ex);}
     }
     private void ImportClick(object sender,RoutedEventArgs e)
     {
         if(model.SelectedTable is null)return;
-        var dialog=new OpenFileDialog{Filter="Tables (*.csv;*.tsv;*.txt)|*.csv;*.tsv;*.txt"};if(dialog.ShowDialog(this)!=true)return;
+        var dialog=new OpenFileDialog{Filter=ATLink.Core.UiText.Get("Tables (*.csv;*.tsv;*.txt)|*.csv;*.tsv;*.txt")};if(dialog.ShowDialog(this)!=true)return;
         try
         {
             string text=File.ReadAllText(dialog.FileName);char delimiter=text.Split('\n')[0].Contains('\t')?'\t':',';
             var preview=TableEditing.PreviewImport(model.SelectedTable,text,delimiter);
-            if(MessageBox.Show(this,$"Replace {model.SelectedTable.RowCount} rows in {model.SelectedTable.Name} with {preview.Count} validated rows?","Import preview",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
-            TableEditing.Replace(model.SelectedTable,preview);model.RefreshPage();model.Status=$"Imported {preview.Count} rows. Pending save.";
+            if(MessageBox.Show(this,ATLink.Core.UiText.Format("Replace {0} rows in {1} with {2} validated rows?", model.SelectedTable.RowCount, model.SelectedTable.Name, preview.Count),ATLink.Core.UiText.Get("Import preview"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
+            TableEditing.Replace(model.SelectedTable,preview);model.RefreshPage();model.Status=ATLink.Core.UiText.Format("Imported {0} rows. Pending save.", preview.Count);
         }catch(Exception ex){Error(ex);}
     }
     private void ExportAllClick(object sender,RoutedEventArgs e)
     {
         if(model.Document is null)return;
-        var dialog=new OpenFolderDialog{Title="Export all tables"};if(dialog.ShowDialog(this)!=true)return;
+        var dialog=new OpenFolderDialog{Title=ATLink.Core.UiText.Get("Export all tables")};if(dialog.ShowDialog(this)!=true)return;
         try
         {
             var folder=Path.Combine(dialog.FolderName,"ATLink-export-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N")[..6]);Directory.CreateDirectory(folder);
             foreach(var table in model.Document.Tables)File.WriteAllText(Path.Combine(folder,table.Name+".csv"),TableEditing.Export(table),new UTF8Encoding(true));
-            model.Status="Exported all tables: "+folder;
+            model.Status=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Exported all tables: "), folder);
         }catch(Exception ex){Error(ex);}
     }
     private void PasteClick(object sender,RoutedEventArgs e)
@@ -292,7 +332,7 @@ public partial class MainWindow : Window
         try
         {
             string text=Clipboard.GetText();var rows=TableEditing.PreviewImport(model.SelectedTable,text,'\t');
-            if(MessageBox.Show(this,$"Append {rows.Count} clipboard rows? Unique keys must be supplied.","Paste preview",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
+            if(MessageBox.Show(this,ATLink.Core.UiText.Format("Append {0} clipboard rows? Unique keys must be supplied.", rows.Count),ATLink.Core.UiText.Get("Paste preview"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
             var added=new List<DataRow>();try{foreach(var row in rows)added.Add(model.SelectedTable.Data.Rows.Add(row.Cast<object>().ToArray()));DatabaseDocument.ValidateKeys(model.SelectedTable);}catch{foreach(var row in added)row.Delete();throw;}
             model.RefreshPage();
         }catch(Exception ex){Error(ex);}
@@ -301,10 +341,10 @@ public partial class MainWindow : Window
     {
         if(model.SelectedTable is null||model.SearchColumn is null)return;
         var rows=TableGrid.SelectedItems.Cast<DataRowView>().Select(v=>v.Row).ToArray();
-        if(rows.Length==0){model.Status="Select rows to edit in bulk.";return;}
+        if(rows.Length==0){model.Status=ATLink.Core.UiText.Get("Select rows to edit in bulk.");return;}
         var input=new TextBox{Text=rows[0][model.SearchColumn].ToString()??"",Margin=new Thickness(0,0,0,12)};
-        var page=new Views.ActionPage($"Replace {model.SearchColumn} · {rows.Length} rows",input,"Apply to selected rows",p=>{try{TableEditing.SetValues(model.SelectedTable,rows,model.SearchColumn,input.Text);p.Finish(true);}catch(Exception ex){Views.ShellDialogs.Message(p,ex.Message,"Invalid value");}});
-        page.Closed+=ok=>{if(ok){model.RefreshPage();model.Status=$"Updated {rows.Length} rows.";}};
+        var page=new Views.ActionPage(ATLink.Core.UiText.Format("Replace {0} · {1} rows", model.SearchColumn, rows.Length),input,ATLink.Core.UiText.Get("Apply to selected rows"),p=>{try{TableEditing.SetValues(model.SelectedTable,rows,model.SearchColumn,input.Text);p.Finish(true);}catch(Exception ex){Views.ShellDialogs.Message(p,ex.Message,ATLink.Core.UiText.Get("Invalid value"));}});
+        page.Closed+=ok=>{if(ok){model.RefreshPage();model.Status=ATLink.Core.UiText.Format("Updated {0} rows.", rows.Length);}};
         OpenPage(page);
     }
     private async void CompdataClick(object sender,RoutedEventArgs e)
@@ -314,7 +354,7 @@ public partial class MainWindow : Window
         {
             if(!EnsureConfigured(DataPurpose.Competition))return;
             string folder=studioData.CompdataFolder;
-            model.Busy=true;model.Status="Opening competition project…";
+            model.Busy=true;model.Status=ATLink.Core.UiText.Get("Opening competition project…");
             var data=studioData;string code=data.SuggestedLanguage().Code;var language=data.Languages.Single(l=>l.Code==code);
             var loadedBase=model.Document is {IsSquad:false}?model.Document:null;var loadedLoc=model.Localization;
             var context=await Task.Run(()=>
@@ -334,19 +374,19 @@ public partial class MainWindow : Window
     }
     private void BigClick(object sender,RoutedEventArgs e)
     {
-        var file=new OpenFileDialog{Filter="BIG archive (*.big)|*.big"};if(file.ShowDialog(this)!=true)return;
-        var folder=new OpenFolderDialog{Title="Parent folder for extraction"};if(folder.ShowDialog(this)!=true)return;
-        try{string target=Path.Combine(folder.FolderName,"BIG-"+Guid.NewGuid().ToString("N")[..8]);var entries=BigArchive.Extract(file.FileName,target);model.Status=$"{entries.Count} files extracted to {target}; {entries.Count(e=>e.Compressed)} compressed payloads remain compressed.";MessageBox.Show(this,model.Status,"BIG extraction");}catch(Exception ex){Error(ex);}
+        var file=new OpenFileDialog{Filter=ATLink.Core.UiText.Get("BIG archive (*.big)|*.big")};if(file.ShowDialog(this)!=true)return;
+        var folder=new OpenFolderDialog{Title=ATLink.Core.UiText.Get("Parent folder for extraction")};if(folder.ShowDialog(this)!=true)return;
+        try{string target=Path.Combine(folder.FolderName,"BIG-"+Guid.NewGuid().ToString("N")[..8]);var entries=BigArchive.Extract(file.FileName,target);model.Status=ATLink.Core.UiText.Format("{0} files extracted to {1}; {2} compressed payloads remain compressed.", entries.Count, target, entries.Count(e=>e.Compressed));MessageBox.Show(this,model.Status,ATLink.Core.UiText.Get("BIG extraction"));}catch(Exception ex){Error(ex);}
     }
     private void LocalizationClick(object sender,RoutedEventArgs e)=>OpenPage(new Views.LocalizationWindow());
     private async void SquadClick(object sender,RoutedEventArgs e)
     {
         if(model.Busy||!MayDiscard())return;
         try{if(!EnsureConfigured())return;}catch(Exception ex){Error(ex);return;}
-        var file=new OpenFileDialog{Title="Ouvrir un Squad FBCHUNKS",Filter="Squad|*|Tous|*.*"};if(file.ShowDialog(this)!=true)return;
+        var file=new OpenFileDialog{Title=ATLink.Core.UiText.Get("Ouvrir un Squad FBCHUNKS"),Filter="Squad|*|Tous|*.*"};if(file.ShowDialog(this)!=true)return;
         try
         {
-            model.Busy=true;model.Status="Lecture du conteneur Squad…";
+            model.Busy=true;model.Status=ATLink.Core.UiText.Get("Lecture du conteneur Squad…");
             string code=studioData.SuggestedLanguage().Code;
             var result=await Task.Run(()=>studioData.OpenSquad(file.FileName,code));
             model.Load(result.Main,result.Loc);OpenPlayers();
@@ -356,23 +396,23 @@ public partial class MainWindow : Window
     private void SaveFullProject()
     {
         if(model.Document is null||model.Localization is null)return;
-        var dialog=new OpenFolderDialog{Title="Parent folder for a new DB + LOC copy"};if(dialog.ShowDialog(this)!=true)return;
+        var dialog=new OpenFolderDialog{Title=ATLink.Core.UiText.Get("Parent folder for a new DB + LOC copy")};if(dialog.ShowDialog(this)!=true)return;
         byte[] main=model.Document.Serialize(),loc=model.Localization.Serialize();
         string target=Path.Combine(dialog.FolderName,"ATLink-project-"+Guid.NewGuid().ToString("N")[..8]);Directory.CreateDirectory(target);
         File.WriteAllBytes(Path.Combine(target,Path.GetFileName(model.Document.SourcePath)),main);
         string locName=Path.GetFileName(model.Localization.SourcePath);if(locName==Path.GetFileName(model.Document.SourcePath))locName="localization-"+locName;
-        File.WriteAllBytes(Path.Combine(target,locName),loc);model.Status="DB and LOC saved: "+target;
+        File.WriteAllBytes(Path.Combine(target,locName),loc);model.Status=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("DB and LOC saved: "), target);
     }    private void ImportAllClick(object sender,RoutedEventArgs e)
     {
         if(model.Document is null)return;
-        var dialog=new OpenFolderDialog{Title="Import matching CSV tables"};if(dialog.ShowDialog(this)!=true)return;
+        var dialog=new OpenFolderDialog{Title=ATLink.Core.UiText.Get("Import matching CSV tables")};if(dialog.ShowDialog(this)!=true)return;
         try
         {
             var previews=new List<(DatabaseTable Table,IReadOnlyList<string[]> Rows)>();
             foreach(var table in model.Document.Tables){string path=Path.Combine(dialog.FolderName,table.Name+".csv");if(File.Exists(path))previews.Add((table,TableEditing.PreviewImport(table,File.ReadAllText(path))));}
-            if(previews.Count==0){model.Status="No matching CSV files.";return;}
-            if(MessageBox.Show(this,$"Replace {previews.Count} tables with {previews.Sum(p=>p.Rows.Count):N0} validated rows? Changes stay in memory until save.","Bulk import preview",MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
-            foreach(var preview in previews)TableEditing.Replace(preview.Table,preview.Rows);model.RefreshPage();model.Status=$"Imported {previews.Count} tables.";
+            if(previews.Count==0){model.Status=ATLink.Core.UiText.Get("No matching CSV files.");return;}
+            if(MessageBox.Show(this,ATLink.Core.UiText.Format("Replace {0} tables with {1:N0} validated rows? Changes stay in memory until save.", previews.Count, previews.Sum(p=>p.Rows.Count)),ATLink.Core.UiText.Get("Bulk import preview"),MessageBoxButton.YesNo)!=MessageBoxResult.Yes)return;
+            foreach(var preview in previews)TableEditing.Replace(preview.Table,preview.Rows);model.RefreshPage();model.Status=ATLink.Core.UiText.Format("Imported {0} tables.", previews.Count);
         }catch(Exception ex){Error(ex);}
     }    private void OnClosing(object? sender,System.ComponentModel.CancelEventArgs e){if(model.Busy||model.Page is Views.CompetitionStudio {Model.IsWorking:true}||!MayDiscard())e.Cancel=true;}
     private void Error(Exception ex){model.Status=ex.Message;MessageBox.Show(this,ex.Message,"ATLink",MessageBoxButton.OK,MessageBoxImage.Warning);}

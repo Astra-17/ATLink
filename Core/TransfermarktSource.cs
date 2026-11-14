@@ -109,7 +109,7 @@ public sealed class TransfermarktSource : IDisposable
             return new SourceFetchResult
             {
                 Success = true,
-                UserMessage = $"Source valide — {transfers.Count} transfert{(transfers.Count > 1 ? "s" : "")} détecté{(transfers.Count > 1 ? "s" : "")}",
+                UserMessage = UiText.Plural(transfers.Count,"Valid source — {0} transfer detected","Valid source — {0} transfers detected"),
                 Transfers = transfers,
                 Url = normalized
             };

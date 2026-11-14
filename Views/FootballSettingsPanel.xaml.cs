@@ -11,7 +11,7 @@ public partial class FootballSettingsPanel:UserControl
     IEnumerable<FootballPhaseViewModel> phases=[];
     INotifyCollectionChanged? watched;
     public sealed record Row(FootballPhaseViewModel Phase,FootballActiveOption Option){public string Label=>Option.Label;public string Value=>Option.Value;public string Origin=>Option.Origin;}
-    public sealed record Card(FootballPhaseViewModel Phase,IReadOnlyList<Row> Options){public string EmptyMessage=>Options.Count==0?"No configured options yet. Add an option to customize this phase.":"";}
+    public sealed record Card(FootballPhaseViewModel Phase,IReadOnlyList<Row> Options){public string EmptyMessage=>Options.Count==0?ATLink.Core.UiText.Get("No configured options yet. Add an option to customize this phase."):"";}
     public FootballSettingsPanel(){InitializeComponent();DataContextChanged+=(_,_)=>{if(DataContext is FootballFormatViewModel model)Configure(model.Context,model.Phases);};Loaded+=(_,_)=>Refresh();}
     public void Configure(CompetitionProjectContext project,IEnumerable<FootballPhaseViewModel> source)
     {
@@ -38,8 +38,8 @@ public partial class FootballSettingsPanel:UserControl
         if(context is null)return;
         try
         {
-            if(definitions.Count==0){ErrorText.Text="All compatible options are already configured for this phase.";return;}
-            if(definitions.Count==1&&phase.Rules.Fields.FirstOrDefault(f=>f.Definition.Key==definitions[0].Key) is {Supported:false}){ErrorText.Text="This option uses a game-specific value. Edit it in Expert.";return;}
+            if(definitions.Count==0){ErrorText.Text=ATLink.Core.UiText.Get("All compatible options are already configured for this phase.");return;}
+            if(definitions.Count==1&&phase.Rules.Fields.FirstOrDefault(f=>f.Definition.Key==definitions[0].Key) is {Supported:false}){ErrorText.Text=ATLink.Core.UiText.Get("This option uses a game-specific value. Edit it in Expert.");return;}
             var picker=new FootballOptionWindow(definitions,value,(definition,choice)=>
             {
                 if(definition.Input is not(FootballRuleInput.Number or FootballRuleInput.Toggle))return null;

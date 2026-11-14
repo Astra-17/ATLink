@@ -50,7 +50,7 @@ public sealed class CompdataTable
             if(row.RowState==DataRowState.Unchanged)continue;
             if(row.RowState==DataRowState.Deleted){edits[sourceLines[row]]=null;continue;}
             var parts=row.ItemArray.Select(v=>v?.ToString()??"").ToArray();
-            if(parts.Any(s=>s.Contains(',')||s.Contains('\r')||s.Contains('\n')))throw new InvalidDataException("Une cellule Compdata ne peut pas contenir une virgule ou un retour à la ligne.");
+            if(parts.Any(s=>s.Contains(',')||s.Contains('\r')||s.Contains('\n')))throw new InvalidDataException(ATLink.Core.UiText.Get("Une cellule Compdata ne peut pas contenir une virgule ou un retour à la ligne."));
             string line=string.Join(',',parts);
             if(sourceLines.TryGetValue(row,out int index))edits[index]=line;else added.Add(line);
         }

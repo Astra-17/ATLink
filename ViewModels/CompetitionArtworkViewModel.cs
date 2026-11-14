@@ -27,7 +27,7 @@ public sealed class CompetitionArtworkViewModel:FootballNotify
     public Func<string,bool>? ConfirmShared {get;set;}
     string Stamp=>logo is null&&title is null?"":generated?.Fingerprint??Convert.ToHexString(SHA256.HashData([..logo??[],..title??[]]));
     public bool HasPending=>Busy||Stamp!=(original?.Fingerprint??"");
-    public string Summary=>logo is null&&title is null?"No custom competition artwork.":generated is null?"Add both required PNG images to complete the artwork.":"Competition artwork: logo + name image · five formats · dark and light.";
+    public string Summary=>logo is null&&title is null?ATLink.Core.UiText.Get("No custom competition artwork."):generated is null?ATLink.Core.UiText.Get("Add both required PNG images to complete the artwork."):ATLink.Core.UiText.Get("Competition artwork: logo + name image · five formats · dark and light.");
     public CompetitionArtworkViewModel(CompetitionProjectContext context,int? competition=null,Action? applied=null)
     {
         this.context=context;this.competition=competition;this.applied=applied;
@@ -49,7 +49,7 @@ public sealed class CompetitionArtworkViewModel:FootballNotify
             if(isLogo){logo=png.ToArray();LogoPreview=candidate;}else{title=png.ToArray();TitlePreview=candidate;}
             generated=result;TinyPreview=result is null?null:CompetitionArtworkImages.TinyPreview(result);Progress=100;
         }
-        catch(Exception ex){Error=ex is OperationCanceledException?"Image processing cancelled. Previous artwork kept.":ex.Message;}
+        catch(Exception ex){Error=ex is OperationCanceledException?ATLink.Core.UiText.Get("Image processing cancelled. Previous artwork kept."):ex.Message;}
         finally{Busy=false;cancellation.Dispose();cancellation=null;Changed();}
     }
     public void CancelPending()=>cancellation?.Cancel();
@@ -64,17 +64,17 @@ public sealed class CompetitionArtworkViewModel:FootballNotify
     }
     public CompetitionArtwork? Snapshot()
     {
-        if(Busy)throw new InvalidDataException("Wait for the competition textures to finish generating.");
-        if((logo is null)!=(title is null)||logo is not null&&generated is null)throw new InvalidDataException("Competition artwork requires both the 1024 × 1024 logo and the 512 × 128 name image.");
+        if(Busy)throw new InvalidDataException(ATLink.Core.UiText.Get("Wait for the competition textures to finish generating."));
+        if((logo is null)!=(title is null)||logo is not null&&generated is null)throw new InvalidDataException(ATLink.Core.UiText.Get("Competition artwork requires both the 1024 × 1024 logo and the 512 × 128 name image."));
         return generated;
     }
     public void Apply()
     {
         try
         {
-            if(!competition.HasValue)throw new InvalidDataException("Create the competition to apply its artwork.");
+            if(!competition.HasValue)throw new InvalidDataException(ATLink.Core.UiText.Get("Create the competition to apply its artwork."));
             var value=Snapshot();var shared=context.ArtworkSharing(competition.Value);
-            if(shared.Count>0&&ConfirmShared?.Invoke("This graphic set is also used by "+string.Join(", ",shared.Select(o=>o.DisplayName))+". Change the appearance for all of these competitions?")!=true)return;
+            if(shared.Count>0&&ConfirmShared?.Invoke(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("This graphic set is also used by "), ATLink.Core.UiText.Join(", ",shared.Select(o=>o.DisplayName)), ATLink.Core.UiText.Get(". Change the appearance for all of these competitions?")))!=true)return;
             context.SetArtwork(competition.Value,value,shared.Count>0);original=value;Error="";Changed();applied?.Invoke();
         }
         catch(Exception ex){Error=ex.Message;Changed();}

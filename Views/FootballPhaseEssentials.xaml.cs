@@ -11,5 +11,7 @@ public partial class FootballPhaseEssentials:UserControl
     public bool ShowVenues{get=>(bool)GetValue(ShowVenuesProperty);set=>SetValue(ShowVenuesProperty,value);}
     public bool ShowDiscipline{get=>(bool)GetValue(ShowDisciplineProperty);set=>SetValue(ShowDisciplineProperty,value);}
     public bool ShowIntroduction{get=>(bool)GetValue(ShowIntroductionProperty);set=>SetValue(ShowIntroductionProperty,value);}
+    public static readonly DependencyProperty ShowDrawDatesProperty=DependencyProperty.Register(nameof(ShowDrawDates),typeof(bool),typeof(FootballPhaseEssentials),new PropertyMetadata(true));
+    public bool ShowDrawDates{get=>(bool)GetValue(ShowDrawDatesProperty);set=>SetValue(ShowDrawDatesProperty,value);}
     public FootballPhaseEssentials()=>InitializeComponent();
 }

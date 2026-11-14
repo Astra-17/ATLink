@@ -131,7 +131,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             return ordered.Skip(page * PageSize).Take(PageSize).ToArray();
         }
     }
-    public string PageInfo => Rows is null || Rows.Count == 0 ? "0 rows" : $"{page * PageSize + 1:N0}–{Math.Min((page + 1) * PageSize, Rows.Count):N0} / {Rows.Count:N0}";
+    public string PageInfo => Rows is null || Rows.Count == 0 ? ATLink.Core.UiText.Get("0 rows") : $"{page * PageSize + 1:N0}–{Math.Min((page + 1) * PageSize, Rows.Count):N0} / {Rows.Count:N0}";
     public void RefreshPage() { page = Math.Clamp(page, 0, Math.Max(0, ((Rows?.Count ?? 0) - 1) / PageSize)); Notify(nameof(GridRows)); Notify(nameof(PageInfo)); CommandManager.InvalidateRequerySuggested(); }
     public void Sort(string column, bool ascending) => Sort([column], ascending);
     public void Sort(IReadOnlyList<string> columns, bool ascending)
@@ -143,7 +143,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         numericSortAscending = ascending;
         ActiveSortColumn = known.FirstOrDefault();
         ActiveSortAscending = ascending;
-        Rows.Sort = numeric || known.Length == 0 ? "" : string.Join(',', known.Select(column => $"[{column.Replace("]", "\\]")}] {(ascending ? "ASC" : "DESC")}"));
+        Rows.Sort = numeric || known.Length == 0 ? "" : ATLink.Core.UiText.Join(',', known.Select(column => $"[{column.Replace("]", "\\]")}] {(ascending ? "ASC" : "DESC")}"));
         page = 0;
         Notify(nameof(ActiveSortColumn));
         Notify(nameof(ActiveSortAscending));
@@ -162,10 +162,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (columns.Count == 0) Sort([], true);
         else Sort(columns, true);
     }
-    public string TableTitle => SelectedTable?.Name ?? "No table selected";
-    private string status = "Select an editor to open your database.";
+    public string TableTitle => SelectedTable?.Name ?? ATLink.Core.UiText.Get("No table selected");
+    private string status = ATLink.Core.UiText.Get("Select an editor to open your database.");
     public string Status { get => status; set { status = value; Notify(); } }
-    private string title = "EA SPORTS FC Database Editor";
+    private string title = ATLink.Core.UiText.Get("EA SPORTS FC Database Editor");
     public bool CanRenameDocument => Document?.IsSquad == true;
     public bool DocumentTitleLocked => !CanRenameDocument;
     public string DocumentTitle
@@ -191,6 +191,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ResetWorkspace?.Invoke();
         UnhookDocument();
         Document = doc; Localization = localization;
+        if(localization is not null)doc.SetDisplayLocalization(localization);
         displayNameHandler = () => { Notify(nameof(DocumentTitle)); Notify(nameof(WindowTitle)); };
         doc.DisplayNameChanged += displayNameHandler;
         Tables.Clear();
@@ -199,24 +200,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
         TableFilter = "";
         SelectedTable = Tables.FirstOrDefault(t => t.Name == "players") ?? Tables.FirstOrDefault();
         foreach (var name in new[] { nameof(HasDocument), nameof(TableCount), nameof(PlayersCount), nameof(TeamsCount), nameof(LeaguesCount), nameof(TransfersCount), nameof(StadiumsCount), nameof(WindowTitle), nameof(DocumentTitle), nameof(CanRenameDocument), nameof(DocumentTitleLocked), nameof(Page) }) Notify(name);
-        Status = $"{Tables.Count} tables loaded · {DocumentTitle}. Changes are saved to a new file.";
+        Status = ATLink.Core.UiText.Format("{0} tables loaded · {1}. Changes are saved to a new file.", Tables.Count, DocumentTitle);
         Screen = "Launcher";
     }
     public void SetLocalization(DatabaseDocument localization)
     {
         var previous=SelectedTable;
+        string filter=Rows?.RowFilter??"";
         if(Localization is not null)foreach(var table in Localization.Tables)Tables.Remove(table);
         Localization=localization;
+        Document?.SetDisplayLocalization(localization);
         foreach(var table in localization.Tables)Tables.Add(table);
-        if(previous is not null&&!Tables.Contains(previous))SelectedTable=localization.Tables.FirstOrDefault(t=>t.Name==previous.Name)??Tables.FirstOrDefault();
-        Notify(nameof(Localization));Notify(nameof(TableCount));Notify(nameof(FilteredTables));RefreshPage();
+        if(previous is not null&&!Tables.Contains(previous))
+        {
+            selected=localization.Tables.FirstOrDefault(t=>t.Name==previous.Name)??Tables.FirstOrDefault();
+            if(searchColumn is not null&&!Columns.Contains(searchColumn))searchColumn=Columns.FirstOrDefault();
+            if(Rows is not null)
+            {
+                try{Rows.RowFilter=filter;}
+                catch(EvaluateException){Filter();}
+                catch(SyntaxErrorException){Filter();}
+            }
+            foreach(string property in new[]{nameof(SelectedTable),nameof(Rows),nameof(TableTitle),nameof(Columns),nameof(SearchColumn),nameof(FieldInfo)})Notify(property);
+            RefreshPage();
+        }
+        Notify(nameof(Localization));Notify(nameof(TableCount));Notify(nameof(FilteredTables));
     }
     public void Close()
     {
         ResetWorkspace?.Invoke();
         UnhookDocument();
         Document = null; Localization = null; SelectedTable = null; Tables.Clear(); TableFilter = "";
-        title = "EA SPORTS FC Database Editor";
+        title = ATLink.Core.UiText.Get("EA SPORTS FC Database Editor");
         Notify(nameof(HasDocument)); Notify(nameof(WindowTitle)); Notify(nameof(DocumentTitle)); Notify(nameof(CanRenameDocument)); Notify(nameof(DocumentTitleLocked)); Notify(nameof(Page)); Screen = "Editing";
     }
     public void Revert()
@@ -224,7 +239,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (Document is null) return;
         foreach (var table in Tables) table.Data.RejectChanges();
         Document.RevertSquadName();
-        RefreshPage(); Status = "Changes discarded.";
+        RefreshPage(); Status = ATLink.Core.UiText.Get("Changes discarded.");
     }
     void UnhookDocument()
     {

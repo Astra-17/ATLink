@@ -18,7 +18,7 @@ public static class PlayerRatings
     private static double Mean(params (double? Value,double Weight)[] values){var known=values.Where(v=>v.Value.HasValue).ToArray();return known.Sum(v=>v.Value!.Value*v.Weight)/known.Sum(v=>v.Weight);}
     public static RatingResult Calculate(RatingInput input)
     {
-        if(input.Age is <15 or >80||!Weights.ContainsKey(input.Position)||!double.IsFinite(input.MarketValue)||input.MarketValue<=0||new[]{input.ClubMean,input.LeagueMean}.Any(v=>v.HasValue&&(!double.IsFinite(v.Value)||v.Value<=0))||input.WeightedTrophies is double t&&(!double.IsFinite(t)||t<0)||input.BestMarketRank is <=0)throw new InvalidDataException("Âge, poste, valeur marchande et contexte valides requis.");
+        if(input.Age is <15 or >80||!Weights.ContainsKey(input.Position)||!double.IsFinite(input.MarketValue)||input.MarketValue<=0||new[]{input.ClubMean,input.LeagueMean}.Any(v=>v.HasValue&&(!double.IsFinite(v.Value)||v.Value<=0))||input.WeightedTrophies is double t&&(!double.IsFinite(t)||t<0)||input.BestMarketRank is <=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Âge, poste, valeur marchande et contexte valides requis."));
         double adjusted=input.MarketValue/Math.Exp(input.Age<=27?.05*(27-input.Age):-.1*(input.Age-27));
         double context=Math.Clamp((input.LeagueMean.HasValue?Math.Pow(input.LeagueMean.Value/5000000,.16):1)*(input.ClubMean.HasValue?Math.Pow(input.ClubMean.Value/4000000,.08):1),.65,1.55);
         double market=Market(adjusted*context);
@@ -36,7 +36,7 @@ public static class PlayerRatings
     }
     public static int Potential(int overall,int age,double market,string position)
     {
-        if(overall is <0 or >99||age is <15 or >80||!double.IsFinite(market)||market<=0||!Weights.ContainsKey(position))throw new InvalidDataException("Paramètres de potentiel invalides.");
+        if(overall is <0 or >99||age is <15 or >80||!double.IsFinite(market)||market<=0||!Weights.ContainsKey(position))throw new InvalidDataException(ATLink.Core.UiText.Get("Paramètres de potentiel invalides."));
         overall=Math.Max(45,overall);if(age>=28)return overall;
         bool late=new[]{"GK","CB","RCB","LCB","CDM","RDM","LDM","CM","RCM","LCM"}.Contains(position);
         double factor=Unit(((45+Market(market)*50)-overall+8)/18);
@@ -51,7 +51,7 @@ public static class PlayerRatings
     public static int RawOverall(string position,IReadOnlyDictionary<string,int> attributes)=>Math.Min(99,Round(Weights[position].Sum(kv=>attributes[kv.Key]*kv.Value)));
     public static IReadOnlyDictionary<string,int> Generate(string position,int target,int seed)
     {
-        if(!Weights.ContainsKey(position)||target is <1 or >99)throw new InvalidDataException("Poste/note invalide.");
+        if(!Weights.ContainsKey(position)||target is <1 or >99)throw new InvalidDataException(ATLink.Core.UiText.Get("Poste/note invalide."));
         var random=new Random(seed);var main=Weights[position];
         var universal=new HashSet<string>{"acceleration","aggression","agility","balance","jumping","reactions","sprintspeed","stamina","strength"};
         var attributes=Weights.Values.SelectMany(w=>w.Keys).Distinct().ToDictionary(a=>a,a=>
@@ -68,6 +68,6 @@ public static class PlayerRatings
             int current=RawOverall(position,attributes);if(current==target)return attributes;
             string key=keys[i%keys.Length];attributes[key]=Math.Clamp(attributes[key]+Math.Sign(target-current),1,99);
         }
-        throw new InvalidDataException("Impossible d'atteindre la note demandée.");
+        throw new InvalidDataException(ATLink.Core.UiText.Get("Impossible d'atteindre la note demandée."));
     }
 }

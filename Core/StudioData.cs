@@ -18,7 +18,7 @@ public sealed class StudioData
     readonly GameConfiguration? configuration;
     public StudioData(string root,string? preferencesPath=null,string game="FC26",GameConfiguration? configuration=null)
     {
-        if(game is not ("FC26" or "FC27"))throw new ArgumentException("Unsupported game.",nameof(game));
+        if(game is not ("FC26" or "FC27"))throw new ArgumentException(ATLink.Core.UiText.Get("Unsupported game."),nameof(game));
         Game=game;this.configuration=configuration;
         string installedRoot=Path.GetFullPath(root);
         Root=game=="FC27"?Path.Combine(installedRoot,"FC27"):installedRoot;
@@ -27,8 +27,8 @@ public sealed class StudioData
     public string BaseDatabase=>configuration is null?Require("fifa_ng_db.db"):RequirePath(configuration.DatabasePath);
     public string Metadata=>configuration is null?Require("fifa_ng_db-meta.xml"):RequirePath(configuration.MetadataPath);
     public string CompdataFolder=>configuration?.CompdataFolder??Path.Combine(Root,"compdata");
-    static string RequirePath(string path)=>File.Exists(path)?path:throw new FileNotFoundException("Configured file is missing: "+path,path);
-    string Require(string file){string path=Path.Combine(Root,file);return File.Exists(path)?path:throw new FileNotFoundException("Fichier intégré manquant. Réinstaller les données ATLink : "+file,path);}
+    static string RequirePath(string path)=>File.Exists(path)?path:throw new FileNotFoundException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Configured file is missing: "), path),path);
+    string Require(string file){string path=Path.Combine(Root,file);return File.Exists(path)?path:throw new FileNotFoundException(ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Fichier intégré manquant. Réinstaller les données ATLink : "), file),path);}
     public IReadOnlyList<DatabaseLanguage> Languages=>(configuration?.LanguageFolders??new[]{Root,Path.Combine(Root,"loc")}).Where(Directory.Exists)
         .SelectMany(folder=>Directory.EnumerateFiles(folder,"*-meta.xml"))
         .Select(path=>new DatabaseLanguage(Path.GetFileName(path)[..^9],"",path[..^9]+".db",path))
@@ -59,7 +59,7 @@ public sealed class StudioData
     }
     public DatabaseLanguage SuggestedLanguage()
     {
-        var languages=Languages;if(languages.Count==0)throw new InvalidDataException("Aucune langue LOC intégrée disponible.");
+        var languages=Languages;if(languages.Count==0)throw new InvalidDataException(ATLink.Core.UiText.Get("Aucune langue LOC intégrée disponible."));
         string? code=ReadPreferences()?.DatabaseLanguage;
         if(code is null&&File.Exists(Path.Combine(Root,"default-language.txt")))code=File.ReadAllText(Path.Combine(Root,"default-language.txt")).Trim();
         code??=CultureInfo.CurrentUICulture.TwoLetterISOLanguageName=="fr"?"fre_fr":"eng_us";
@@ -68,7 +68,7 @@ public sealed class StudioData
     public bool NeedsLanguageChoice=>ReadPreferences() is not { } p||!Languages.Any(l=>l.Code==p.DatabaseLanguage);
     public DatabaseDocument OpenLocalization(string code)
     {
-        var language=Languages.SingleOrDefault(l=>l.Code==code)??throw new InvalidDataException("Cette langue n'est pas installée.");
+        var language=Languages.SingleOrDefault(l=>l.Code==code)??throw new InvalidDataException(ATLink.Core.UiText.Get("Cette langue n'est pas installée."));
         return DatabaseDocument.Open(language.DatabasePath,language.MetadataPath);
     }
     public (DatabaseDocument Main,DatabaseDocument Loc) OpenBase(string code)=>(DatabaseDocument.Open(BaseDatabase,Metadata),OpenLocalization(code));
@@ -91,8 +91,8 @@ public sealed class StudioData
     }
     public void SaveLanguage(string code)
     {
-        if(configuration is not null)throw new InvalidOperationException("Save the language through the application configuration.");
-        if(!Languages.Any(l=>l.Code==code))throw new InvalidDataException("Cette langue n'est pas installée.");
+        if(configuration is not null)throw new InvalidOperationException(ATLink.Core.UiText.Get("Save the language through the application configuration."));
+        if(!Languages.Any(l=>l.Code==code))throw new InvalidDataException(ATLink.Core.UiText.Get("Cette langue n'est pas installée."));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(PreferencesPath))!);
         string temporary=PreferencesPath+"."+Guid.NewGuid().ToString("N")+".tmp";
         try{File.WriteAllText(temporary,JsonSerializer.Serialize(new StudioPreferences(code),new JsonSerializerOptions{WriteIndented=true}));File.Move(temporary,PreferencesPath,true);}

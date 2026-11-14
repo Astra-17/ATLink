@@ -1,4 +1,4 @@
-<UserControl x:Class="ATLink.Views.PlayerDetails"
+<UserControl xmlns:loc="clr-namespace:ATLink.Services" x:Class="ATLink.Views.PlayerDetails"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:views="clr-namespace:ATLink.Views"
@@ -39,7 +39,7 @@
  <Border Background="{DynamicResource PlayerDetailsBrush}" BorderBrush="{DynamicResource LineBrush}"
          BorderThickness="1" CornerRadius="10" Padding="18">
   <Grid>
-   <TextBlock Text="No players found" FontSize="20" FontWeight="SemiBold">
+   <TextBlock Text="{loc:Text T776dccb3938d58}" FontSize="20" FontWeight="SemiBold">
     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/>
      <Style.Triggers><DataTrigger Binding="{Binding}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
     </Style></TextBlock.Style>
@@ -73,7 +73,7 @@
        <TextBlock Text="{Binding PositionDescription}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
        <TextBlock Text="{Binding AgeAndBirthDate}" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
        <TextBlock Text="{Binding Value}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4"/>
-       <TextBlock Text="Market value" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+       <TextBlock Text="{loc:Text Tcd5928a4edeaf8}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
        <TextBlock Text="{Binding ContractText}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
       </StackPanel>
       <StackPanel Grid.Column="2" VerticalAlignment="Top">
@@ -89,35 +89,35 @@
      </Grid>
      <Border Style="{StaticResource Divider}"/>
      <DockPanel Margin="0,14,0,14">
-      <DockPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Width="38" Height="26" Margin="8,0,10,0"><TextBlock Text="{Binding Potential}" FontSize="14" FontWeight="SemiBold" Foreground="#FFBCADD9" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Potential" VerticalAlignment="Center"/></DockPanel>
+      <DockPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"><Border DockPanel.Dock="Right" Background="#FF3C3057" BorderBrush="#FFBCADD9" BorderThickness="1" CornerRadius="4" Width="38" Height="26" Margin="8,0,10,0"><TextBlock Text="{Binding Potential}" FontSize="14" FontWeight="SemiBold" Foreground="#FFBCADD9" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="{loc:Text Ta676b9f77ebc56}" VerticalAlignment="Center"/></DockPanel>
      <Border HorizontalAlignment="Left" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0,0,0,3" Padding="14,0,14,10">
-      <TextBlock Text="Overview" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+      <TextBlock Text="{loc:Text Td4b1ea5708dd53}" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
      </Border>
      </DockPanel>
      <!-- Characteristics and preferred positions -->
      <Grid>
       <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
       <StackPanel>
-       <TextBlock Text="Characteristics" FontSize="16" FontWeight="SemiBold"/>
+       <TextBlock Text="{loc:Text Tdd729c764e5689}" FontSize="16" FontWeight="SemiBold"/>
        <TextBlock Text="{Binding [height], StringFormat=Height   {0} cm}"/>
        <TextBlock Text="{Binding [weight], StringFormat=Weight   {0} kg}"/>
-       <DockPanel><TextBlock Text="{Binding StrongFoot}" DockPanel.Dock="Right"/><TextBlock Text="Strong foot"/></DockPanel>
-       <DockPanel><ContentControl Content="{Binding SkillMoveStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="Skill moves" VerticalAlignment="Center"/></DockPanel>
-       <DockPanel><ContentControl Content="{Binding WeakFootStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="Weak foot" VerticalAlignment="Center"/></DockPanel>
-       <DockPanel ToolTip="International reputation"><ContentControl Content="{Binding InternationalReputationStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="International rep." TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/></DockPanel>
+       <DockPanel><TextBlock Text="{Binding StrongFoot}" DockPanel.Dock="Right"/><TextBlock Text="{loc:Text Td52242ae1f80ab}"/></DockPanel>
+       <DockPanel><ContentControl Content="{Binding SkillMoveStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="{loc:Text Tfdb0aed81a6200}" VerticalAlignment="Center"/></DockPanel>
+       <DockPanel><ContentControl Content="{Binding WeakFootStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="{loc:Text T420c75457c1e5e}" VerticalAlignment="Center"/></DockPanel>
+       <DockPanel ToolTip="{loc:Text T3260a660635867}"><ContentControl Content="{Binding InternationalReputationStars}" ContentTemplate="{StaticResource StarsTemplate}" DockPanel.Dock="Right"/><TextBlock Text="{loc:Text T9552cfa14b7cdd}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/></DockPanel>
                             
       </StackPanel>
       <StackPanel Grid.Column="1" Margin="12,0,0,0">
-       <TextBlock Text="Positions" FontSize="16" FontWeight="SemiBold"/>
+       <TextBlock Text="{loc:Text Tfa18433b80e023}" FontSize="16" FontWeight="SemiBold"/>
        <ItemsControl ItemsSource="{Binding Positions}" Margin="0,6,0,12">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate><DataTemplate><Border Background="{StaticResource PositionBadgeBrush}" CornerRadius="4" Padding="10,5" Margin="0,0,6,6"><TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold" Foreground="White"/></Border></DataTemplate></ItemsControl.ItemTemplate>
        </ItemsControl>
-       <TextBlock Text="Playstyles" FontSize="16" FontWeight="SemiBold"/>
+       <TextBlock Text="{loc:Text T191849ddd0b33a}" FontSize="16" FontWeight="SemiBold"/>
       </StackPanel>
      </Grid>
      <Border Style="{StaticResource Divider}"/>
-     <TextBlock Text="Main attributes" Style="{StaticResource SectionTitle}"/>
+     <TextBlock Text="{loc:Text T17cf266e79632e}" Style="{StaticResource SectionTitle}"/>
      <!-- Six highest ratings, descending left to right, then top to bottom. -->
      <ItemsControl ItemsSource="{Binding MainAttributes}" AlternationCount="4">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -134,8 +134,8 @@
        </Border>
       </DataTemplate></ItemsControl.ItemTemplate>
      </ItemsControl>
-     <TextBlock Text="Values reflect the loaded database. Missing values are shown as —." FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,18,0,18" TextWrapping="Wrap"/>
-     <Button Content="Edit player  →" Background="{DynamicResource AccentBrush}" Padding="16,12" Click="EditClick"/>
+     <TextBlock Text="{loc:Text T5712c61b6258be}" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,18,0,18" TextWrapping="Wrap"/>
+     <Button Content="{loc:Text T461fceadf87568}" Background="{DynamicResource AccentBrush}" Padding="16,12" Click="EditClick"/>
     </StackPanel>
    </ScrollViewer>
   </Grid>

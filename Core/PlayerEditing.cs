@@ -11,13 +11,13 @@ public static class PlayerEditing
     {
         var table=catalog.Table("players");
         if(player.Table!=table.Data || player.RowState is DataRowState.Deleted or DataRowState.Detached)
-            throw new InvalidOperationException("Selected player no longer exists.");
+            throw new InvalidOperationException(ATLink.Core.UiText.Get("Selected player no longer exists."));
         var updates=new Dictionary<string,string>(fields);
         foreach(var entry in updates)
         {
             var field=table.Fields.Single(f=>f.Name==entry.Key);
             if(field.IsKey && entry.Value!=FootballCatalog.Value(player,entry.Key))
-                throw new InvalidOperationException("Player keys cannot be changed in this editor.");
+                throw new InvalidOperationException(ATLink.Core.UiText.Get("Player keys cannot be changed in this editor."));
             DatabaseDocument.ValidateValue(field,entry.Value);
         }
         var nameTable=catalog.Document.Tables.FirstOrDefault(t=>t.Name=="editedplayernames");

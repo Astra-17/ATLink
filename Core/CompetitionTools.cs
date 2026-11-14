@@ -9,10 +9,10 @@ public static class CompetitionTools
     public static IReadOnlyList<CompetitionChoice> Choices(CompdataProject project)=>Rows(project.Files.Single(f=>f.RelativePath.Equals("compobj.txt",StringComparison.OrdinalIgnoreCase))).Where(r=>r.Length>=5&&r[1]=="3").Select(r=>new CompetitionChoice(r[0],r[2],r[3])).ById(c=>c.Id).ToArray();
     public static CompetitionClone PreviewClone(CompdataProject project,string sourceId,string code,string name)
     {
-        if(!System.Text.RegularExpressions.Regex.IsMatch(code,@"^[A-Za-z]\d+$")||string.IsNullOrWhiteSpace(name)||name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException("Code de type C123 et nom sans virgule requis.");
+        if(!System.Text.RegularExpressions.Regex.IsMatch(code,@"^[A-Za-z]\d+$")||string.IsNullOrWhiteSpace(name)||name.IndexOfAny([',','\r','\n'])>=0)throw new InvalidDataException(ATLink.Core.UiText.Get("Code de type C123 et nom sans virgule requis."));
         var objects=Rows(project.Files.Single(f=>f.RelativePath.Equals("compobj.txt",StringComparison.OrdinalIgnoreCase))).Where(r=>r.Length>=5).ToArray();
         var source=objects.Single(r=>r[0]==sourceId&&r[1]=="3");
-        if(objects.Any(r=>r[2].Equals(code,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Ce code existe déjà.");
+        if(objects.Any(r=>r[2].Equals(code,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException(ATLink.Core.UiText.Get("Ce code existe déjà."));
         var selected=new HashSet<string>{sourceId};bool grew;
         do{grew=false;foreach(var row in objects)if(selected.Contains(row[4])&&selected.Add(row[0]))grew=true;}while(grew);
         int next=objects.Max(r=>int.Parse(r[0]))+1;var map=objects.Where(r=>selected.Contains(r[0])).ToDictionary(r=>r[0],r=>(next++).ToString());
@@ -42,11 +42,11 @@ public static class CompetitionTools
         {
             string tail=Path.GetFileName(file.RelativePath)[(source[2].Length+1)..];
             var stage=objects.Where(r=>selected.Contains(r[0])&&r[1]=="4").FirstOrDefault(r=>tail.StartsWith(r[2]+"_",StringComparison.OrdinalIgnoreCase));
-            if(stage is null)throw new InvalidDataException($"Phase inconnue pour {file.RelativePath}.");
+            if(stage is null)throw new InvalidDataException(ATLink.Core.UiText.Format("Phase inconnue pour {0}.", file.RelativePath));
             string stageCode=stage[2];
             string filename=code+"_"+stageCode+tail[stage[2].Length..];
             string path=Path.Combine(Path.GetDirectoryName(file.RelativePath)!,filename);
-            if(project.Files.Any(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Calendrier cible déjà présent.");
+            if(project.Files.Any(f=>f.RelativePath.Equals(path,StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException(ATLink.Core.UiText.Get("Calendrier cible déjà présent."));
             changes.Add(new(path,null,file.Text));
         }        if(!changes.Any(c=>c.Path.Equals("compids.txt",StringComparison.OrdinalIgnoreCase)))
         {
@@ -62,7 +62,7 @@ public static class CompetitionTools
         foreach(var change in preview.Changes)
         {
             var existing=project.Files.SingleOrDefault(f=>f.RelativePath==change.Path);
-            if(change.Before is null?existing is not null:existing?.Text!=change.Before)throw new InvalidOperationException("Les fichiers ont changé depuis l'aperçu.");
+            if(change.Before is null?existing is not null:existing?.Text!=change.Before)throw new InvalidOperationException(ATLink.Core.UiText.Get("Les fichiers ont changé depuis l'aperçu."));
         }
         var files=project.Files.ToList();
         foreach(var change in preview.Changes)

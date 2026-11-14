@@ -1,47 +1,47 @@
-<UserControl x:Class="ATLink.Views.FootballCreationLinksEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
+<UserControl xmlns:loc="clr-namespace:ATLink.Services" x:Class="ATLink.Views.FootballCreationLinksEditor" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:ATLink.Views" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource BackgroundBrush}">
  <UserControl.Resources>
   <Style x:Key="Heading" TargetType="TextBlock"><Setter Property="FontSize" Value="18"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Margin" Value="0,16,0,8"/></Style>
   <Style x:Key="Hint" TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="0,5,0,10"/></Style>
  </UserControl.Resources>
  <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="14">
-  <TextBlock Text="Linked competitions" FontSize="24" FontWeight="Bold"/>
+  <TextBlock Text="{loc:Text T6086681ccdcfb5}" FontSize="24" FontWeight="Bold"/>
   <TextBlock Text="{Binding Creation.Name}" FontSize="18" Margin="0,8"/>
-  <TextBlock Text="Configure the relationships now. All new competitions are created together when you finish this assistant." Style="{StaticResource Hint}"/>
-  <WrapPanel><Button Content="+ Add linked competition" Click="AddDraft" Margin="0,0,8,8"/><Button Content="Remove selected draft" Click="RemoveDraft" Margin="0,0,8,8"/></WrapPanel>
+  <TextBlock Text="{loc:Text T4123b2e058217e}" Style="{StaticResource Hint}"/>
+  <WrapPanel><Button Content="{loc:Text T9499587fecc98f}" Click="AddDraft" Margin="0,0,8,8"/><Button Content="{loc:Text Tf2c1537fad4f63}" Click="RemoveDraft" Margin="0,0,8,8"/></WrapPanel>
   <ListBox ItemsSource="{Binding NewDrafts}" SelectedItem="{Binding SelectedDraft}" DisplayMemberPath="Name" MaxHeight="150"/>
   <TabControl Margin="0,14">
-   <TabItem Header="Promotion &amp; relegation"><StackPanel Margin="14">
-    <TextBlock Text="Higher division" Style="{StaticResource Heading}"/>
+   <TabItem Header="{loc:Text Te899981a85a06c}"><StackPanel Margin="14">
+    <TextBlock Text="{loc:Text T227eb5cc2b2557}" Style="{StaticResource Heading}"/>
     <ComboBox ItemsSource="{Binding NeighbourChoices}" SelectedItem="{Binding Higher}" DisplayMemberPath="Name"/>
-    <TextBlock Text="Lower division" Style="{StaticResource Heading}"/>
+    <TextBlock Text="{loc:Text T77097dfe565627}" Style="{StaticResource Heading}"/>
     <ComboBox ItemsSource="{Binding NeighbourChoices}" SelectedItem="{Binding Lower}" DisplayMemberPath="Name"/>
-    <TextBlock Text="Promoted teams from the lower division" Style="{StaticResource Heading}"/>
+    <TextBlock Text="{loc:Text T83d66ca7ecd7e3}" Style="{StaticResource Heading}"/>
     <ComboBox ItemsSource="{Binding PromotionChoices}" SelectedItem="{Binding Promotion}" DisplayMemberPath="Name"/>
-    <TextBlock Text="Choose None for a competition with no division above or below it. Custom two-group divisions exchange two clubs." Style="{StaticResource Hint}"/>
+    <TextBlock Text="{loc:Text T563f884c5aefd2}" Style="{StaticResource Hint}"/>
    </StackPanel></TabItem>
-   <TabItem Header="Qualifying playoffs"><StackPanel Margin="14">
-    <CheckBox Content="Add two qualifying paths with 32 clubs each" IsChecked="{Binding AddQualifiers}" Margin="0,12"/>
+   <TabItem Header="{loc:Text Te0db2274873225}"><StackPanel Margin="14">
+    <CheckBox Content="{loc:Text Tedf96ac7e2b646}" IsChecked="{Binding AddQualifiers}" Margin="0,12"/>
     <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding AddQualifiers}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-     <TextBlock Text="Competition receiving both winners" Style="{StaticResource Heading}"/>
+     <TextBlock Text="{loc:Text T881569b5bc4527}" Style="{StaticResource Heading}"/>
      <ComboBox ItemsSource="{Binding ReceivingChoices}" SelectedItem="{Binding QualifierDestination}" DisplayMemberPath="Name"/>
-     <TextBlock Text="Qualifying competition name" Style="{StaticResource Heading}"/>
+     <TextBlock Text="{loc:Text Tf387028a3fa603}" Style="{StaticResource Heading}"/>
      <TextBox Text="{Binding QualifierName,UpdateSourceTrigger=PropertyChanged}"/><local:FootballCompetitionNamesEditor DataContext="{Binding QualifierNames}"/><local:CompetitionArtworkEditor DataContext="{Binding QualifierArtwork}"/>
-     <TextBlock Text="Also exclude clubs already in" Style="{StaticResource Heading}"/>
+     <TextBlock Text="{loc:Text T347c2eb8d1ea3c}" Style="{StaticResource Heading}"/>
      <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding ExcludedCompetition}" DisplayMemberPath="Name"/>
-     <TextBlock Text="The receiving competition is excluded automatically. Both playoff winners enter the same edition." Style="{StaticResource Hint}"/>
+     <TextBlock Text="{loc:Text T253db1b66d46c5}" Style="{StaticResource Hint}"/>
      <local:FootballQuotaEditor x:Name="QuotaSettings"/>
     </StackPanel>
    </StackPanel></TabItem>
-   <TabItem Header="Shared matchdays"><StackPanel Margin="14">
-    <TextBlock Text="Group matchday source" Style="{StaticResource Heading}"/>
+   <TabItem Header="{loc:Text T6a74063fd6423d}"><StackPanel Margin="14">
+    <TextBlock Text="{loc:Text T9f1eb70d8e02c7}" Style="{StaticResource Heading}"/>
     <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding CalendarSource}" DisplayMemberPath="Name"/>
-    <CheckBox Content="Use the source kickoff times" IsChecked="{Binding UseSourceTime}" Margin="0,14"/>
-    <TextBlock Text="Alternative kickoff" Margin="0,0,0,5"/>
+    <CheckBox Content="{loc:Text T026c873a36d507}" IsChecked="{Binding UseSourceTime}" Margin="0,14"/>
+    <TextBlock Text="{loc:Text Tc687833a03305c}" Margin="0,0,0,5"/>
     <ComboBox ItemsSource="{Binding Times}" SelectedItem="{Binding CalendarKickoff}" IsEditable="True" Width="120" HorizontalAlignment="Left"/>
-    <TextBlock Text="The group's dates follow this source in Schedule &amp; venues and Review. Select None to use an independent group calendar." Style="{StaticResource Hint}"/>
+    <TextBlock Text="{loc:Text Tc038cbd3c2720b}" Style="{StaticResource Hint}"/>
    </StackPanel></TabItem>
   </TabControl>
-  <Button Content="Preview linked competitions" Click="Preview" HorizontalAlignment="Left" Margin="0,16"/>
+  <Button Content="{loc:Text T7a9797cf2279c8}" Click="Preview" HorizontalAlignment="Left" Margin="0,16"/>
   <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="14"><TextBlock Text="{Binding Summary}" TextWrapping="Wrap"/></Border>
   <TextBlock Text="{Binding Error}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Margin="0,12"/>
  </StackPanel></ScrollViewer>
