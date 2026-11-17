@@ -1,0 +1,42 @@
+namespace ATLink.Views;
+internal static class PlayerPlaystylesCatalog
+{
+    public static readonly (string Id,string Name,string Category,string NormalField,string PlusField,int Mask)[] Entries=[
+        ("scoring-finesseshot","Finesse Shot","Finishing","trait1","icontrait1",1),
+        ("scoring-chipshot","Chip Shot","Finishing","trait1","icontrait1",2),
+        ("scoring-powershot","Power Shot","Finishing","trait1","icontrait1",4),
+        ("scoring-deadball","Dead Ball","Finishing","trait1","icontrait1",8),
+        ("scoring-precisionheader","Precision Header","Finishing","trait1","icontrait1",16),
+        ("scoring-acrobatic","Acrobatic","Finishing","trait1","icontrait1",32),
+        ("scoring-lowdrivenshot","Low Driven Shot","Finishing","trait1","icontrait1",64),
+        ("scoring-gamechanger","Gamechanger","Finishing","trait1","icontrait1",128),
+        ("passing-incisivepass","Incisive Pass","Passing","trait1","icontrait1",256),
+        ("passing-pingedpass","Pinged Pass","Passing","trait1","icontrait1",512),
+        ("passing-longballpass","Long Ball Pass","Passing","trait1","icontrait1",1024),
+        ("passing-tikitaka","Tiki Taka","Passing","trait1","icontrait1",2048),
+        ("passing-whippedcrosser","Whipped Pass","Passing","trait1","icontrait1",4096),
+        ("passing-inventive","Inventive","Passing","trait1","icontrait1",8192),
+        ("defending-jockey","Jockey","Defending","trait1","icontrait1",16384),
+        ("defending-block","Block","Defending","trait1","icontrait1",32768),
+        ("defending-intercept","Intercept","Defending","trait1","icontrait1",65536),
+        ("defending-anticipate","Anticipate","Defending","trait1","icontrait1",131072),
+        ("defending-slidetackle","Slide Tackle","Defending","trait1","icontrait1",262144),
+        ("defending-aerialfortress","Aerial Fortress","Defending","trait1","icontrait1",524288),
+        ("ballcontrol-technical","Technical","Ball Control","trait1","icontrait1",1048576),
+        ("ballcontrol-rapid","Rapid","Ball Control","trait1","icontrait1",2097152),
+        ("ballcontrol-firsttouch","First Touch","Ball Control","trait1","icontrait1",4194304),
+        ("ballcontrol-trickster","Trickster","Ball Control","trait1","icontrait1",8388608),
+        ("ballcontrol-pressproven","Press Proven","Ball Control","trait1","icontrait1",16777216),
+        ("physical-quickstep","Quick Step","Physical","trait1","icontrait1",33554432),
+        ("physical-relentless","Relentless","Physical","trait1","icontrait1",67108864),
+        ("physical-longthrow","Long Throw","Physical","trait1","icontrait1",134217728),
+        ("physical-bruiser","Bruiser","Physical","trait1","icontrait1",268435456),
+        ("physical-enforcer","Enforcer","Physical","trait1","icontrait1",536870912),
+        ("gk-farthrow","Far Throw","Goalkeeper","trait2","icontrait2",1),
+        ("gk-footwork","Footwork","Goalkeeper","trait2","icontrait2",2),
+        ("gk-crosscatcher","Cross Claimer","Goalkeeper","trait2","icontrait2",4),
+        ("gk-rushout","Rush Out","Goalkeeper","trait2","icontrait2",8),
+        ("gk-farreach","Far Reach","Goalkeeper","trait2","icontrait2",16),
+        ("gk-deflector","Deflector","Goalkeeper","trait2","icontrait2",32)
+    ];
+}

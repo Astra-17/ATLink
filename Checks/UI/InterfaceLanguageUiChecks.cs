@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -54,6 +54,14 @@ static class InterfaceLanguageUiChecks
                 model.SearchColumn="playerid";model.SearchText=player.Id;model.ExactMatch=true;
                 var selectedTable=model.SelectedTable;var rowFilter=model.Rows!.RowFilter;
                 window.Show();Pump();
+                string pendingAttribute=draft.Text;
+                var tablesBack=(Button)window.FindName("TablesBackButton");
+                for(int visit=0;visit<2;visit++){
+                    model.ShowTablesCommand.Execute(null);Pump();
+                    Check(model.Screen=="Tables"&&ReferenceEquals(model.Page,playerEditor)&&tablesBack.IsVisible,game+" Tables preserves editor and exposes Back");
+                    tablesBack.Command.Execute(null);Pump();
+                    Check(model.Screen=="Page"&&ReferenceEquals(model.Page,playerEditor)&&draft.Text==pendingAttribute&&ReferenceEquals(model.SelectedTable,selectedTable)&&model.SearchText==player.Id,game+" Tables Back restores editor, draft and table selection");
+                }
                 Check(Apply(window,store.Current with {InterfaceLanguage="fr"}),game+" switches to French");Pump();
                 var french=model.Localization!;LocRow(french)["sourcetext"]="Modification française en mémoire";
                 Check(Path.GetFileNameWithoutExtension(french.SourcePath)=="fre_fr"&&ReferenceEquals(model.Document,docs.Main)&&ReferenceEquals(model.Page,page),game+" keeps the open DB and editor");

@@ -163,7 +163,7 @@ public static class FieldChoices
         ["skillmoveslikelihood"]=Stars(0,4,1),
         ["weakfootabilitytypecode"]=Stars(1,5,0),
         ["gender"]=[new("0",UiText.Get("Male")),new("1",UiText.Get("Female"))],
-        ["internationalrep"]=[new("1","1"),new("2","2"),new("3","3"),new("4","4"),new("5","5")]
+        ["internationalrep"]=Stars(1,5,0)
     };
     private static FieldChoice[] Stars(int from,int to,int offset)=>Enumerable.Range(from,to-from+1).Select(v=>new FieldChoice(v.ToString(),new string('★',v+offset))).ToArray();
     public static IReadOnlyList<FieldChoice>? For(string field)=>Map.TryGetValue(field,out var choices)?choices:null;

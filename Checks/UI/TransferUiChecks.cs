@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,7 +14,7 @@ internal static class TransferUiChecks
     static void Require(bool value,string message){if(!value)throw new Exception(message);}
     public static void Run(string root)
     {
-        var app=new Application();
+        var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};app.Resources.MergedDictionaries.Add(new ResourceDictionary{Source=new Uri("pack://application:,,,/ATLink;component/Themes/Studio.xaml")});UiText.Current.SetLanguage("en");
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
         void Pump()
         {

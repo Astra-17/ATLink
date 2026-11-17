@@ -38,6 +38,13 @@ static class WindowChromeUiChecks
             var choice=windows.OfType<ProjectActionWindow>().Single();
             choice.ResizeMode=ResizeMode.CanMinimize;
             Check(((Button)choice.Template.FindName("Maximize",choice)).Visibility==Visibility.Collapsed,"CanMinimize dialogs do not expose maximize");
+            choice.ResizeMode=ResizeMode.CanResize;choice.WindowState=WindowState.Maximized;
+            Check(((Border)choice.Template.FindName("WindowFrame",choice)).BorderThickness==new Thickness(0),"Maximized content has no outer frame");
+            Check(WindowChrome.GetWindowChrome(choice)!.ResizeBorderThickness==new Thickness(0),"Maximized content has no resize gutter");
+            Check(double.IsPositiveInfinity(choice.MaxWidth)&&double.IsPositiveInfinity(choice.MaxHeight),"Maximizing does not constrain content to primary screen dimensions");
+            choice.WindowState=WindowState.Normal;
+            Check(((Border)choice.Template.FindName("WindowFrame",choice)).BorderThickness==new Thickness(1),"Restoring recovers normal frame");
+            Check(WindowChrome.GetWindowChrome(choice)!.ResizeBorderThickness==new Thickness(6),"Restoring recovers resize handles");
             var day=System.Xml.Linq.XDocument.Load(Path.Combine(root,"Views/CalendarDayWindow.xaml"));
             Check(day.Root!.Attribute("Style")!.Value=="{DynamicResource {x:Type Window}}"&&!day.Root.Elements().Any(element=>element.Name.LocalName=="Window.Template"),"Matchday window uses the shared title bar template");
             Console.WriteLine("PASS shared window chrome checks (no screen capture)");

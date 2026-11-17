@@ -1,0 +1,41 @@
+using ATLink.Core;
+namespace ATLink.Views;
+internal static class PlayerAppearanceChoices
+{
+    // Explicit code labels from FC27 Live Editor v27.1.9, loc/eng_us/localize.json.
+    // Placeholder labels are deliberately excluded. Values are never translated.
+    static readonly Dictionary<string,(string Value,string Name)[]> Map=new(){
+        ["bodytypecode"]=[("1","Average and Lean"),("2","Average and Normal"),("3","Average and Stocky"),("4","Tall and Lean"),("5","Tall and Normal"),("6","Tall and Stocky"),("7","Short and Lean"),("8","Short and Normal"),("9","Short and Stocky"),("11","Very Tall and Lean")],
+        ["headclasscode"]=[("0","Specific"),("1","Generic")],
+        ["haircolorcode"]=[("0","Black"),("1","Blonde"),("2","Dirty Blonde"),("3","Dark Brown"),("4","Light Blonde"),("5","Light Brown"),("6","Medium Brown"),("7","Red"),("8","White"),("9","Silver"),("10","Green"),("11","Blue"),("12","Ginger"),("13","Dark Red"),("14","Pink")],
+        ["facialhaircolorcode"]=[("0","Black"),("1","Blonde"),("2","Medium Brown"),("3","Dark Brown"),("4","Red")],
+        ["eyecolorcode"]=[("1","Blue"),("2","Light Blue"),("3","Brown"),("4","Light Brown"),("5","Hazel"),("6","Green"),("7","Light Green"),("8","Medium Blue"),("9","Dark Brown"),("10","Saturated Green")],
+        ["jerseyfit"]=[("0","Normal"),("1","Tight"),("2","Team Kit Fit")],
+        ["jerseystylecode"]=[("0","Tucked In"),("1","Untucked")],
+        ["jerseysleevelengthcode"]=[("0","Short"),("1","Long"),("2","Long and Turtleneck"),("3","Seasonal Undershirt"),("4","Seasonal Undershirt and Turtleneck")],
+        ["hasseasonaljersey"]=[("0","Short"),("1","Long"),("2","Long and Turtleneck"),("3","Seasonal Undershirt"),("4","Seasonal Undershirt and Turtleneck")],
+        ["socklengthcode"]=[("0","Medium"),("1","Short"),("2","Long"),("3","Low")],
+        ["sockstylecode"]=[("0","No Shin Pad"),("1","Regular"),("2","Small Shin Pad"),("3","Micro Shin Pad"),("5","One Hole"),("6","Two Holes"),("7","Three Holes"),("8","Multi Holes")],
+        ["shortstyle"]=[("0","GK Shorts"),("1","GK Pants")],
+        ["shoecolorcode1"]=[("0","Black"),("1","Violet"),("2","Dark Blue"),("3","Blue"),("4","Light Blue"),("5","Green"),("6","Lime"),("7","Yellow"),("8","Dark Yellow"),("9","Orange"),("10","Dark Pink"),("11","Red"),("12","Dark Purple"),("13","Gold"),("14","Grey"),("15","White"),("16","Mint"),("17","Sky Blue"),("18","Dark Orange"),("19","Dark Green"),("20","Purple"),("21","Coral"),("22","Tuscany Yellow"),("23","Lemon"),("24","Pistacho"),("25","Teal"),("26","Pink"),("27","Light Mint"),("28","Light Yellow"),("29","Fuchsia"),("30","Dark Red"),("31","Light Green")],
+        ["shoecolorcode2"]=[("0","Black"),("1","Violet"),("2","Dark Blue"),("3","Blue"),("4","Light Blue"),("5","Green"),("6","Lime"),("7","Yellow"),("8","Dark Yellow"),("9","Orange"),("10","Dark Pink"),("11","Red"),("12","Dark Purple"),("13","Gold"),("14","Grey"),("15","White"),("16","Mint"),("17","Sky Blue"),("18","Dark Orange"),("19","Dark Green"),("20","Purple"),("21","Coral"),("22","Tuscany Yellow"),("23","Lemon"),("24","Pistacho"),("25","Teal"),("26","Pink"),("27","Light Mint"),("28","Light Yellow"),("29","Fuchsia"),("30","Dark Red"),("31","Light Green")],
+        ["hashighqualityhead"]=[("0","No"),("1","Yes")],
+        ["accessorycode1"]=[("0","None"),("2","Hearphone"),("4","Left Watch"),("5","Right Watch"),("6","Left Hand Tape"),("7","Right Hand Tape"),("8","Left Wristle Tape"),("9","Right Wristle Tape"),("10","Left Knee Tape"),("11","Right Knee Tape"),("12","Left Knee Tutor"),("13","Right Knee Tutor"),("14","Ankle Tape"),("16","Gloves"),("22","Left Finger Tape"),("23","Right Finger Tape"),("24","Left Wide Wristle Tape"),("25","Right Wide Wristle Tape"),("26","Left Bracelet"),("27","Right Bracelet"),("28","Left Yellow Card"),("29","Right Yellow Card"),("30","Left Red Card"),("31","Right Red Card"),("32","Left Ref Pen"),("33","Right Ref Pen"),("34","Left Ref Book"),("35","Right Ref Book"),("36","Left Vanishing Spray"),("37","Right Vanishing Spray"),("38","Left Cellphone"),("39","Right Cellphone"),("156","Osimhen Facemask"),("190","Knee brace"),("200","Gloves"),("240","Fitted Suit Tie")],
+        ["accessorycolourcode1"]=[("0","White"),("1","Black"),("2","Blue"),("3","Red"),("4","Yellow"),("5","Dark Green"),("6","Orange"),("7","Violet"),("8","Brown"),("9","Pink"),("10","Bordeaux"),("11","Cyan"),("12","Dark Blue"),("99","None")],
+        ["accessorycode2"]=[("0","None"),("2","Hearphone"),("4","Left Watch"),("5","Right Watch"),("6","Left Hand Tape"),("7","Right Hand Tape"),("8","Left Wristle Tape"),("9","Right Wristle Tape"),("10","Left Knee Tape"),("11","Right Knee Tape"),("12","Left Knee Tutor"),("13","Right Knee Tutor"),("14","Ankle Tape"),("16","Gloves"),("22","Left Finger Tape"),("23","Right Finger Tape"),("24","Left Wide Wristle Tape"),("25","Right Wide Wristle Tape"),("26","Left Bracelet"),("27","Right Bracelet"),("28","Left Yellow Card"),("29","Right Yellow Card"),("30","Left Red Card"),("31","Right Red Card"),("32","Left Ref Pen"),("33","Right Ref Pen"),("34","Left Ref Book"),("35","Right Ref Book"),("36","Left Vanishing Spray"),("37","Right Vanishing Spray"),("38","Left Cellphone"),("39","Right Cellphone"),("156","Osimhen Facemask"),("190","Knee brace"),("200","Gloves"),("240","Fitted Suit Tie")],
+        ["accessorycolourcode2"]=[("0","White"),("1","Black"),("2","Blue"),("3","Red"),("4","Yellow"),("5","Dark Green"),("6","Orange"),("7","Violet"),("8","Brown"),("9","Pink"),("10","Bordeaux"),("11","Cyan"),("12","Dark Blue"),("99","None")],
+        ["accessorycode3"]=[("0","None"),("2","Hearphone"),("4","Left Watch"),("5","Right Watch"),("6","Left Hand Tape"),("7","Right Hand Tape"),("8","Left Wristle Tape"),("9","Right Wristle Tape"),("10","Left Knee Tape"),("11","Right Knee Tape"),("12","Left Knee Tutor"),("13","Right Knee Tutor"),("14","Ankle Tape"),("16","Gloves"),("22","Left Finger Tape"),("23","Right Finger Tape"),("24","Left Wide Wristle Tape"),("25","Right Wide Wristle Tape"),("26","Left Bracelet"),("27","Right Bracelet"),("28","Left Yellow Card"),("29","Right Yellow Card"),("30","Left Red Card"),("31","Right Red Card"),("32","Left Ref Pen"),("33","Right Ref Pen"),("34","Left Ref Book"),("35","Right Ref Book"),("36","Left Vanishing Spray"),("37","Right Vanishing Spray"),("38","Left Cellphone"),("39","Right Cellphone"),("156","Osimhen Facemask"),("190","Knee brace"),("200","Gloves"),("240","Fitted Suit Tie")],
+        ["accessorycolourcode3"]=[("0","White"),("1","Black"),("2","Blue"),("3","Red"),("4","Yellow"),("5","Dark Green"),("6","Orange"),("7","Violet"),("8","Brown"),("9","Pink"),("10","Bordeaux"),("11","Cyan"),("12","Dark Blue"),("99","None")],
+        ["accessorycode4"]=[("0","None"),("2","Hearphone"),("4","Left Watch"),("5","Right Watch"),("6","Left Hand Tape"),("7","Right Hand Tape"),("8","Left Wristle Tape"),("9","Right Wristle Tape"),("10","Left Knee Tape"),("11","Right Knee Tape"),("12","Left Knee Tutor"),("13","Right Knee Tutor"),("14","Ankle Tape"),("16","Gloves"),("22","Left Finger Tape"),("23","Right Finger Tape"),("24","Left Wide Wristle Tape"),("25","Right Wide Wristle Tape"),("26","Left Bracelet"),("27","Right Bracelet"),("28","Left Yellow Card"),("29","Right Yellow Card"),("30","Left Red Card"),("31","Right Red Card"),("32","Left Ref Pen"),("33","Right Ref Pen"),("34","Left Ref Book"),("35","Right Ref Book"),("36","Left Vanishing Spray"),("37","Right Vanishing Spray"),("38","Left Cellphone"),("39","Right Cellphone"),("156","Osimhen Facemask"),("190","Knee brace"),("200","Gloves"),("240","Fitted Suit Tie")],
+        ["accessorycolourcode4"]=[("0","White"),("1","Black"),("2","Blue"),("3","Red"),("4","Yellow"),("5","Dark Green"),("6","Orange"),("7","Violet"),("8","Brown"),("9","Pink"),("10","Bordeaux"),("11","Cyan"),("12","Dark Blue"),("99","None")],
+        ["tattooback"]=[("0","None")],
+        ["tattoofront"]=[("0","None")],
+        ["tattoohead"]=[("0","None")],
+        ["tattooleftarm"]=[("0","None")],
+        ["tattoorightarm"]=[("0","None")],
+        ["tattooleftleg"]=[("0","None")],
+        ["tattoorightleg"]=[("0","None")],
+    };
+    public static FieldChoice[] For(string field)=>Map.TryGetValue(field,out var choices)
+        ?choices.Select(c=>new FieldChoice(c.Value,UiText.Format("{0} ({1})",UiText.Get(c.Name),c.Value))).ToArray():[];
+}

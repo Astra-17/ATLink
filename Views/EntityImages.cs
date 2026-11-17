@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -12,6 +12,11 @@ public static class EntityImages
     private static readonly Queue<string> order=new();
     public static ImageSource Player(string? id)=>Load("head",id);
     public static ImageSource Crest(string? id)=>Load("crest",id);
+    public static ImageSource TeamCrest(System.Data.DataRow row)
+    {
+        string id=FootballCatalog.Value(row,"teamid"),asset=FootballCatalog.Value(row,"assetid");
+        return Crest(File.Exists(Path.Combine(RuntimeData.Root,"crest",id+".png"))?id:string.IsNullOrWhiteSpace(asset)?id:asset);
+    }
     public static ImageSource For(EntityItem? item)
     {
         if(item?.Row.Table.Columns.Contains("playerid")==true)return Player(item.Id);

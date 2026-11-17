@@ -38,14 +38,16 @@ public static class WindowAppearance
                 window.WindowState=window.WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;
         }));
         window.CommandBindings.Add(new CommandBinding(SystemCommands.CloseWindowCommand,(_,_)=>window.Close()));
-        window.StateChanged+=(_,_)=>
-        {
-            if(window.WindowState==WindowState.Maximized)
-            {
-                var work=SystemParameters.WorkArea;window.MaxWidth=work.Width;window.MaxHeight=work.Height;
-            }
-            else {window.MaxWidth=double.PositiveInfinity;window.MaxHeight=double.PositiveInfinity;}
-        };
+        void UpdateResizeBorder(){
+            if(WindowChrome.GetWindowChrome(window) is {} chrome)
+                chrome.ResizeBorderThickness=window.WindowState==WindowState.Maximized||window.ResizeMode==ResizeMode.NoResize?new Thickness(0):new Thickness(6);
+        }
+        var stateProperty=System.ComponentModel.DependencyPropertyDescriptor.FromProperty(Window.WindowStateProperty,typeof(Window));
+        var resizeProperty=System.ComponentModel.DependencyPropertyDescriptor.FromProperty(Window.ResizeModeProperty,typeof(Window));
+        EventHandler update=(_,_)=>UpdateResizeBorder();
+        stateProperty.AddValueChanged(window,update);resizeProperty.AddValueChanged(window,update);
+        window.Closed+=(_,_)=>{stateProperty.RemoveValueChanged(window,update);resizeProperty.RemoveValueChanged(window,update);};
+        UpdateResizeBorder();
         void Hook()
         {
             if(PresentationSource.FromVisual(window) is HwndSource source)source.AddHook(CursorMessage);
@@ -55,10 +57,29 @@ public static class WindowAppearance
     }
     private static IntPtr CursorMessage(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
     {
+        // Fit the current monitor's work area, including secondary monitors and
+        // taskbars docked on any edge. Coordinates here are native pixels.
+        if(message==0x24){
+            IntPtr monitor=MonitorFromWindow(hwnd,2);
+            var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>()};
+            if(monitor!=IntPtr.Zero&&GetMonitorInfo(monitor,ref info)){
+                var limits=Marshal.PtrToStructure<MinMaxInfo>(lParam);
+                limits.MaxPosition=new NativePoint{X=info.Work.Left-info.Monitor.Left,Y=info.Work.Top-info.Monitor.Top};
+                limits.MaxSize=new NativePoint{X=info.Work.Right-info.Work.Left,Y=info.Work.Bottom-info.Work.Top};
+                Marshal.StructureToPtr(limits,lParam,false);handled=true;
+            }
+            return IntPtr.Zero;
+        }
         // WM_SETCURSOR also covers native non-client resize hit targets.
         if(message==0x20){SetCursor(Handle.DangerousGetHandle());handled=true;return new IntPtr(1);}
         return IntPtr.Zero;
     }
+    [StructLayout(LayoutKind.Sequential)]struct NativePoint{public int X,Y;}
+    [StructLayout(LayoutKind.Sequential)]struct NativeRect{public int Left,Top,Right,Bottom;}
+    [StructLayout(LayoutKind.Sequential)]struct MonitorInfo{public int Size;public NativeRect Monitor,Work;public uint Flags;}
+    [StructLayout(LayoutKind.Sequential)]struct MinMaxInfo{public NativePoint Reserved,MaxSize,MaxPosition,MinTrackSize,MaxTrackSize;}
+    [DllImport("user32.dll")]static extern IntPtr MonitorFromWindow(IntPtr hwnd,uint flags);
+    [DllImport("user32.dll",CharSet=CharSet.Auto)]static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
     private static SafeCursorHandle CreatePointer()
     {
         const byte accentB=0x92,accentG=0x3E,accentR=0x8E;

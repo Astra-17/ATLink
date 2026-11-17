@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,7 +31,7 @@ internal static class ClubCombo
         var view=new ListCollectionView(choices.ToList());
         box.ItemsSource=view;
         box.IsEditable=true;box.IsTextSearchEnabled=false;box.StaysOpenOnEdit=true;
-        TextSearch.SetTextPath(box,ATLink.Core.UiText.Get("Label"));
+        TextSearch.SetTextPath(box,nameof(ClubOption.Label));
         VirtualizingPanel.SetIsVirtualizing(box,true);
         VirtualizingPanel.SetVirtualizationMode(box,VirtualizationMode.Recycling);
         ScrollViewer.SetCanContentScroll(box,true);

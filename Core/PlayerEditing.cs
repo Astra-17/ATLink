@@ -6,6 +6,29 @@ namespace ATLink.Core;
 // Behavioral port of player-editor.service.ts (DBM Studio 1828c34).
 public static class PlayerEditing
 {
+    public static EntityItem Clone(FootballCatalog catalog,DataRow source)
+    {
+        var table=catalog.Table("players");
+        if(source.Table!=table.Data||source.RowState is DataRowState.Deleted or DataRowState.Detached)
+            throw new InvalidOperationException(UiText.Get("Selected player no longer exists."));
+        DataRow? clone=null,nameClone=null;
+        try{
+            clone=TableEditing.Add(table,source);
+            string id=FootballCatalog.Value(clone,"playerid"),sourceId=FootballCatalog.Value(source,"playerid");
+            var names=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==sourceId);
+            if(names is not null){
+                var nameTable=catalog.Table("editedplayernames");nameClone=nameTable.Data.NewRow();
+                nameClone.ItemArray=names.ItemArray.ToArray();nameClone["playerid"]=id;
+                foreach(var field in nameTable.Fields)DatabaseDocument.ValidateValue(field,FootballCatalog.Value(nameClone,field.Name));
+                nameTable.Data.Rows.Add(nameClone);
+            }
+            return new EntityItem(id,catalog.PlayerName(clone),"",clone);
+        }catch{
+            if(nameClone?.RowState==DataRowState.Added)nameClone.Table.Rows.Remove(nameClone);
+            if(clone?.RowState==DataRowState.Added)clone.Table.Rows.Remove(clone);
+            throw;
+        }
+    }
     public static void Apply(FootballCatalog catalog, DataRow player,
         IReadOnlyDictionary<string,string> fields, IReadOnlyDictionary<string,string> names)
     {

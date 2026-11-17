@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -61,13 +61,8 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
     public AttributeDraft Potential {get;}
     public int Overall {get;private set;}
     public Brush OverallBrush=>RatingColors.For(Overall);
-    Color BadgeTone(double amount){
-        var c=((SolidColorBrush)OverallBrush).Color;
-        byte Tone(byte value)=>(byte)Math.Clamp(amount>=0?value+(255-value)*amount:value*(1+amount),0,255);
-        return Color.FromRgb(Tone(c.R),Tone(c.G),Tone(c.B));
-    }
-    public Brush OverallBorderBrush=>new SolidColorBrush(BadgeTone(.48));
-    public Brush OverallReliefBrush=>new LinearGradientBrush(BadgeTone(.25),BadgeTone(-.28),65);
+    public Brush OverallBorderBrush=>RatingColors.BorderFor(Overall);
+    public Brush OverallReliefBrush=>RatingColors.ReliefFor(Overall);
 
     public IReadOnlyList<PositionRating> PositionRatings {get;private set;}=[];
     static readonly (string Name,double X,double Y)[] PitchLayout=
@@ -144,17 +139,19 @@ public sealed class PlayerAttributeDraft : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-public partial class PlayerEditor : UserControl
+public partial class PlayerEditor : UserControl, INotifyPropertyChanged
 {
     public event Action? BackRequested;
     public PlayerAttributeDraft Draft {get;private set;}
     readonly PlayerInfoEditor info;
     readonly PlayerAppearanceEditor appearance;
+    readonly PlayerAbilitiesEditor abilities;
+    readonly PlayerPlaystylesEditor playstyles;
     readonly FootballCatalog catalog;
     readonly EntityItem player;
     public PlayerEditor(FootballCatalog catalog,EntityItem player)
     {
-        InitializeComponent();this.catalog=catalog;this.player=player;Draft=new(catalog,player);DataContext=Draft;info=new(catalog,player);InfoHost.Content=info;info.Changed+=()=>Error.Text=ATLink.Core.UiText.Get("Changes not applied");appearance=new(catalog,player);AppearanceHost.Content=appearance;appearance.Changed+=()=>Error.Text=ATLink.Core.UiText.Get("Changes not applied");
+        InitializeComponent();this.catalog=catalog;this.player=player;Draft=new(catalog,player);DataContext=Draft;info=new(catalog,player);InfoHost.Content=info;info.Changed+=RecordDraftChange;appearance=new(catalog,player);AppearanceHost.Content=appearance;appearance.Changed+=RecordDraftChange;playstyles=new(catalog,player);PlaystylesHost.Content=playstyles;playstyles.Changed+=RecordDraftChange;abilities=new(catalog,player);AbilitiesHost.Content=abilities;abilities.Changed+=RecordDraftChange;
         PlayerName.Text=player.Name;PlayerId.Text="ID: "+player.Id;Portrait.Source=EntityImages.Player(player.Id);
         var link=catalog.Rows("teamplayerlinks").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==player.Id&&!catalog.NationalTeamIds.Contains(FootballCatalog.Value(r,"teamid")));
         string clubId=link is null?"":FootballCatalog.Value(link,"teamid");
@@ -164,8 +161,43 @@ public partial class PlayerEditor : UserControl
         RefreshInfoHeader();
         Loaded+=(_,_)=>{catalog.Document.DisplayLocalizationChanged+=RefreshLocalizedHeader;RefreshLocalizedHeader();};
         Unloaded+=(_,_)=>catalog.Document.DisplayLocalizationChanged-=RefreshLocalizedHeader;
-        Draft.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PlayerAttributeDraft.PositionRatings))Radar.InvalidateVisual();};Radar.Draft=Draft;
+        Draft.PropertyChanged+=DraftChanged;Radar.Draft=Draft;ResetHistory();
     }
+    sealed record DraftState(Dictionary<string,string> Info,Dictionary<string,string> Appearance,Dictionary<string,string> Abilities,Dictionary<string,string> Playstyles,Dictionary<string,string> Attributes);
+    readonly Stack<DraftState> undoDrafts=new(),redoDrafts=new();
+    DraftState? currentDraft;
+    bool replaying;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public bool HasPendingChanges=>Draft.HasChanges||info.HasChanges||appearance.HasChanges||abilities.HasChanges||playstyles.HasChanges;
+    public bool CanUndo=>undoDrafts.Count>0;
+    public bool CanRedo=>redoDrafts.Count>0;
+    void NotifyEditingState(){foreach(string property in new[]{nameof(HasPendingChanges),nameof(CanUndo),nameof(CanRedo)})PropertyChanged?.Invoke(this,new(property));}
+    DraftState CaptureDraft()=>new(info.CaptureDraft(),appearance.CaptureDraft(),abilities.CaptureDraft(),playstyles.CaptureDraft(),Draft.Attributes.Append(Draft.Potential).ToDictionary(a=>a.Field,a=>a.Text));
+    static bool EqualDraft(DraftState left,DraftState right)=>System.Text.Json.JsonSerializer.Serialize(left)==System.Text.Json.JsonSerializer.Serialize(right);
+    void ResetHistory(){undoDrafts.Clear();redoDrafts.Clear();currentDraft=CaptureDraft();NotifyEditingState();}
+    void DraftChanged(object? sender,PropertyChangedEventArgs e){
+        if(e.PropertyName==nameof(PlayerAttributeDraft.PositionRatings))Radar.InvalidateVisual();
+        if(e.PropertyName==nameof(PlayerAttributeDraft.HasChanges))RecordDraftChange();
+    }
+    void RecordDraftChange(){
+        if(replaying||currentDraft is null)return;
+        var next=CaptureDraft();
+        if(EqualDraft(currentDraft,next)){NotifyEditingState();return;}
+        undoDrafts.Push(currentDraft);currentDraft=next;redoDrafts.Clear();
+        Error.Text=UiText.Get("Changes not applied");NotifyEditingState();
+    }
+    void RestoreDraft(DraftState state){
+        replaying=true;
+        try{
+            info.RestoreDraft(state.Info);appearance.RestoreDraft(state.Appearance);
+            abilities.RestoreDraft(state.Abilities);playstyles.RestoreDraft(state.Playstyles);
+            foreach(var value in Draft.Attributes.Append(Draft.Potential))value.Text=state.Attributes[value.Field];
+            currentDraft=CaptureDraft();
+        }finally{replaying=false;}
+        Error.Text=HasPendingChanges?UiText.Get("Changes not applied"):"";NotifyEditingState();
+    }
+    public void UndoDraft(){if(!CanUndo)return;redoDrafts.Push(CaptureDraft());RestoreDraft(undoDrafts.Pop());}
+    public void RedoDraft(){if(!CanRedo)return;undoDrafts.Push(CaptureDraft());RestoreDraft(redoDrafts.Pop());}
     void RefreshInfoHeader()
     {
         string Raw(string key)=>FootballCatalog.Value(player.Row,key);
@@ -181,19 +213,9 @@ public partial class PlayerEditor : UserControl
         string id=link is null?"":FootballCatalog.Value(link,"teamid");
         ClubName.Text=catalog.Rows("teams").Where(team=>FootballCatalog.Value(team,"teamid")==id).Select(catalog.TeamName).FirstOrDefault()??UiText.Get("No club");
     }
-    bool NameChanged=>NameDraft.Visibility==Visibility.Visible&&NameDraft.Text.Trim()!=catalog.PlayerName(player.Row);
-    void EditNameClick(object sender,RoutedEventArgs e){NameDraft.Text=PlayerName.Text;NameDraft.Visibility=Visibility.Visible;NameDraft.Focus();NameDraft.SelectAll();}
-    void NameDraftChanged(object sender,TextChangedEventArgs e){if(Error is not null)Error.Text=ATLink.Core.UiText.Get("Changes not applied");}
-    Dictionary<string,string> NameValues(){
-        var map=catalog.Names();var edited=catalog.Rows("editedplayernames").FirstOrDefault(r=>FootballCatalog.Value(r,"playerid")==player.Id);
-        var result=new Dictionary<string,string>();
-        foreach(var pair in new[]{("firstname","firstnameid"),("surname","lastnameid"),("commonname","commonnameid"),("playerjerseyname","playerjerseynameid")})
-            result[pair.Item1]=edited is null?map.GetValueOrDefault(FootballCatalog.Value(player.Row,pair.Item2),""):FootballCatalog.Value(edited,pair.Item1);
-        result["commonname"]=NameDraft.Text.Trim();return result;
-    }
     public bool CanLeave()
     {
-        if(!Draft.HasChanges&&!info.HasChanges&&!appearance.HasChanges&&!NameChanged)return true;
+        if(!Draft.HasChanges&&!info.HasChanges&&!appearance.HasChanges&&!playstyles.HasChanges&&!abilities.HasChanges)return true;
         var answer=ShellDialogs.Message(this,ATLink.Core.UiText.Get("Apply your player changes before leaving? Choose No to discard this draft."),ATLink.Core.UiText.Get("Player changes"),MessageBoxButton.YesNoCancel);
         return answer==MessageBoxResult.No||(answer==MessageBoxResult.Yes&&TryApply());
     }
@@ -202,22 +224,19 @@ public partial class PlayerEditor : UserControl
         try
         {
             if(!Draft.Valid)throw new InvalidOperationException(ATLink.Core.UiText.Get("Enter whole numbers from 1 to 99 for attributes."));
-            info.Validate();appearance.Validate();
-            if(NameChanged){
-                if(string.IsNullOrWhiteSpace(NameDraft.Text))throw new InvalidOperationException(ATLink.Core.UiText.Get("Le nom ne peut pas être vide."));
-                foreach(var pair in NameValues())DatabaseDocument.ValidateValue(catalog.Table("editedplayernames").Fields.Single(f=>f.Name==pair.Key),pair.Value);
-            }
+            info.Validate();appearance.Validate();playstyles.Validate();abilities.Validate();
             var rows=catalog.Rows("teamplayerlinks").Where(r=>FootballCatalog.Value(r,"playerid")==player.Id).Append(player.Row).ToDictionary(r=>r,r=>r.ItemArray.ToArray());
-            try{info.Apply();appearance.Apply();Draft.UpdatePosition(FootballCatalog.Value(player.Row,"preferredposition1"));Draft.Apply();if(NameChanged)PlayerEditing.Apply(catalog,player.Row,new Dictionary<string,string>(),NameValues());}catch{foreach(var row in rows)row.Key.ItemArray=row.Value;throw;}
+            try{info.Apply();appearance.Apply();playstyles.Apply();abilities.Apply();Draft.UpdatePosition(FootballCatalog.Value(player.Row,"preferredposition1"));Draft.Apply();info.ApplyNames();}catch{foreach(var row in rows)row.Key.ItemArray=row.Value;throw;}
             string nation=FootballCatalog.Value(player.Row,"nationality");Nation.Text=catalog.NationNames().GetValueOrDefault(nation,nation);Flag.Source=NationFlags.Load(catalog.NationCodes().GetValueOrDefault(nation),Nation.Text);
-            PlayerName.Text=catalog.PlayerName(player.Row);NameDraft.Visibility=Visibility.Collapsed;RefreshInfoHeader();Draft=new(catalog,player);DataContext=Draft;Radar.Draft=Draft;Draft.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PlayerAttributeDraft.PositionRatings))Radar.InvalidateVisual();};Radar.InvalidateVisual();
-            Error.Text=ATLink.Core.UiText.Get("Changes applied. Save to write the file.");return true;
+            playstyles.AcceptChanges();
+            PlayerName.Text=catalog.PlayerName(player.Row);RefreshInfoHeader();Draft=new(catalog,player);DataContext=Draft;Radar.Draft=Draft;Draft.PropertyChanged+=DraftChanged;Radar.InvalidateVisual();
+            Error.Text=ATLink.Core.UiText.Get("Changes applied. Save to write the file.");ResetHistory();return true;
         }
         catch(Exception ex){Error.Text=ex.Message;return false;}
     }
     void ApplyClick(object sender,RoutedEventArgs e)=>TryApply();
     void BackClick(object sender,RoutedEventArgs e)=>BackRequested?.Invoke();
-    void ResetClick(object sender,RoutedEventArgs e)=>Draft.Reset();
+    void ResetClick(object sender,RoutedEventArgs e){replaying=true;try{Draft.Reset();abilities.Reset();}finally{replaying=false;}RecordDraftChange();}
     void StepClick(object sender,RoutedEventArgs e){if(sender is Button {DataContext:AttributeDraft a,Tag:string step})a.Step(int.Parse(step));}
     void NumberKeyDown(object sender,KeyEventArgs e)
     {

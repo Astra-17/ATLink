@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 namespace ATLink.Core;
 
@@ -72,9 +72,11 @@ public sealed class StudioData
         return DatabaseDocument.Open(language.DatabasePath,language.MetadataPath);
     }
     public (DatabaseDocument Main,DatabaseDocument Loc) OpenBase(string code)=>(DatabaseDocument.Open(BaseDatabase,Metadata),OpenLocalization(code));
-    public (DatabaseDocument Main,DatabaseDocument Loc) OpenSquad(string path,string code)
+    public (DatabaseDocument Main,DatabaseDocument Loc) OpenSquad(string path,string code)=>OpenSelected(path,code);
+    public (DatabaseDocument Main,DatabaseDocument Loc) OpenSelected(string path,string code)
     {
-        var main=SquadFile.Open(path,Metadata).Database;
+        var main=DatabaseDocument.Open(path,Metadata);
+        if(!main.IsSquad&&!main.IsCareer)return (main,OpenLocalization(code));
         // Squad files carry only additional names; the base dictionary stays read-only
         // and is never inserted into the Squad's serialized tables.
         if(referencePlayerNames is null||referenceNationNames is null||referenceNationCodes is null)

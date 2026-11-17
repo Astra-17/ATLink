@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Data;
 using System.Globalization;
 using System.Text;
@@ -43,6 +43,7 @@ public sealed partial class DatabaseDocument
     }
     public IReadOnlyList<DatabaseTable> Tables { get; }
     public bool HasChanges => SquadNameChanged || Tables.Any(t => t.Data.Rows.Cast<DataRow>().Any(r => r.RowState != DataRowState.Unchanged));
+    public bool IsCareer { get; internal set; }
     public bool IsSquad => PackagedOriginal is not null && SquadFile.IsContainer(PackagedOriginal);
     public bool SquadNameChanged => IsSquad && originalSquadName is not null && DisplayName != originalSquadName;
     public DatabaseSaveTarget SaveTarget()
@@ -74,6 +75,7 @@ public sealed partial class DatabaseDocument
     public static DatabaseDocument Open(string path, string metadata)
     {
         byte[] b = File.ReadAllBytes(path);
+        if (CareerFile.IsContainer(b)) return CareerFile.Open(b, metadata, path);
         if (SquadFile.IsContainer(b)) return SquadFile.Open(path, metadata).Database;
         if (LocCrypto.IsEncrypted(b))
         {

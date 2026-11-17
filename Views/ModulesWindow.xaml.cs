@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,7 +12,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     public event Action? DatabaseRequested;
     public event Action? TablesRequested;
     public event Action? SettingsRequested;
-    void TablesClick(object sender,RoutedEventArgs e){if(PlayerContent.Content is not PlayerEditor editor||editor.CanLeave())TablesRequested?.Invoke();}
+    void TablesClick(object sender,RoutedEventArgs e)=>TablesRequested?.Invoke();
     void SettingsClick(object sender,RoutedEventArgs e)=>SettingsRequested?.Invoke();
     private readonly DatabaseDocument document;
     private readonly FootballCatalog catalog;
@@ -20,7 +20,8 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private IReadOnlyList<EntityItem> items=[];
     public ModulesWindow(DatabaseDocument document,string initial="players")
     {
-        InitializeComponent();this.document=document;catalog=new(document);
+        InitializeComponent();
+        CareerNotice.Visibility=document.IsCareer?Visibility.Visible:Visibility.Collapsed;CareerNotice.Text=UiText.Get("Career database loaded. Export creates a separate .db file, not a playable career save.");this.document=document;catalog=new(document);
         Subtitle.Text=document.DisplayName;Subtitle.IsReadOnly=!document.IsSquad;
         if(!document.IsSquad)Subtitle.ToolTip=document.DisplayName;
         string national=Path.Combine(Path.GetDirectoryName(document.SourcePath)!,"FC26_NATIONAL_TEAM_IDS.csv");
@@ -40,6 +41,8 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
     private void Switch(string module)
     {
         if(PlayerContent.Content is PlayerEditor pending&&!pending.CanLeave())return;
+        PlayerActions.Visibility=Visibility.Collapsed;
+        foreach(var button in new[]{ApplyPlayerButton,UndoPlayerButton,RedoPlayerButton}){System.Windows.Data.BindingOperations.ClearBinding(button,IsEnabledProperty);button.IsEnabled=false;}PlayerEditStatus.Visibility=Visibility.Collapsed;System.Windows.Data.BindingOperations.ClearBinding(PlayerEditStatus,TextBlock.TextProperty);
         NavigationRail.Visibility=Visibility.Visible;NavigationColumn.Width=new GridLength(230);
         kind=module=="stadiums"&&document.Tables.All(t=>t.Name!="stadiums")?"ssfstadiums":module;
         foreach(Button button in ModuleNavigation.Children)
@@ -52,8 +55,9 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         ModuleTitle.Text=char.ToUpper(kind[0])+kind[1..];
         items=kind=="transfers"?[]:catalog.Entities(kind=="ssfstadiums"?"ssfstadiums":kind);Search.Text="";Refresh();
         CreateButton.Visibility=kind=="transfers"?Visibility.Collapsed:Visibility.Visible;
-        FormationButton.Visibility=kind=="teams"?Visibility.Visible:Visibility.Collapsed;
-        RelatedButton.Visibility=kind is "teams" or "leagues"?Visibility.Visible:Visibility.Collapsed;
+        EditButton.Visibility=kind=="teams"?Visibility.Collapsed:Visibility.Visible;
+        FormationButton.Visibility=Visibility.Collapsed;
+        RelatedButton.Visibility=kind=="leagues"?Visibility.Visible:Visibility.Collapsed;
         bool hosted=kind is "players" or "transfers";
         ModuleHeader.Visibility=hosted?Visibility.Collapsed:Visibility.Visible;
         Results.Visibility=hosted?Visibility.Collapsed:Visibility.Visible;
@@ -90,10 +94,7 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         {
             if(kind=="players")
             {
-                var playerEditor=new PlayerEditor(catalog,item);
-                playerEditor.BackRequested+=()=>Switch("players");
-                PlayerContent.Content=playerEditor;
-                NavigationRail.Visibility=Visibility.Collapsed;NavigationColumn.Width=new GridLength(0);
+                ShowPlayerEditor(item);
                 return;
             }
             var editor=EditorFor(item,item.Name);
@@ -102,12 +103,48 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         }
         catch(Exception ex){Error(ex);}
     }
+    void ShowPlayerEditor(EntityItem item)
+    {
+        var playerEditor=new PlayerEditor(catalog,item);
+        playerEditor.BackRequested+=()=>Switch("players");
+        PlayerContent.Content=playerEditor;
+        PlayerActions.Visibility=Visibility.Visible;
+        ApplyPlayerButton.SetBinding(IsEnabledProperty,new System.Windows.Data.Binding(nameof(PlayerEditor.HasPendingChanges)){Source=playerEditor});
+        UndoPlayerButton.SetBinding(IsEnabledProperty,new System.Windows.Data.Binding(nameof(PlayerEditor.CanUndo)){Source=playerEditor});
+        RedoPlayerButton.SetBinding(IsEnabledProperty,new System.Windows.Data.Binding(nameof(PlayerEditor.CanRedo)){Source=playerEditor});PlayerEditStatus.Visibility=Visibility.Visible;
+        PlayerEditStatus.SetBinding(TextBlock.TextProperty,new System.Windows.Data.Binding("Text"){Source=playerEditor.FindName("Error")});
+        NavigationRail.Visibility=Visibility.Collapsed;NavigationColumn.Width=new GridLength(0);
+    }
+    internal bool CreatePlayerFromSelection(EntityItem template,Func<string,bool> confirm)
+    {
+        string name=catalog.PlayerName(template.Row);
+        if(!confirm(UiText.Format("Create a new player based on {0}?",name)))return false;
+        var created=PlayerEditing.Clone(catalog,template.Row);
+        try{ShowPlayerEditor(created);Status.Text=UiText.Format("{0:N0} players.",catalog.Rows("players").Count());return true;}
+        catch{
+            foreach(var row in catalog.Rows("editedplayernames").Where(r=>FootballCatalog.Value(r,"playerid")==created.Id).ToArray())
+                if(row.RowState==DataRowState.Added)row.Table.Rows.Remove(row);
+            if(created.Row.RowState==DataRowState.Added)created.Row.Table.Rows.Remove(created.Row);
+            throw;
+        }
+    }
     private void CreateClick(object sender,RoutedEventArgs e)
     {
         if(Results.SelectedItem is not EntityItem template){Status.Text=ATLink.Core.UiText.Get("Select an existing entry to use as a template.");return;}
         DataRow? row=null;
         try
         {
+            if(kind=="players"){
+                CreatePlayerFromSelection(template,message=>ShellDialogs.Message(this,message,UiText.Get("Create player"),MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
+                return;
+            }
+            if(kind=="teams"){
+                var creation=TeamCreation.Begin(catalog,template.Row);
+                try{
+                    var teamEditor=new TeamWorkspace(catalog,creation.Team);teamEditor.Applied+=creation.Commit;teamEditor.Released+=creation.Rollback;
+                    teamEditor.Closed+=ok=>{if(!creation.IsCommitted)creation.Rollback();Switch(kind);};WorkspaceController.Open(teamEditor);return;
+                }catch{creation.Rollback();throw;}
+            }
             var table=catalog.Table(kind);row=TableEditing.Add(table,template.Row);
             var created=new EntityItem(FootballCatalog.Value(row,kind=="teams"?"teamid":kind=="players"?"playerid":kind is "leagues"?"leagueid":"stadiumid"),ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("New "), kind.TrimEnd('s')),"",row);
             var editor=kind=="teams"?new TeamWorkspace(catalog,created):(UserControl)new EntityEditor(catalog,table,row,created.Name,namesFrom:template.Row);
@@ -122,6 +159,12 @@ public partial class ModulesWindow : UserControl, IWorkspacePage
         WorkspaceController.Open(kind=="teams"?RelatedRecordsPage.ForTeam(catalog,item.Id,item.Name):RelatedRecordsPage.ForLeague(catalog,item.Id,item.Name));
     }
     private void FormationClick(object sender,RoutedEventArgs e){if(Results.SelectedItem is not EntityItem team)return;try{WorkspaceController.Open(new FormationWindow(catalog,team.Id));}catch(Exception ex){Error(ex);}}
+    private void UndoPlayerClick(object sender,RoutedEventArgs e){if(PlayerContent.Content is PlayerEditor editor)editor.UndoDraft();}
+    private void RedoPlayerClick(object sender,RoutedEventArgs e){if(PlayerContent.Content is PlayerEditor editor)editor.RedoDraft();}
+    private void ApplyPlayerClick(object sender,RoutedEventArgs e)
+    {
+        if(PlayerContent.Content is PlayerEditor editor)editor.TryApply();
+    }
     private void SaveClick(object sender,RoutedEventArgs e)
     {
         if(PlayerContent.Content is PlayerEditor editor&&!editor.TryApply())return;

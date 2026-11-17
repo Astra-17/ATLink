@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -201,7 +201,7 @@ public sealed class TransfersPage:UserControl
         combo.SetValue(ItemsControl.ItemsSourceProperty,clubs);
         combo.SetBinding(ComboBox.SelectedItemProperty,new Binding(nameof(TransferDraft.Destination)){Mode=BindingMode.TwoWay,UpdateSourceTrigger=UpdateSourceTrigger.PropertyChanged});
         combo.SetValue(ComboBox.IsEditableProperty,true);combo.SetValue(ComboBox.IsTextSearchEnabledProperty,true);
-        combo.SetValue(ComboBox.DisplayMemberPathProperty,ATLink.Core.UiText.Get("Label"));
+        combo.SetValue(TextSearch.TextPathProperty,nameof(ClubOption.Label));
         combo.SetValue(ComboBox.ItemTemplateProperty,ClubCombo.LabelTemplate());
         combo.SetValue(VirtualizingPanel.IsVirtualizingProperty,true);
         combo.SetValue(ScrollViewer.CanContentScrollProperty,true);

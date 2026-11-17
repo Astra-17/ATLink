@@ -2527,3 +2527,357 @@ Valid source — {0} transfers detected	Source valide — {0} transferts détect
 Semi-finals	Demi-finales
 Quarter-finals	Quarts de finale
 Round of {0}	Tour de {0}
+
+Salaire	Salaire	Wage
+
+Ce numéro de maillot est déjà utilisé dans cette équipe.	Ce numéro de maillot est déjà utilisé dans cette équipe.	This shirt number is already used in this team.
+
+Sélection nationale	Sélection nationale	National team
+Numéro en sélection	Numéro en sélection	National team shirt number
+Aucune sélection nationale associée dans la base.	Aucune sélection nationale associée dans la base.	No national team linked in the database.
+
+Finesse Shot	Tir en finesse	Finesse Shot
+Chip Shot	Lob	Chip Shot
+Power Shot	Tir puissant	Power Shot
+Dead Ball	Coup de pied arrêté	Dead Ball
+Precision Header	Tête précise	Precision Header
+Acrobatic	Acrobatique	Acrobatic
+Low Driven Shot	Tir à ras de terre	Low Driven Shot
+Gamechanger	Décisif	Gamechanger
+Incisive Pass	Passe incisive	Incisive Pass
+Pinged Pass	Passe appuyée	Pinged Pass
+Long Ball Pass	Passe longue	Long Ball Pass
+Tiki Taka	Tiki-taka	Tiki Taka
+Whipped Pass	Centre tendu	Whipped Pass
+Inventive	Inventif	Inventive
+Jockey	Jockey	Jockey
+Block	Contre	Block
+Intercept	Interception	Intercept
+Anticipate	Anticipation	Anticipate
+Slide Tackle	Tacle glissé	Slide Tackle
+Aerial Fortress	Forteresse aérienne	Aerial Fortress
+Technical	Technique	Technical
+Rapid	Rapide	Rapid
+First Touch	Premier contrôle	First Touch
+Trickster	Virtuose	Trickster
+Press Proven	Résiste au pressing	Press Proven
+Quick Step	Démarrage rapide	Quick Step
+Relentless	Infatigable	Relentless
+Long Throw	Touche longue	Long Throw
+Bruiser	Rugueux	Bruiser
+Enforcer	Imposant	Enforcer
+Far Throw	Relance longue	Far Throw
+Footwork	Jeu de jambes	Footwork
+Cross Claimer	Prise de centres	Cross Claimer
+Rush Out	Sortie rapide	Rush Out
+Far Reach	Détente lointaine	Far Reach
+Deflector	Déviation	Deflector
+Ball Control	Contrôle de balle	Ball Control
+Inactive	Inactif	Inactive
+Playstyle	Style de jeu	Playstyle
+Playstyle+	Style de jeu+	Playstyle+
+Visual selection only — not saved to the database yet.	Sélection visuelle uniquement — pas encore enregistrée dans la base.	Visual selection only — not saved to the database yet.
+Click to cycle: Inactive → Playstyle → Playstyle+	Cliquer pour changer : Inactif → Style de jeu → Style de jeu+	Click to cycle: Inactive → Playstyle → Playstyle+
+
+{0} — {1}	{0} — {1}	{0} — {1}
+
+Running style	Style de course	Running style
+Style {0}	Style {0}	Style {0}
+
+Finishing animation 1	Animation de finition 1	Finishing animation 1
+Finishing animation 2	Animation de finition 2	Finishing animation 2
+Free kick starting stance	Position de coup franc	Free kick starting stance
+Penalty starting stance	Position de penalty	Penalty starting stance
+Animation code: {0}–{1}	Code d’animation : {0}–{1}	Animation code: {0}–{1}
+
+Running preset	Course	Running preset
+Finishing preset	Finition	Finishing preset
+Run style code	Code de style de course	Run style code
+Running code 1	Code de course 1	Running code 1
+Running code 2	Code de course 2	Running code 2
+FC27 reference values; animation appearance may vary.	Valeurs de référence FC27 ; le rendu de l’animation peut varier.	FC27 reference values; animation appearance may vary.
+This preset is incompatible with the current database schema.	Ce préréglage est incompatible avec le schéma de la base actuelle.	This preset is incompatible with the current database schema.
+
+Ankle Tape	Bandage de cheville	Ankle Tape
+Average and Lean	Taille moyenne et mince	Average and Lean
+Average and Normal	Taille moyenne et normal	Average and Normal
+Average and Stocky	Taille moyenne et trapu	Average and Stocky
+Black	Noir	Black
+Blonde	Blond	Blonde
+Blue	Bleu	Blue
+Bordeaux	Bordeaux	Bordeaux
+Brown	Brun	Brown
+Coral	Corail	Coral
+Cyan	Cyan	Cyan
+Dark Blue	Bleu foncé	Dark Blue
+Dark Brown	Brun foncé	Dark Brown
+Dark Green	Vert foncé	Dark Green
+Dark Orange	Orange foncé	Dark Orange
+Dark Pink	Rose foncé	Dark Pink
+Dark Purple	Violet foncé	Dark Purple
+Dark Red	Rouge foncé	Dark Red
+Dark Yellow	Jaune foncé	Dark Yellow
+Dirty Blonde	Blond cendré	Dirty Blonde
+Fitted Suit Tie	Cravate ajustée	Fitted Suit Tie
+Fuchsia	Fuchsia	Fuchsia
+GK Pants	Pantalon de gardien	GK Pants
+GK Shorts	Short de gardien	GK Shorts
+Generic	Générique	Generic
+Ginger	Roux	Ginger
+Gloves	Gants	Gloves
+Gold	Doré	Gold
+Green	Vert	Green
+Grey	Gris	Grey
+Hazel	Noisette	Hazel
+Hearphone	Écouteurs	Hearphone
+Knee brace	Genouillère	Knee brace
+Left Bracelet	Bracelet gauche	Left Bracelet
+Left Cellphone	Téléphone gauche	Left Cellphone
+Left Finger Tape	Bandage doigt gauche	Left Finger Tape
+Left Hand Tape	Bandage main gauche	Left Hand Tape
+Left Knee Tape	Bandage genou gauche	Left Knee Tape
+Left Knee Tutor	Maintien genou gauche	Left Knee Tutor
+Left Red Card	Carton rouge gauche	Left Red Card
+Left Ref Book	Carnet arbitre gauche	Left Ref Book
+Left Ref Pen	Stylo arbitre gauche	Left Ref Pen
+Left Vanishing Spray	Spray arbitre gauche	Left Vanishing Spray
+Left Watch	Montre gauche	Left Watch
+Left Wide Wristle Tape	Bandage large poignet gauche	Left Wide Wristle Tape
+Left Wristle Tape	Bandage poignet gauche	Left Wristle Tape
+Left Yellow Card	Carton jaune gauche	Left Yellow Card
+Lemon	Citron	Lemon
+Light Blonde	Blond clair	Light Blonde
+Light Blue	Bleu clair	Light Blue
+Light Brown	Brun clair	Light Brown
+Light Green	Vert clair	Light Green
+Light Mint	Menthe clair	Light Mint
+Light Yellow	Jaune clair	Light Yellow
+Lime	Vert citron	Lime
+Long	Long	Long
+Long and Turtleneck	Long avec col roulé	Long and Turtleneck
+Low	Bas	Low
+Medium	Moyen	Medium
+Medium Blue	Bleu moyen	Medium Blue
+Medium Brown	Châtain	Medium Brown
+Micro Shin Pad	Mini protège-tibias	Micro Shin Pad
+Mint	Menthe	Mint
+Multi Holes	Plusieurs trous	Multi Holes
+No	Non	No
+No Shin Pad	Sans protège-tibias	No Shin Pad
+Normal	Normal	Normal
+One Hole	Un trou	One Hole
+Orange	Orange	Orange
+Osimhen Facemask	Masque facial Osimhen	Osimhen Facemask
+Pink	Rose	Pink
+Pistacho	Pistache	Pistacho
+Purple	Pourpre	Purple
+Red	Rouge	Red
+Regular	Standard	Regular
+Right Bracelet	Bracelet droit	Right Bracelet
+Right Cellphone	Téléphone droit	Right Cellphone
+Right Finger Tape	Bandage doigt droit	Right Finger Tape
+Right Hand Tape	Bandage main droite	Right Hand Tape
+Right Knee Tape	Bandage genou droit	Right Knee Tape
+Right Knee Tutor	Maintien genou droit	Right Knee Tutor
+Right Red Card	Carton rouge droit	Right Red Card
+Right Ref Book	Carnet arbitre droit	Right Ref Book
+Right Ref Pen	Stylo arbitre droit	Right Ref Pen
+Right Vanishing Spray	Spray arbitre droit	Right Vanishing Spray
+Right Watch	Montre droite	Right Watch
+Right Wide Wristle Tape	Bandage large poignet droit	Right Wide Wristle Tape
+Right Wristle Tape	Bandage poignet droit	Right Wristle Tape
+Right Yellow Card	Carton jaune droit	Right Yellow Card
+Saturated Green	Vert intense	Saturated Green
+Seasonal Undershirt	Sous-maillot saisonnier	Seasonal Undershirt
+Seasonal Undershirt and Turtleneck	Sous-maillot saisonnier avec col roulé	Seasonal Undershirt and Turtleneck
+Short	Court	Short
+Short and Lean	Petit et mince	Short and Lean
+Short and Normal	Petit et normal	Short and Normal
+Short and Stocky	Petit et trapu	Short and Stocky
+Silver	Argenté	Silver
+Sky Blue	Bleu ciel	Sky Blue
+Small Shin Pad	Petits protège-tibias	Small Shin Pad
+Specific	Spécifique	Specific
+Tall and Lean	Grand et mince	Tall and Lean
+Tall and Normal	Grand et normal	Tall and Normal
+Tall and Stocky	Grand et trapu	Tall and Stocky
+Teal	Bleu-vert	Teal
+Team Kit Fit	Coupe de l’équipe	Team Kit Fit
+Three Holes	Trois trous	Three Holes
+Tight	Ajusté	Tight
+Tucked In	Rentré	Tucked In
+Tuscany Yellow	Jaune toscan	Tuscany Yellow
+Two Holes	Deux trous	Two Holes
+Untucked	Sorti	Untucked
+Very Tall and Lean	Très grand et mince	Very Tall and Lean
+Violet	Violet	Violet
+White	Blanc	White
+Yellow	Jaune	Yellow
+Yes	Oui	Yes
+Code {0}	Code {0}	Code {0}
+Choose a name or enter a numeric code.	Choisir un nom ou saisir un code numérique.	Choose a name or enter a numeric code.
+
+{0} ({1})	{0} ({1})	{0} ({1})
+
+Équipement	Équipement	Equipment
+
+No animation preset	-	-
+
+Preferred foot	Pied fort	Preferred foot
+
+No active playstyles	Aucun style de jeu actif	No active playstyles
+
+Advanced Forward	Attaquant avancé	Advanced Forward
+Attacking Wingback	Piston offensif	Attacking Wingback
+Ball-Playing Defender	Défenseur relanceur	Ball-Playing Defender
+Ball-Playing Keeper	Gardien relanceur	Ball-Playing Keeper
+Box Crasher	Milieu de projection	Box Crasher
+Box-to-Box	Box-to-box	Box-to-Box
+Centre Half	Demi-centre	Centre Half
+Classic 10	Numéro 10 classique	Classic 10
+Deep-Lying Playmaker	Meneur de jeu en retrait	Deep-Lying Playmaker
+Defender	Défenseur	Defender
+False 9	Faux 9	False 9
+False Winger	Faux ailier	False Winger
+Falseback	Faux latéral	Falseback
+Fullback	Arrière latéral	Fullback
+Half Winger	Demi-ailier	Half Winger
+Half-Winger	Demi-ailier	Half-Winger
+Holding	Sentinelle	Holding
+Inside Forward	Attaquant intérieur	Inside Forward
+Inverted Wingback	Piston inversé	Inverted Wingback
+Playmaker	Meneur de jeu	Playmaker
+Poacher	Renard des surfaces	Poacher
+Roaming Striker	Attaquant libre	Roaming Striker
+Shadow Striker	Attaquant de soutien	Shadow Striker
+Stopper	Stoppeur	Stopper
+Sweeper Keeper	Gardien-libéro	Sweeper Keeper
+Target Forward	Pivot	Target Forward
+Wide Back	Défenseur excentré	Wide Back
+Wide Half	Demi latéral	Wide Half
+Wide Midfielder	Milieu excentré	Wide Midfielder
+Wide Playmaker	Meneur de jeu excentré	Wide Playmaker
+Wingback	Piston	Wingback
+Winger	Ailier	Winger
+{0} {1}{2}	{0} {1}{2}	{0} {1}{2}
+
+Create a new player based on {0}?	Créer un nouveau joueur sur la base de {0} ?	Create a new player based on {0}?
+Create player	Créer un joueur	Create player
+
+Information	Informations	Information
+Country and league	Pays et ligue	Country and league
+Club profile	Situation du club	Club profile
+Honours	Palmarès	Honours
+Club colours and equipment	Couleurs et équipement du club	Club colours and equipment
+Stadium assignment	Stade associé	Stadium assignment
+Ground	Terrain	Ground
+Organisation	Organisation	Organisation
+Responsibilities	Responsabilités	Responsibilities
+
+Team roster	Effectif	Team roster
+General information	Informations générales	General information
+Team identity and basic data	Identité et données de base de l’équipe	Team identity and basic data
+Geographical affiliation	Rattachement géographique	Geographical affiliation
+Associated country, city and league	Pays, ville et ligue associée	Associated country, city and league
+Associated country	Pays associé	Associated country
+League ID	Identifiant de ligue	League ID
+No associated country	Aucun pays associé	No associated country
+Additional country link	Lien de pays supplémentaire	Additional country link
+Prestige, popularity, finances and development	Prestige, popularité, finances et développement	Prestige, popularity, finances and development
+Honours and rivalries	Palmarès et rivalités	Honours and rivalries
+Titles won and rival teams	Titres remportés et équipes rivales	Titles won and rival teams
+Playing style and tactical adjustments	Style de jeu et ajustements tactiques	Playing style and tactical adjustments
+Starting eleven and bench	Disposition, onze titulaire et banc	Starting eleven and bench
+Assign key player roles	Attribution des rôles clés	Assign key player roles
+Opponent thresholds	Seuils d’adversaire	Opponent thresholds
+Tactical traits	Traits tactiques	Tactical traits
+Trait codes by opponent strength	Codes de traits selon la force de l’adversaire	Trait codes by opponent strength
+Starting eleven	Titulaires	Starting eleven
+Squad management	Gestion des joueurs liés à l’équipe	Squad management
+Squad: {0} players	Effectif : {0} joueurs	Squad: {0} players
+All	Tous	All
+Reset filters	Réinitialiser les filtres	Reset filters
+Healthy	Sain	Healthy
+Injured	Blessé	Injured
+Injury code {0}	Code blessure {0}	Injury code {0}
+Status	Statut	Status
+Remove from club	Retirer du club	Remove from club
+National team restriction	Restriction — sélection nationale	National team restriction
+Select a player to edit their team settings.	Sélectionnez un joueur pour modifier ses réglages dans l’équipe.	Select a player to edit their team settings.
+Select a player to add	Choisir un joueur à ajouter	Select a player to add
+Add selected player	Ajouter le joueur sélectionné	Add selected player
+League appearances	Apparitions (championnat)	League appearances
+League goals	Buts (championnat)	League goals
+Squad: {0} player	Effectif : {0} joueur	Squad: {0} player
+Visual identity and main equipment	Identité visuelle et équipement principal	Visual identity and main equipment
+Kit management	Gestion des tenues du club	Kit management
+Kit preview	Aperçu de la tenue	Kit preview
+Summary of stored kit settings	Résumé des réglages enregistrés de la tenue	Summary of stored kit settings
+Kit details	Détails de la tenue	Kit details
+Colours (RGB)	Couleurs (RGB)	Colours (RGB)
+Marking colours	Couleurs des marquages	Marking colours
+No kit selected	Aucune tenue sélectionnée	No kit selected
+Kits: {0}	Tenues : {0}	Kits: {0}
+Add kit from template	Ajouter une tenue (modèle)	Add kit from template
+Kit type {0}	Type de tenue {0}	Kit type {0}
+Asset code {0}	Code d’asset {0}	Asset code {0}
+Font code {0}	Code de police {0}	Font code {0}
+No free kit ID is available.	Aucun identifiant de tenue n’est disponible.	No free kit ID is available.
+Primary	Principale	Primary
+Secondary	Secondaire	Secondary
+Delete selected kit	Supprimer la tenue sélectionnée	Delete selected kit
+Choose colour	Choisir une couleur	Choose colour
+Choose colour: {0}	Choisir une couleur : {0}	Choose colour: {0}
+Saturation and brightness	Saturation et luminosité	Saturation and brightness
+Hue	Teinte	Hue
+Hex colour	Couleur hexadécimale	Hex colour
+Fourth	Quatrième	Fourth
+3th	3th	3th
+4th	4th	4th
+Fifth	Cinquième	Fifth
+Sixth	Sixième	Sixth
+Seventh	Septième	Seventh
+Eighth	Huitième	Eighth
+Ninth	Neuvième	Ninth
+Tenth	Dixième	Tenth
+No free kit type is available for this team.	Aucun type de tenue libre n’est disponible pour cette équipe.	No free kit type is available for this team.
+Impatient Board	Direction impatiente	Impatient Board
+Loyal Board	Direction fidèle	Loyal Board
+Squad Rotation	Rotation de l’effectif	Squad Rotation
+Consistent Lineup	Composition stable	Consistent Lineup
+Switch Wingers	Permutation des ailiers	Switch Wingers
+Center Backs Split	Défenseurs centraux écartés	Center Backs Split
+Defend The Lead	Défendre l’avantage	Defend The Lead
+Keep Up Pressure	Maintenir la pression	Keep Up Pressure
+More Attacking At Home	Plus offensif à domicile	More Attacking At Home
+Possession	Possession	Possession
+Counter Attack	Contre-attaque	Counter Attack
+Direct	Jeu direct	Direct
+Generic Attack	Attaque générique	Generic Attack
+Harass	Harcèlement	Harass
+Double Contain	Pression à deux	Double Contain
+Italian Defense	Défense à l’italienne	Italian Defense
+No Pressure	Sans pression	No Pressure
+Physical Defending Conservative	Défense physique prudente	Physical Defending Conservative
+Physical Defending Aggressive	Défense physique agressive	Physical Defending Aggressive
+Generic Defence	Défense générique	Generic Defence
+Drag a player onto a highlighted position to swap players.	Glissez un joueur sur un emplacement surligné pour échanger les joueurs.	Drag a player onto a highlighted position to swap players.
+Player positioning	Positionnement des joueurs	Player positioning
+Coordinates range from 0 to 1. Y = 1 is the top of the pitch.	Les coordonnées vont de 0 à 1. Y = 1 correspond au haut du terrain.	Coordinates range from 0 to 1. Y = 1 is the top of the pitch.
+Coordinates must be between 0 and 1.	Les coordonnées doivent être comprises entre 0 et 1.	Coordinates must be between 0 and 1.
+Team ID: {0}	ID de l’équipe : {0}	Team ID: {0}
+Selected team no longer exists.	L’équipe sélectionnée n’existe plus.	Selected team no longer exists.
+The team template must contain exactly one {0} record.	L’équipe modèle doit contenir exactement une ligne dans {0}.	The team template must contain exactly one {0} record.
+The team template must contain at least one {0} record.	L’équipe modèle doit contenir au moins une ligne dans {0}.	The team template must contain at least one {0} record.
+No free identifier is available for {0}.{1}.	Aucun identifiant libre n’est disponible pour {0}.{1}.	No free identifier is available for {0}.{1}.
+Copy of {0}	Copie de {0}	Copy of {0}
+Shared kit template: add a copy to edit it independently.	Modèle de tenue partagé : ajoutez une copie pour le modifier indépendamment.	Shared kit template: add a copy to edit it independently.
+Short passing build-up	Passe courte	Short passing
+Balanced	Équilibré	Balanced
+Counter	Contre	Counter
+The career file must contain one readable football database compatible with the selected game.	Le fichier carrière doit contenir une seule base de football lisible et compatible avec le jeu sélectionné.	The career file must contain one readable football database compatible with the selected game.
+Open a database, Squad or career save	Ouvrir une base, un Squad ou une sauvegarde carrière	Open a database, Squad or career save
+Database, Squad or career save|*.db;Squads*;CmMgr*|All files|*.*	Base, Squad ou sauvegarde carrière|*.db;Squads*;CmMgr*|Tous les fichiers|*.*	Database, Squad or career save|*.db;Squads*;CmMgr*|All files|*.*
+Reading the selected database…	Lecture de la base sélectionnée…	Reading the selected database…
+Career database loaded. Export creates a separate .db file, not a playable career save.	Base carrière chargée. L’export crée un fichier .db séparé, pas une sauvegarde carrière jouable.	Career database loaded. Export creates a separate .db file, not a playable career save.
+Invalid career database compression block.	Bloc de compression de la base carrière invalide.	Invalid career database compression block.

@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.ComponentModel;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -183,7 +183,7 @@ public partial class MainWindow : Window
         workspace.Clear();model.Screen="Editing";
         var page=new Views.ModulesWindow(model.Document,"players");
         page.DatabaseRequested+=()=>{workspace.Clear();model.Screen="Editing";};
-        page.TablesRequested+=()=>{workspace.Clear();model.ShowTablesCommand.Execute(null);};
+        page.TablesRequested+=()=>model.ShowTablesCommand.Execute(null);
         page.SettingsRequested+=()=>OpenSettings(false);
         OpenPage(page);
     }
@@ -287,7 +287,7 @@ public partial class MainWindow : Window
             var modules=new ATLink.Views.ModulesWindow(model.Document,((sender as Button)?.Tag as string)??"players");
             modules.Closed+=_=>{model.RefreshPage();model.Screen="Editing";};
             modules.DatabaseRequested+=()=>{workspace.Clear();model.Screen="Editing";};
-            modules.TablesRequested+=()=>{workspace.Clear();model.ShowTablesCommand.Execute(null);};
+            modules.TablesRequested+=()=>model.ShowTablesCommand.Execute(null);
             modules.SettingsRequested+=()=>OpenSettings(false);
             OpenPage(modules);
         }catch(Exception ex){Error(ex);}
@@ -383,13 +383,14 @@ public partial class MainWindow : Window
     {
         if(model.Busy||!MayDiscard())return;
         try{if(!EnsureConfigured())return;}catch(Exception ex){Error(ex);return;}
-        var file=new OpenFileDialog{Title=ATLink.Core.UiText.Get("Ouvrir un Squad FBCHUNKS"),Filter="Squad|*|Tous|*.*"};if(file.ShowDialog(this)!=true)return;
+        var file=new OpenFileDialog{Title=ATLink.Core.UiText.Get("Open a database, Squad or career save"),Filter=ATLink.Core.UiText.Get("Database, Squad or career save|*.db;Squads*;CmMgr*|All files|*.*")};if(file.ShowDialog(this)!=true)return;
         try
         {
-            model.Busy=true;model.Status=ATLink.Core.UiText.Get("Lecture du conteneur Squad…");
+            model.Busy=true;model.Status=ATLink.Core.UiText.Get("Reading the selected database…");
             string code=studioData.SuggestedLanguage().Code;
-            var result=await Task.Run(()=>studioData.OpenSquad(file.FileName,code));
+            var result=await Task.Run(()=>studioData.OpenSelected(file.FileName,code));
             model.Load(result.Main,result.Loc);OpenPlayers();
+            if(result.Main.IsCareer)model.Status=ATLink.Core.UiText.Get("Career database loaded. Export creates a separate .db file, not a playable career save.");
         }
         catch(Exception ex){Error(ex);}finally{model.Busy=false;}
     }
@@ -399,7 +400,7 @@ public partial class MainWindow : Window
         var dialog=new OpenFolderDialog{Title=ATLink.Core.UiText.Get("Parent folder for a new DB + LOC copy")};if(dialog.ShowDialog(this)!=true)return;
         byte[] main=model.Document.Serialize(),loc=model.Localization.Serialize();
         string target=Path.Combine(dialog.FolderName,"ATLink-project-"+Guid.NewGuid().ToString("N")[..8]);Directory.CreateDirectory(target);
-        File.WriteAllBytes(Path.Combine(target,Path.GetFileName(model.Document.SourcePath)),main);
+        File.WriteAllBytes(Path.Combine(target,model.Document.IsCareer?Path.GetFileName(model.Document.SourcePath)+".db":Path.GetFileName(model.Document.SourcePath)),main);
         string locName=Path.GetFileName(model.Localization.SourcePath);if(locName==Path.GetFileName(model.Document.SourcePath))locName="localization-"+locName;
         File.WriteAllBytes(Path.Combine(target,locName),loc);model.Status=ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("DB and LOC saved: "), target);
     }    private void ImportAllClick(object sender,RoutedEventArgs e)

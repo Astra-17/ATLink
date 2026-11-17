@@ -1,4 +1,6 @@
-using ATLink.Core;
+﻿using ATLink.Core;
+if(args.Contains("--selected-database")){SelectedDatabaseChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--selected-database")??"."));return;}
+if(args.Contains("--team-creation")){TeamCreationChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."));return;}
 if(args.Contains("--interface-language")){InterfaceLanguageChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."));return;}
 if(args.Contains("--automatic-link")){AutomaticLinkChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."));return;}
 if(args.Contains("--configuration")){ConfigurationChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>!a.StartsWith("--"))??"."),args.FirstOrDefault(a=>a.StartsWith("--fet-cache="))?[12..]);return;}

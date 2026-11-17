@@ -10,8 +10,6 @@
   <ResourceDictionary>
    <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="../Themes/Studio.xaml"/></ResourceDictionary.MergedDictionaries>
    <views:RatingBrushConverter x:Key="RatingBrushConverter"/>
-   <LinearGradientBrush x:Key="StarBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#D9A7FF" Offset="0"/><GradientStop Color="#A64DFF" Offset="0.48"/><GradientStop Color="#7332C3" Offset="1"/></LinearGradientBrush>
-   <LinearGradientBrush x:Key="PositionBadgeBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#8D42E8" Offset="0"/><GradientStop Color="#5E24D6" Offset="0.55"/><GradientStop Color="#331572" Offset="1"/></LinearGradientBrush>
    <DataTemplate x:Key="StarsTemplate"><ItemsControl ItemsSource="{Binding}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource StarBrush}" FontSize="20" Margin="0,0,2,0"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></DataTemplate>
    <Style x:Key="SectionTitle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="17"/><Setter Property="FontWeight" Value="SemiBold"/>
@@ -55,10 +53,28 @@
        <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
       <StackPanel Margin="0,0,16,0">
-       <Border Width="115" Height="145" Background="#4D000000"
-               BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-        <Image Source="{Binding Portrait}" Stretch="UniformToFill" HorizontalAlignment="Center"/>
-       </Border>
+     <Grid Width="115" Height="145">
+      <Border CornerRadius="38" BorderBrush="#A72FFF" BorderThickness="5" IsHitTestVisible="False">
+       <Border.Effect><DropShadowEffect Color="#A02AFF" BlurRadius="28" ShadowDepth="0" Opacity=".85"/></Border.Effect>
+      </Border>
+      <Border CornerRadius="38" Background="#211035">
+       <Grid Width="113" Height="143" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid.Clip><RectangleGeometry Rect="0,0,113,143" RadiusX="37" RadiusY="37"/></Grid.Clip>
+        <Image Source="{Binding Portrait}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+       </Grid>
+      </Border>
+      <Border CornerRadius="38" BorderBrush="#B337FF" BorderThickness="1" IsHitTestVisible="False">
+       <Border.OpacityMask><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="White" Offset="0"/><GradientStop Color="White" Offset=".55"/><GradientStop Color="#20FFFFFF" Offset="1"/></LinearGradientBrush></Border.OpacityMask>
+      </Border>
+      <Border CornerRadius="38" BorderBrush="#FFA73FDC" BorderThickness="1" IsHitTestVisible="False">
+       <Border.OpacityMask><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="Transparent" Offset=".4"/><GradientStop Color="White" Offset=".92"/></LinearGradientBrush></Border.OpacityMask>
+       <Border.Effect><BlurEffect Radius="4"/></Border.Effect>
+      </Border>
+      <Border CornerRadius="38" BorderThickness="1" IsHitTestVisible="False">
+       <Border.BorderBrush><RadialGradientBrush Center=".12,.12" GradientOrigin=".12,.12" RadiusX=".6" RadiusY=".6"><GradientStop Color="#FFECE1FF" Offset="0"/><GradientStop Color="#FFA68BD8" Offset=".22"/><GradientStop Color="#00D68FFF" Offset="1"/></RadialGradientBrush></Border.BorderBrush>
+       <Border.Effect><DropShadowEffect Color="#E780D2" BlurRadius="7" ShadowDepth="0" Opacity=".7"/></Border.Effect>
+      </Border>
+     </Grid>
        <TextBlock Text="{Binding Id, StringFormat=({0})}" FontSize="11" Foreground="{DynamicResource MutedBrush}"
                   HorizontalAlignment="Center" Margin="0,5,0,0"/>
       </StackPanel>
@@ -111,9 +127,12 @@
        <TextBlock Text="{loc:Text Tfa18433b80e023}" FontSize="16" FontWeight="SemiBold"/>
        <ItemsControl ItemsSource="{Binding Positions}" Margin="0,6,0,12">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate><DataTemplate><Border Background="{StaticResource PositionBadgeBrush}" CornerRadius="4" Padding="10,5" Margin="0,0,6,6"><TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold" Foreground="White"/></Border></DataTemplate></ItemsControl.ItemTemplate>
+        <ItemsControl.ItemTemplate><DataTemplate><Border Background="{StaticResource PositionBadgeBrush}" CornerRadius="4" Width="46" Padding="4,5" Margin="0,0,6,6"><TextBlock Text="{Binding}" TextAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="White"/></Border></DataTemplate></ItemsControl.ItemTemplate>
        </ItemsControl>
        <TextBlock Text="{loc:Text T191849ddd0b33a}" FontSize="16" FontWeight="SemiBold"/>
+       <WrapPanel x:Name="PlaystylesPanel" Margin="0,6,0,0"/>
+       <TextBlock x:Name="NoPlaystyles" Text="{loc:Text T840aebc9d2b83d}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0"/>
+
       </StackPanel>
      </Grid>
      <Border Style="{StaticResource Divider}"/>

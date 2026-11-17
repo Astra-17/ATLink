@@ -1,0 +1,481 @@
+{
+  "source": "https://www.futbin.com/27/playstyles",
+  "styles": [
+    {
+      "id": "scoring-finesseshot",
+      "name": "Finesse Shot",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-finesseshot.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-finesseshot.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 0,
+        "mask": 1
+      }
+    },
+    {
+      "id": "scoring-chipshot",
+      "name": "Chip Shot",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-chipshot.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-chipshot.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 1,
+        "mask": 2
+      }
+    },
+    {
+      "id": "scoring-powershot",
+      "name": "Power Shot",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-powershot.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-powershot.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 2,
+        "mask": 4
+      }
+    },
+    {
+      "id": "scoring-deadball",
+      "name": "Dead Ball",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-deadball.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-deadball.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 3,
+        "mask": 8
+      }
+    },
+    {
+      "id": "scoring-precisionheader",
+      "name": "Precision Header",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-precisionheader.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-precisionheader.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 4,
+        "mask": 16
+      }
+    },
+    {
+      "id": "scoring-acrobatic",
+      "name": "Acrobatic",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-acrobatic.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-acrobatic.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 5,
+        "mask": 32
+      }
+    },
+    {
+      "id": "scoring-lowdrivenshot",
+      "name": "Low Driven Shot",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-lowdrivenshot.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-lowdrivenshot.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 6,
+        "mask": 64
+      }
+    },
+    {
+      "id": "scoring-gamechanger",
+      "name": "Gamechanger",
+      "category": "Finishing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/scoring-gamechanger.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/scoring-gamechanger.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 7,
+        "mask": 128
+      }
+    },
+    {
+      "id": "passing-incisivepass",
+      "name": "Incisive Pass",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-incisivepass.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-incisivepass.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 8,
+        "mask": 256
+      }
+    },
+    {
+      "id": "passing-pingedpass",
+      "name": "Pinged Pass",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-pingedpass.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-pingedpass.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 9,
+        "mask": 512
+      }
+    },
+    {
+      "id": "passing-longballpass",
+      "name": "Long Ball Pass",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-longballpass.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-longballpass.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 10,
+        "mask": 1024
+      }
+    },
+    {
+      "id": "passing-tikitaka",
+      "name": "Tiki Taka",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-tikitaka.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-tikitaka.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 11,
+        "mask": 2048
+      }
+    },
+    {
+      "id": "passing-whippedcrosser",
+      "name": "Whipped Pass",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-whippedcrosser.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-whippedcrosser.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 12,
+        "mask": 4096
+      }
+    },
+    {
+      "id": "passing-inventive",
+      "name": "Inventive",
+      "category": "Passing",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/passing-inventive.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/passing-inventive.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 13,
+        "mask": 8192
+      }
+    },
+    {
+      "id": "defending-jockey",
+      "name": "Jockey",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-jockey.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-jockey.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 14,
+        "mask": 16384
+      }
+    },
+    {
+      "id": "defending-block",
+      "name": "Block",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-block.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-block.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 15,
+        "mask": 32768
+      }
+    },
+    {
+      "id": "defending-intercept",
+      "name": "Intercept",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-intercept.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-intercept.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 16,
+        "mask": 65536
+      }
+    },
+    {
+      "id": "defending-anticipate",
+      "name": "Anticipate",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-anticipate.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-anticipate.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 17,
+        "mask": 131072
+      }
+    },
+    {
+      "id": "defending-slidetackle",
+      "name": "Slide Tackle",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-slidetackle.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-slidetackle.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 18,
+        "mask": 262144
+      }
+    },
+    {
+      "id": "defending-aerialfortress",
+      "name": "Aerial Fortress",
+      "category": "Defending",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/defending-aerialfortress.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/defending-aerialfortress.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 19,
+        "mask": 524288
+      }
+    },
+    {
+      "id": "ballcontrol-technical",
+      "name": "Technical",
+      "category": "Ball Control",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/ballcontrol-technical.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/ballcontrol-technical.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 20,
+        "mask": 1048576
+      }
+    },
+    {
+      "id": "ballcontrol-rapid",
+      "name": "Rapid",
+      "category": "Ball Control",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/ballcontrol-rapid.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/ballcontrol-rapid.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 21,
+        "mask": 2097152
+      }
+    },
+    {
+      "id": "ballcontrol-firsttouch",
+      "name": "First Touch",
+      "category": "Ball Control",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/ballcontrol-firsttouch.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/ballcontrol-firsttouch.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 22,
+        "mask": 4194304
+      }
+    },
+    {
+      "id": "ballcontrol-trickster",
+      "name": "Trickster",
+      "category": "Ball Control",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/ballcontrol-trickster.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/ballcontrol-trickster.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 23,
+        "mask": 8388608
+      }
+    },
+    {
+      "id": "ballcontrol-pressproven",
+      "name": "Press Proven",
+      "category": "Ball Control",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/ballcontrol-pressproven.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/ballcontrol-pressproven.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 24,
+        "mask": 16777216
+      }
+    },
+    {
+      "id": "physical-quickstep",
+      "name": "Quick Step",
+      "category": "Physical",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/physical-quickstep.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/physical-quickstep.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 25,
+        "mask": 33554432
+      }
+    },
+    {
+      "id": "physical-relentless",
+      "name": "Relentless",
+      "category": "Physical",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/physical-relentless.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/physical-relentless.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 26,
+        "mask": 67108864
+      }
+    },
+    {
+      "id": "physical-longthrow",
+      "name": "Long Throw",
+      "category": "Physical",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/physical-longthrow.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/physical-longthrow.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 27,
+        "mask": 134217728
+      }
+    },
+    {
+      "id": "physical-bruiser",
+      "name": "Bruiser",
+      "category": "Physical",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/physical-bruiser.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/physical-bruiser.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 28,
+        "mask": 268435456
+      }
+    },
+    {
+      "id": "physical-enforcer",
+      "name": "Enforcer",
+      "category": "Physical",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/physical-enforcer.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/physical-enforcer.png?v1",
+      "gameCode": {
+        "normalField": "trait1",
+        "plusField": "icontrait1",
+        "bitIndex": 29,
+        "mask": 536870912
+      }
+    },
+    {
+      "id": "gk-farthrow",
+      "name": "Far Throw",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-farthrow.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-farthrow.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 0,
+        "mask": 1
+      }
+    },
+    {
+      "id": "gk-footwork",
+      "name": "Footwork",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-footwork.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-footwork.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 1,
+        "mask": 2
+      }
+    },
+    {
+      "id": "gk-crosscatcher",
+      "name": "Cross Claimer",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-crosscatcher.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-crosscatcher.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 2,
+        "mask": 4
+      }
+    },
+    {
+      "id": "gk-rushout",
+      "name": "Rush Out",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-rushout.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-rushout.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 3,
+        "mask": 8
+      }
+    },
+    {
+      "id": "gk-farreach",
+      "name": "Far Reach",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-farreach.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-farreach.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 4,
+        "mask": 16
+      }
+    },
+    {
+      "id": "gk-deflector",
+      "name": "Deflector",
+      "category": "Goalkeeper",
+      "white": "https://cdn.futbin.com/design/img/icons/playstyles/27/gk-deflector.png?v1",
+      "gold": "https://cdn.futbin.com/design/img/icons/playstyles/27/plus/gk-deflector.png?v1",
+      "gameCode": {
+        "normalField": "trait2",
+        "plusField": "icontrait2",
+        "bitIndex": 5,
+        "mask": 32
+      }
+    }
+  ],
+  "codeMapping": {
+    "source": "https://github.com/IanRae-17/le-26-scripts/blob/main/Adding_Playstyles.lua",
+    "sourceGame": "FC26",
+    "targetSchema": "files/FC27/fifa_ng_db-meta.xml",
+    "status": "FC26 bit mapping; FC27 field capacities verified; not validated in FC27 game",
+    "encoding": "bitmask",
+    "plusUsesSameBit": true
+  }
+}

@@ -95,7 +95,7 @@ public sealed class PlayerBrowser : UserControl
         var portrait=new FrameworkElementFactory(typeof(Image));portrait.SetValue(Image.WidthProperty,30d);portrait.SetValue(Image.HeightProperty,30d);portrait.SetBinding(Image.SourceProperty,new Binding("Portrait"));name.AppendChild(portrait);
         var nameText=new FrameworkElementFactory(typeof(TextBlock));nameText.SetBinding(TextBlock.TextProperty,new Binding("Name"));nameText.SetValue(TextBlock.VerticalAlignmentProperty,VerticalAlignment.Center);nameText.SetValue(TextBlock.MarginProperty,new Thickness(9,0,0,0));name.AppendChild(nameText);
         grid.Columns.Add(new DataGridTemplateColumn{Header="NAME",CellTemplate=new DataTemplate{VisualTree=name},SortMemberPath="Name",Width=new DataGridLength(1,DataGridLengthUnitType.Star),MinWidth=150});
-        Column("AGE",ATLink.Core.UiText.Get("Age"),46);Column("POS",ATLink.Core.UiText.Get("Position"),48);
+        Column(UiText.Get("Age"),nameof(PlayerCard.Age),56);Column(UiText.Get("Position"),nameof(PlayerCard.Position),60);
         var flag=new FrameworkElementFactory(typeof(FlagImage));flag.SetValue(FlagImage.WidthProperty,32d);flag.SetValue(FlagImage.HeightProperty,22d);flag.SetBinding(FlagImage.SourceProperty,new Binding("Flag"));flag.SetBinding(FlagImage.ToolTipProperty,new Binding("Nationality"));
         grid.Columns.Add(new DataGridTemplateColumn{Header="NAT",CellTemplate=new DataTemplate{VisualTree=flag},Width=48,SortMemberPath="Nationality"});
         var rating=new FrameworkElementFactory(typeof(Border));rating.SetBinding(Border.BackgroundProperty,new Binding("Overall"){Converter=new RatingBrushConverter()});rating.SetValue(Border.CornerRadiusProperty,new CornerRadius(4));rating.SetValue(Border.PaddingProperty,new Thickness(5,3,5,3));rating.SetValue(Border.VerticalAlignmentProperty,VerticalAlignment.Center);
@@ -108,7 +108,31 @@ public sealed class PlayerBrowser : UserControl
         grid.SelectionChanged+=(_,_)=>ShowPlayer();grid.MouseDoubleClick+=(_,_)=>Edit();left.Children.Add(grid);body.Children.Add(left);
         detail.EditRequested+=Edit;Grid.SetColumn(detail,1);body.Children.Add(detail);root.Children.Add(body);Content=root;search.TextChanged+=(_,_)=>Refresh();Refresh();
     }
-    void Column(string title,string binding,double width)=>grid.Columns.Add(new DataGridTextColumn{Header=title,Binding=new Binding(binding),Width=width,SortMemberPath=binding});
+    void Column(string title,string binding,double width){
+        var column=new DataGridTextColumn{Header=title,Binding=new Binding(binding),Width=width,SortMemberPath=binding};
+        if(binding==nameof(PlayerCard.Position)){
+            var badge=new FrameworkElementFactory(typeof(Border));
+            badge.SetResourceReference(Border.BackgroundProperty,"PositionBadgeBrush");
+            badge.SetValue(Border.CornerRadiusProperty,new CornerRadius(4));
+            badge.SetValue(Border.PaddingProperty,new Thickness(4,4,4,4));
+            badge.SetValue(FrameworkElement.WidthProperty,46d);
+            badge.SetValue(FrameworkElement.HorizontalAlignmentProperty,HorizontalAlignment.Center);
+            badge.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);
+            var label=new FrameworkElementFactory(typeof(TextBlock));label.SetBinding(TextBlock.TextProperty,new Binding(binding));
+            label.SetValue(TextBlock.ForegroundProperty,Brushes.White);label.SetValue(TextBlock.FontWeightProperty,FontWeights.SemiBold);label.SetValue(TextBlock.TextAlignmentProperty,TextAlignment.Center);
+            badge.AppendChild(label);
+            grid.Columns.Add(new DataGridTemplateColumn{Header=title,CellTemplate=new DataTemplate{VisualTree=badge},Width=width,SortMemberPath=binding});
+            return;
+        }
+        if(binding==nameof(PlayerCard.Age)){
+            var style=new Style(typeof(TextBlock));
+            style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty,TextAlignment.Center));
+            style.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty,HorizontalAlignment.Stretch));
+            style.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center));
+            column.ElementStyle=style;
+        }
+        grid.Columns.Add(column);
+    }
     void Refresh()
     {
         var selected=(grid.SelectedItem as PlayerCard)?.Id;

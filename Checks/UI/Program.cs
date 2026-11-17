@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,9 +14,19 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Contains("--selected-database")){SelectedDatabaseUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--selected-database")??"."));return;}
+        if(args.Contains("--colour-picker")){ColourPickerUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--colour-picker")??"."));return;}
+        if(args.Contains("--module-transfer-names")){ModuleTransferNamesUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--module-transfer-names")??"."));return;}
+        if(args.Contains("--team-creation")){TeamCreationUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--team-creation")??"."));return;}
         if(args.Contains("--interface-language")){InterfaceLanguageUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--interface-language")??"."));return;}
         if(args.Contains("--advancement")){AdvancementUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--advancement")??"."));return;}
         if(args.Contains("--player-appearance")){PlayerAppearanceUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-appearance")??"."));return;}
+        if(args.Contains("--player-playstyles")){PlayerPlaystylesUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-playstyles")??"."));return;}
+        if(args.Contains("--player-history")){PlayerHistoryUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-history")??"."));return;}
+        if(args.Contains("--player-details-playstyles")){PlayerDetailsPlaystylesUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-details-playstyles")??"."));return;}
+        if(args.Contains("--player-calendar")){PlayerCalendarUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-calendar")??"."));return;}
+        if(args.Contains("--player-clone")){PlayerCloneUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-clone")??"."));return;}
+        if(args.Contains("--team-grouping")){TeamGroupingUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--team-grouping")??"."));return;}
         if(args.Contains("--player-info")){PlayerInfoUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--player-info")??"."));return;}
         if(args.Contains("--creation-journey")){CreationJourneyUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--creation-journey")??"."));return;}
         if(args.Contains("--window-chrome")){WindowChromeUiChecks.Run(Path.GetFullPath(args.FirstOrDefault(a=>a!="--window-chrome")??"."));return;}
@@ -262,7 +272,8 @@ internal static class Program
         var team=catalog.Entities("teams").First();
         RenderControl(new ATLink.Views.TeamWorkspace(catalog,team),"team-workspace",1200,800);
         var arsenalFormations=new ATLink.Views.TeamWorkspace(catalog,catalog.Entities("teams").First(t=>t.Id=="1"));
-        typeof(ATLink.Views.TeamWorkspace).GetMethod("Show",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(arsenalFormations,new object[]{"Formations"});
+        typeof(ATLink.Views.TeamWorkspace).GetMethod("Show",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(arsenalFormations,new object[]{"Tactics"});
+        typeof(ATLink.Views.TeamWorkspace).GetMethod("ShowTacticsSection",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(arsenalFormations,new object[]{"Formation"});
         RenderControl(arsenalFormations,"team-formations",1200,900);
         Console.WriteLine("PASS team workspace rendering");
         CompdataFile Fixture(string path,string text)=>new(){RelativePath=path,Text=text,InitialText=text,Original=System.Text.Encoding.UTF8.GetBytes(text),Encoding=System.Text.Encoding.UTF8};
@@ -305,7 +316,8 @@ internal static class Program
         if(browserGrid.Items.Count==0||browserGrid.Items.Cast<ATLink.Views.PlayerBrowser.PlayerCard>().Any(p=>p.Position!="GK"))throw new Exception("Goalkeeper filter");
         Console.WriteLine("PASS player browser search, selection, empty state and position filters");
         var squadTeam=new ATLink.Views.TeamWorkspace(squadCatalog,squadCatalog.Entities("teams").First(t=>t.Id=="1"));
-        typeof(ATLink.Views.TeamWorkspace).GetMethod("Show",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(squadTeam,new object[]{"Formations"});
+        typeof(ATLink.Views.TeamWorkspace).GetMethod("Show",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(squadTeam,new object[]{"Tactics"});
+        typeof(ATLink.Views.TeamWorkspace).GetMethod("ShowTacticsSection",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(squadTeam,new object[]{"Formation"});
         RenderControl(squadTeam,"squad-team-formations",1200,900);
         var squadPitch=(System.Windows.Controls.Canvas?)typeof(ATLink.Views.TeamWorkspace).GetField("pitch",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(squadTeam);
         if(squadPitch is null||squadPitch.Children.OfType<System.Windows.Controls.Border>().Count()!=11)throw new Exception("Squad formation pitch must display eleven players");

@@ -10,6 +10,8 @@ public sealed class PlayerAppearanceEditor:UserControl
 {
     readonly FootballCatalog catalog;readonly DataRow player;
     readonly Dictionary<string,TextBox> inputs=[];
+    readonly List<Action> refreshChoices=[];
+    readonly List<(TextBlock Label,string Key)> localizedLabels=[];
     readonly Grid layout=new();
     readonly StackPanel[] columns=[new(),new(),new()];
     public event Action? Changed;
@@ -34,11 +36,14 @@ public sealed class PlayerAppearanceEditor:UserControl
             ("tattooback",ATLink.Core.UiText.Get("Dos")),("tattoofront",ATLink.Core.UiText.Get("Torse")),("tattoohead",ATLink.Core.UiText.Get("Tête")),("tattooleftarm",ATLink.Core.UiText.Get("Bras gauche")),("tattoorightarm",ATLink.Core.UiText.Get("Bras droit")),("tattooleftleg",ATLink.Core.UiText.Get("Jambe gauche")),("tattoorightleg",ATLink.Core.UiText.Get("Jambe droite")));
         Card(1,ATLink.Core.UiText.Get("Tenue"),"M10,3 L3,6 1,14 7,17 9,13 9,30 25,30 25,13 27,17 33,14 31,6 24,3 Q17,13 10,3 Z",
             ("jerseystylecode",ATLink.Core.UiText.Get("Style du maillot")),("jerseyfit",ATLink.Core.UiText.Get("Coupe du maillot")),("jerseysleevelengthcode",ATLink.Core.UiText.Get("Longueur des manches")),("hasseasonaljersey",ATLink.Core.UiText.Get("Maillot saisonnier")),("shortstyle",ATLink.Core.UiText.Get("Style du short")),("undershortstyle",ATLink.Core.UiText.Get("Style du sous-short")),("socklengthcode",ATLink.Core.UiText.Get("Longueur des chaussettes")),("sockstylecode",ATLink.Core.UiText.Get("Style des chaussettes")));
-        Card(2,"Équipement","M2,19 L12,14 17,4 24,9 23,18 31,22 31,28 2,28 Z M12,14 L20,18",
+        Card(2,UiText.Get("Équipement"),"M2,19 L12,14 17,4 24,9 23,18 31,22 31,28 2,28 Z M12,14 L20,18",
             ("gkglovetypecode",ATLink.Core.UiText.Get("Gants de gardien")),("shoetypecode",ATLink.Core.UiText.Get("Chaussures")),("smallsidedshoetypecode",ATLink.Core.UiText.Get("Chaussures Small Sided")),("shoedesigncode",ATLink.Core.UiText.Get("Design des chaussures")),("shoecolorcode1",ATLink.Core.UiText.Get("Couleur 1 chaussures")),("shoecolorcode2",ATLink.Core.UiText.Get("Couleur 2 chaussures")),("accessorycode1",ATLink.Core.UiText.Get("Accessoire 1")),("accessorycolourcode1",ATLink.Core.UiText.Get("Couleur accessoire 1")),("accessorycode2",ATLink.Core.UiText.Get("Accessoire 2")),("accessorycolourcode2",ATLink.Core.UiText.Get("Couleur accessoire 2")),("accessorycode3",ATLink.Core.UiText.Get("Accessoire 3")),("accessorycolourcode3",ATLink.Core.UiText.Get("Couleur accessoire 3")),("accessorycode4",ATLink.Core.UiText.Get("Accessoire 4")),("accessorycolourcode4",ATLink.Core.UiText.Get("Couleur accessoire 4")));
         Card(2,ATLink.Core.UiText.Get("Animations gardien"),"M3,30 L3,3 30,3 30,30 M3,12 L30,12 M3,21 L30,21 M12,3 L12,30 M21,3 L21,30",
             ("gksavetype",ATLink.Core.UiText.Get("GK Save Style")),("gkkickstyle",ATLink.Core.UiText.Get("GK Kick Style")));
+        Loaded+=(_,_)=>{UiText.Current.LanguageChanged+=RefreshChoiceLabels;RefreshChoiceLabels();};
+        Unloaded+=(_,_)=>UiText.Current.LanguageChanged-=RefreshChoiceLabels;
     }
+    void RefreshChoiceLabels(){foreach(var (label,key) in localizedLabels)label.Text=UiText.Get(key);foreach(var refresh in refreshChoices)refresh();}
     void ArrangeColumns(double width)
     {
         int count=width>=1200?3:width>=780?2:1;
@@ -50,11 +55,11 @@ public sealed class PlayerAppearanceEditor:UserControl
         var body=new StackPanel();var heading=new DockPanel{Margin=new Thickness(0,0,0,6)};
         var icon=new System.Windows.Shapes.Path{Data=Geometry.Parse(geometry),Stroke=Brush(220,188,255),StrokeThickness=1.7,Stretch=Stretch.Uniform,Width=22,Height=22};
         heading.Children.Add(new Border{Child=icon,Background=Brush(101,30,171),CornerRadius=new CornerRadius(7),Padding=new Thickness(7),Margin=new Thickness(0,0,12,0)});
-        heading.Children.Add(new TextBlock{Text=title,FontSize=19,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});body.Children.Add(heading);
+        var titleLabel=new TextBlock{Text=title,FontSize=19,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};localizedLabels.Add((titleLabel,UiText.Source(title)!));heading.Children.Add(titleLabel);body.Children.Add(heading);
         var content=new Grid();body.Children.Add(content);
         string asset=ATLink.Core.UiText.Source(title) switch{"Morphologie"=>"morphologie","Tête et visage"=>"tetevisage","Peau"=>"peau","Tatouages"=>"tatouage","Tenue"=>"tenue","Équipement"=>"equipement",_=>"animationgk"};
         bool tattoo=ATLink.Core.UiText.Source(title)=="Tatouages";
-        double artWidth=ATLink.Core.UiText.Source(title)=="Peau"?58:tattoo?125:title=="Équipement"?125:100;
+        double artWidth=ATLink.Core.UiText.Source(title)=="Peau"?58:tattoo?125:UiText.Source(title)=="Équipement"?125:100;
         content.ColumnDefinitions.Add(new(){Width=tattoo?new GridLength(artWidth):new GridLength(1,GridUnitType.Star)});
         content.ColumnDefinitions.Add(new(){Width=tattoo?new GridLength(1,GridUnitType.Star):new GridLength(artWidth)});
         var artwork=new Image{Source=Artwork(asset),Stretch=Stretch.Uniform,IsHitTestVisible=false,Margin=new Thickness(2),Opacity=.85};
@@ -68,19 +73,64 @@ public sealed class PlayerAppearanceEditor:UserControl
         foreach(var (key,label) in fields)
         {
             var field=catalog.Table("players").Fields.FirstOrDefault(f=>f.Name==key);if(field is null)continue;
-            var block=new StackPanel{Width=fieldWidth-6,Margin=new Thickness(0,0,6,7)};block.Children.Add(new TextBlock{Text=label,FontSize=12,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,3)});
+            var block=new StackPanel{Width=fieldWidth-6,Margin=new Thickness(0,0,6,7)};var fieldLabel=new TextBlock{Text=label,FontSize=12,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,3)};localizedLabels.Add((fieldLabel,UiText.Source(label)!));block.Children.Add(fieldLabel);
             var box=new TextBox{Text=FootballCatalog.Value(player,key),Tag=key,MinWidth=0,MinHeight=0,Height=25,FontSize=12,Padding=new Thickness(5,2,5,2),ToolTip=$"{label} · {field.Minimum} – {field.Maximum}"};inputs.Add(key,box);
             box.TextChanged+=(_,_)=>{try{DatabaseDocument.ValidateValue(field,box.Text.Trim());box.ClearValue(Control.BorderBrushProperty);}catch{box.BorderBrush=Brush(255,110,145);}Changed?.Invoke();};
-            if(key=="hashighqualityhead")
+            var names=PlayerAppearanceChoices.For(key);
+            if(names.Length>0)
             {
-                var combo=new ComboBox{MinHeight=0,Height=25,FontSize=12,Padding=new Thickness(4,1,4,1),DisplayMemberPath="Label",SelectedValuePath="Value",ItemsSource=new[]{new FieldChoice("0",ATLink.Core.UiText.Get("Non")),new FieldChoice("1",ATLink.Core.UiText.Get("Oui"))},SelectedValue=box.Text};
-                if(combo.SelectedIndex<0){combo.ItemsSource=new[]{new FieldChoice(box.Text,ATLink.Core.UiText.Concat(ATLink.Core.UiText.Get("Valeur actuelle : "), box.Text)),new FieldChoice("0",ATLink.Core.UiText.Get("Non")),new FieldChoice("1",ATLink.Core.UiText.Get("Oui"))};combo.SelectedValue=box.Text;}
-                combo.SelectionChanged+=(_,_)=>{if(combo.SelectedValue is string value)box.Text=value;};box.TextChanged+=(_,_)=>combo.SelectedValue=box.Text;block.Children.Add(combo);
+                var combo=new ComboBox{Tag="choice:"+key,IsEditable=true,IsTextSearchEnabled=false,MinHeight=0,Height=25,FontSize=12,Padding=new Thickness(4,1,4,1),DisplayMemberPath="Label",MaxDropDownHeight=260};
+                bool syncing=false,editing=false;
+                void Sync(){
+                    if(syncing||editing)return;
+                    syncing=true;
+                    try{
+                        var choices=PlayerAppearanceChoices.For(key).Where(c=>long.TryParse(c.Value,out long value)&&value>=field.Minimum&&value<=field.Maximum).ToList();
+                        if(field.Maximum-field.Minimum<=512){
+                            for(long value=field.Minimum;value<=field.Maximum;value++){
+                                string raw=value.ToString(CultureInfo.InvariantCulture);
+                                if(!choices.Any(c=>c.Value==raw))choices.Add(new(raw,UiText.Format("Code {0}",raw)));
+                            }
+                            choices=choices.OrderBy(c=>long.Parse(c.Value,CultureInfo.InvariantCulture)).ToList();
+                        }
+                        if(!choices.Any(c=>c.Value==box.Text))choices.Add(new(box.Text,UiText.Format("Code {0}",box.Text)));
+                        combo.ItemsSource=choices;combo.SelectedItem=choices.First(c=>c.Value==box.Text);
+                        combo.ToolTip=UiText.Concat(((FieldChoice)combo.SelectedItem).Label," · ",UiText.Get("Choose a name or enter a numeric code."));
+                    }finally{syncing=false;}
+                }
+                combo.SelectionChanged+=(_,_)=>{
+                    if(syncing||combo.SelectedItem is not FieldChoice choice)return;
+                    editing=true;try{box.Text=choice.Value;combo.ToolTip=UiText.Concat(choice.Label," · ",UiText.Get("Choose a name or enter a numeric code."));}finally{editing=false;}
+                };
+                combo.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,new TextChangedEventHandler((_,_)=>{
+                    if(syncing)return;
+                    string text=combo.Text.Trim();
+                    var choice=combo.Items.Cast<FieldChoice>().FirstOrDefault(c=>c.Label==text);
+                    editing=true;try{box.Text=choice?.Value??text;}finally{editing=false;}
+                }));
+                box.TextChanged+=(_,_)=>{
+                    try{DatabaseDocument.ValidateValue(field,box.Text.Trim());combo.ClearValue(Control.BorderBrushProperty);}
+                    catch{combo.BorderBrush=Brush(255,110,145);}
+                    Sync();
+                };
+                combo.DropDownOpened+=(_,_)=>Sync();
+                void CompactEditor(){
+                    if(combo.Template.FindName("PART_EditableTextBox",combo) is TextBox editable){
+                        editable.MinHeight=0;editable.MinWidth=0;editable.Padding=new Thickness(0);editable.BorderThickness=new Thickness(0);
+                        editable.Margin=new Thickness(5,1,22,1);editable.FontSize=12;
+                        editable.VerticalAlignment=VerticalAlignment.Stretch;editable.VerticalContentAlignment=VerticalAlignment.Center;
+                    }
+                }
+                combo.SizeChanged+=(_,_)=>CompactEditor();
+                combo.Loaded+=(_,_)=>{CompactEditor();Sync();};
+                refreshChoices.Add(Sync);
+                Sync();block.Children.Add(combo);
+                box.Visibility=Visibility.Collapsed;block.Children.Add(box);
             }
             else
             {
                 var input=new DockPanel();var buttons=new StackPanel{Width=24};DockPanel.SetDock(buttons,Dock.Right);
-                foreach(int delta in new[]{1,-1}){var step=new Button{Content=delta==1?"+":"−",Padding=new Thickness(0),MinHeight=0,Height=12.5,FontSize=9};step.Template=StepTemplate(delta>0);step.Click+=(_,_)=>{if(long.TryParse(box.Text,out long value))box.Text=Math.Clamp(value+delta,(long)field.Minimum,(long)field.Maximum).ToString(CultureInfo.InvariantCulture);};buttons.Children.Add(step);}input.Children.Add(buttons);input.Children.Add(box);block.Children.Add(input);
+                foreach(int delta in new[]{1,-1}){var step=new Button{Content=delta==1?"+":"−",Padding=new Thickness(0),MinHeight=0,Height=12.5,FontSize=9};step.Template=PlayerStepButtons.Create(delta>0);step.Click+=(_,_)=>{if(long.TryParse(box.Text,out long value))box.Text=Math.Clamp(value+delta,(long)field.Minimum,(long)field.Maximum).ToString(CultureInfo.InvariantCulture);};buttons.Children.Add(step);}input.Children.Add(buttons);input.Children.Add(box);block.Children.Add(input);
 
             }
             wrap.Children.Add(block);
@@ -94,25 +144,6 @@ public sealed class PlayerAppearanceEditor:UserControl
         }
         columns[column].Children.Add(new Border{Child=body,Padding=new Thickness(12,8,8,8),Margin=new Thickness(5,0,5,10),CornerRadius=new CornerRadius(12),BorderThickness=new Thickness(1),BorderBrush=Brush(92,50,130),Background=new LinearGradientBrush(Color.FromRgb(24,19,40),Color.FromRgb(47,22,73),30)});
     }
-    static ControlTemplate StepTemplate(bool top)
-    {
-        var border=new FrameworkElementFactory(typeof(Border));
-        border.Name="Surface";
-        border.SetValue(Border.CornerRadiusProperty,top?new CornerRadius(5,5,0,0):new CornerRadius(0,0,5,5));
-        border.SetValue(Border.BackgroundProperty,new System.Windows.Data.Binding("Background"){RelativeSource=System.Windows.Data.RelativeSource.TemplatedParent});
-        border.SetValue(Border.BorderBrushProperty,new System.Windows.Data.Binding("BorderBrush"){RelativeSource=System.Windows.Data.RelativeSource.TemplatedParent});
-        border.SetValue(Border.BorderThicknessProperty,top?new Thickness(1,1,1,0):new Thickness(1));
-        var label=new FrameworkElementFactory(typeof(ContentPresenter));
-        label.SetValue(FrameworkElement.HorizontalAlignmentProperty,HorizontalAlignment.Center);
-        label.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);
-        border.AppendChild(label);
-        var template=new ControlTemplate(typeof(Button)){VisualTree=border};
-        var hover=new Trigger{Property=UIElement.IsMouseOverProperty,Value=true};
-        hover.Setters.Add(new Setter(Border.BackgroundProperty,Brush(101,30,171),ATLink.Core.UiText.Get("Surface")));template.Triggers.Add(hover);
-        var pressed=new Trigger{Property=System.Windows.Controls.Primitives.ButtonBase.IsPressedProperty,Value=true};
-        pressed.Setters.Add(new Setter(Border.BackgroundProperty,Brush(132,45,238),ATLink.Core.UiText.Get("Surface")));template.Triggers.Add(pressed);
-        return template;
-    }
     static System.Windows.Media.Imaging.BitmapSource Artwork(string asset)
     {
         var source=new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/ATLink;component/Resource/"+asset+".png"));
@@ -122,6 +153,8 @@ public sealed class PlayerAppearanceEditor:UserControl
         for(int y=0;y<h;y++)for(int x=0;x<w;x++)if(pixels[(y*w+x)*4+3]>24){left=Math.Min(left,x);right=Math.Max(right,x);top=Math.Min(top,y);bottom=Math.Max(bottom,y);}
         return left<=right?new System.Windows.Media.Imaging.CroppedBitmap(bitmap,new Int32Rect(left,top,right-left+1,bottom-top+1)):bitmap;
     }
+    internal Dictionary<string,string> CaptureDraft()=>inputs.ToDictionary(p=>p.Key,p=>p.Value.Text);
+    internal void RestoreDraft(Dictionary<string,string> state){foreach(var pair in state)inputs[pair.Key].Text=pair.Value;}
     public bool HasChanges=>inputs.Any(p=>p.Value.Text.Trim()!=FootballCatalog.Value(player,p.Key));
     public void Validate(){foreach(var pair in inputs){try{DatabaseDocument.ValidateValue(catalog.Table("players").Fields.Single(f=>f.Name==pair.Key),pair.Value.Text.Trim());}catch(Exception ex){throw new InvalidOperationException(pair.Key+" : "+ex.Message,ex);}}}
     public void Apply(){Validate();foreach(var pair in inputs)player[pair.Key]=pair.Value.Text.Trim();}

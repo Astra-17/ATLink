@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
@@ -49,7 +49,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public object? Page { get => workspacePage; set { workspacePage = value; Notify(); } }
     public Action? ResetWorkspace { get; set; }
     public ICommand ShowLauncherCommand => new RelayCommand(() => { ResetWorkspace?.Invoke(); Screen = HasDocument ? "Launcher" : "Editing"; }, () => !Busy);
-    public ICommand ShowTablesCommand => new RelayCommand(() => { ResetWorkspace?.Invoke(); Screen = "Tables"; }, () => HasDocument && !Busy);
+    private string tablesReturnScreen = "Launcher";
+    public ICommand ShowTablesCommand => new RelayCommand(() => { if(Screen!="Tables")tablesReturnScreen=Screen; Screen = "Tables"; }, () => HasDocument && !Busy);
+    public ICommand ReturnFromTablesCommand => new RelayCommand(() => { Screen=Page is not null?"Page":tablesReturnScreen=="Page"?"Launcher":tablesReturnScreen; }, () => !Busy);
     public ICommand PreviousCommand => new RelayCommand(() => { page--; RefreshPage(); }, () => page > 0 && !Busy);
     public ICommand NextCommand => new RelayCommand(() => { page++; RefreshPage(); }, () => (page + 1) * PageSize < (Rows?.Count ?? 0) && !Busy);
 

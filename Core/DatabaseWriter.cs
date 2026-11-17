@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Data;
 using System.Globalization;
 using System.Text;
@@ -168,6 +168,8 @@ public sealed partial class DatabaseDocument
         // A competition has separate ball records for weather/stage variants.
         // The descriptor marks competitionid as a key, but it is not unique alone.
         if(table.Name=="competitionballs")keys=table.Fields.Where(f=>f.Name is "competitionid" or "weather" or "stage").ToArray();
+        // teamtechid identifies the club; a club has several distinct kit records.
+        if(table.Name=="teamkits"&&table.Fields.Any(f=>f.Name=="teamkitid"))keys=table.Fields.Where(f=>f.Name is "teamtechid" or "teamkitid").ToArray();
         var seen=new Dictionary<string,int>(StringComparer.Ordinal);
         var baseline=table.Data.Rows.Cast<DataRow>().Where(r=>r.HasVersion(DataRowVersion.Original)).GroupBy(r=>string.Join("\u001f",keys.Select(f=>r[f.Name,DataRowVersion.Original].ToString()))).ToDictionary(g=>g.Key,g=>g.Count());
         foreach(var row in table.Data.Rows.Cast<DataRow>().Where(r=>r.RowState!=DataRowState.Deleted))
